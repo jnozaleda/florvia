@@ -77,4 +77,4 @@ El backlog vive en GitHub Issues, en el repositorio privado [jnozaleda/mygarden-
 
 - El Worker se llama aún `my-garden-api` (su dirección está dentro de la app y de los enlaces; no se cambia). Este repositorio es ahora su fuente de verdad: `cd worker && npx wrangler deploy`.
 - Las claves de almacenamiento del navegador siguen empezando por `mj_` (cambiarlas borraría datos de la gente).
-- Falta antes de publicar: el correo de contacto (`CONTACTO_PENDIENTE` en `index.html` y `privacidad/index.html`).
+- Contacto: hello@florvia.app (Cloudflare Email Routing, reenvía al correo del autor).
