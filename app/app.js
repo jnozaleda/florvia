@@ -1,13 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004j";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004k";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport,
-} from "./rules.js?v=20261004j";
-import { buildICS } from "./calendar.js?v=20261004j";
-import { scrubPlant } from "./clean.js?v=20261004j";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004j";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004k";
+import { buildICS } from "./calendar.js?v=20261004k";
+import { scrubPlant } from "./clean.js?v=20261004k";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004k";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -159,7 +158,7 @@ function todayView() {
   const today = localToday();
   const { plants, log } = state.data;
   const alerts = state.weather ? weatherAlerts(plants, state.weather, today).map((a) => ({ ...a, kind: ALERT_ICON[a.icon] })) : [];
-  let html = upgradeBanner() + forecastCard(alerts);
+  let html = upgradeBanner() + forecastCard(alerts) + irrigationCard();
   if (!plants.length) return html + (welcomeCard() || emptyGarden());
 
   // Para hoy: overdue and due today (tomorrow onwards lives in «Próximos días»).
@@ -416,6 +415,64 @@ function zoneSunCard() {
         `<button type="button" role="radio" aria-checked="${zoneSun()[z] === v}" data-action="zone-sun" data-zone="${esc(z)}" data-sun="${v}">${t}</button>`).join("")}</div></div>`).join("")}</section>
     <p class="group-foot">Cuánta luz recibe cada zona. Sirve para avisarte si una planta no está donde le conviene y para decirte dónde encajaría una planta nueva. Toca otra vez para quitarlo. Cada planta puede tener su propio valor en Editar.</p>`;
 }
+// Details the user types for each zone (Ajustes → «Detalles de cada zona»): programmed irrigation
+// (cada N días, minutes optional) and a short description. The irrigation figure is checked against
+// what each irrigated plant of the zone asks for in the current season; see irrigationChecks (rules.js).
+const zoneInfo = () => state.data.zoneInfo ?? {};
+const zoneIrrigationChecks = (zone) => irrigationChecks(state.data.plants, zoneInfo(), seasonOf(localToday(), here().lat)).filter((c) => zone === undefined || c.zone === zone);
+const irrigationLine = (c) => {
+  const names = c.items.slice(0, 3).map((x) => `${plantLabel(x.plant)} pide cada ${x.need}`).join(", ") + (c.items.length > 3 ? "…" : "");
+  return { title: c.kind === "more" ? `Riegas de más en ${c.zone || "Sin zona"}` : `Riegas de menos en ${c.zone || "Sin zona"}`,
+    text: `La zona se riega cada ${c.every} ${c.every === 1 ? "día" : "días"}; ${names}. Prueba con cada ${c.suggest} ${c.suggest === 1 ? "día" : "días"}.` };
+};
+function irrigationCard() {
+  const checks = zoneIrrigationChecks();
+  if (!checks.length) return "";
+  return `<section class="card"><div class="sec">Riego programado</div>${checks.map((c) => {
+    const l = irrigationLine(c);
+    return `<button type="button" class="fit-row link-row" data-action="zone-open" data-zone="${esc(c.zone)}"><span class="fit-ic ${c.kind === "more" ? "warn" : "info"}">${ICONS.drip}</span><div><b>${esc(l.title)}</b><span>${esc(l.text)}</span></div></button>`;
+  }).join("")}</section>`;
+}
+function zoneDetailsCard() {
+  const zones = [...new Set(state.data.plants.map((p) => p.zone || ""))].sort((a, b) => a.localeCompare(b, "es"));
+  if (!zones.length) return "";
+  return `<div class="group-title">Detalles de cada zona</div>
+    <section class="card list-card settings">${zones.map((z) => {
+      const i = zoneInfo()[z] ?? {};
+      const bits = [i.every ? `riego cada ${i.every} ${i.every === 1 ? "día" : "días"}` : "", i.desc ? "descrita" : ""].filter(Boolean).join(" · ");
+      return `<button type="button" class="l-row" data-action="zone-open" data-zone="${esc(z)}"><span class="l-ico" style="background:#1f8f86">${ICONS.pin}</span><span class="l-label">${esc(z || "Sin zona")}</span><span class="l-value">${esc(bits)}<span class="chev">${ICONS.chevron}</span></span></button>`;
+    }).join("")}</section>
+    <p class="group-foot">Cada cuánto riega el programador de la zona y cómo es el sitio, con tus palabras. Con el riego avisamos si una planta recibe más o menos del que pide.</p>`;
+}
+function zoneSheet(zone) {
+  const i = zoneInfo()[zone] ?? {};
+  const checks = zoneIrrigationChecks(zone);
+  openSheet(`<div class="sheet-head"><h2>${esc(zone || "Sin zona")}</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>
+    <form id="zoneForm" data-zone="${esc(zone)}">
+      <div class="group-title">Riego programado</div>
+      <p class="muted small">Si la zona tiene programador, cada cuántos días riega. Déjalo vacío si no.</p>
+      <div class="row"><label class="grow">Cada <input type="number" name="every" min="1" max="60" inputmode="numeric" class="big-input" value="${i.every || ""}" placeholder="días" /></label>
+      <label class="grow">Minutos <input type="number" name="mins" min="1" max="600" inputmode="numeric" class="big-input" value="${i.mins || ""}" placeholder="opcional" /></label></div>
+      ${checks.map((c) => { const l = irrigationLine(c); return `<p class="ai-status warn"><b>${esc(l.title)}.</b> ${esc(l.text)}</p>`; }).join("")}
+      <div class="group-title">Cómo es esta zona</div>
+      <p class="muted small">Con tus palabras: a qué horas da el sol, sombras, viento… No escribas datos personales.</p>
+      <textarea name="desc" maxlength="300" rows="4" class="big-input" placeholder="Sol de mañana hasta las 12:00 en invierno y hasta las 15:00 en verano; la pared da sombra por la tarde.">${esc(i.desc ?? "")}</textarea>
+      <button class="btn block" type="submit">Guardar</button>
+    </form>`);
+}
+function saveZoneInfo(form) {
+  const zone = form.dataset.zone ?? "";
+  const num = (v, max) => { const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 1 ? Math.min(max, n) : 0; };
+  const fd = new FormData(form);
+  const entry = { every: num(fd.get("every"), 60), mins: num(fd.get("mins"), 600), desc: String(fd.get("desc") ?? "").trim().slice(0, 300) };
+  const all = { ...zoneInfo() };
+  if (entry.every || entry.mins || entry.desc) all[zone] = entry; else delete all[zone];
+  state.data.zoneInfo = all;
+  save();
+  closeSheet();
+  render();
+}
+
 // The next season's interval, so the timer can be changed in time.
 function autoHint(p, season) {
   const next = SEASONS[(SEASONS.indexOf(season) + 1) % 4];
@@ -551,7 +608,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004j";
+      sc.src = "vendor/qrcode.min.js?v=20261004k";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -723,6 +780,7 @@ function moreView() {
     </section>
     ${zonesCard()}
     ${zoneSunCard()}
+    ${zoneDetailsCard()}
     <div class="group-title">Avisos y calendario</div>
     <section class="card list-card settings">
       ${row("open-push", "bell", "#c93b30", "Aviso diario", store.get("mj_push", false) ? `<span class="ok">${ICONS.circleCheck}8:00</span>` : "Desactivado")}
@@ -1143,9 +1201,60 @@ function plantSheet(id) {
     <section class="card"><div class="sec">Historial</div>${log.length ? `<ul class="log">${log.map((e) => `
       <li><span class="log-ico ${e.type}">${ICONS[LOG_ICON[e.type]] ?? ""}</span><span class="log-what">${esc(CARE[e.type]?.done ?? e.type)}${e.note ? ` — ${esc(e.note)}` : ""}</span><span class="d">${fmtDate(e.date)}</span>
       <button class="x" data-action="del-log" data-log="${e.id}" data-id="${p.id}" aria-label="Borrar">${ICONS.x}</button></li>`).join("")}</ul>` : `<p class="muted">Sin registros todavía.</p>`}</section>
+    ${refreshSection(p)}
     ${provenance}
     `);
   sheet.dataset.plant = id;
+}
+
+// «Actualizar con la IA» in a plant's sheet: asks again for this one plant and refreshes what came from
+// the AI (seasonal tips, fertiliser types, «Sobre la planta», calendar). Watering and feeding figures and
+// notes are replaced only where they still are the AI's own; anything the person edited is kept.
+let plantRefresh = null; // { id, running, ok, text }
+function refreshSection(p) {
+  const r = plantRefresh?.id === p.id && (plantRefresh.running || Date.now() - plantRefresh.at < 15000) ? plantRefresh : null;
+  return `<section class="card"><div class="sec">Ficha de la IA</div>
+    <p class="muted small">Vuelve a consultar a la IA por esta planta y actualiza consejos, abono, «Sobre la planta» y calendario. Lo que hayas cambiado a mano se queda como está.</p>
+    ${r?.text ? `<p class="ai-status ${r.running ? "" : r.ok ? "ok" : "warn"}">${r.running ? `<span class="spinner" aria-hidden="true"></span> ` : ""}${esc(r.text)}</p>` : ""}
+    <button type="button" class="btn block secondary" data-action="plant-refresh" data-id="${p.id}" ${r?.running || aiOff() ? "disabled" : ""}>✦ Actualizar con la IA</button>
+    ${aiOff() ? `<p class="muted small">La IA está apagada en este móvil (Ajustes → Asistente IA).</p>` : ""}</section>`;
+}
+async function refreshPlantAi(id) {
+  const plant = plantById(id);
+  if (!plant || plantRefresh?.running) return;
+  const redraw = () => { if ($("sheet").open && sheet.dataset.plant === id) plantSheet(id); };
+  plantRefresh = { id, running: true, text: "Consultando a la IA…" };
+  redraw();
+  try {
+    const care = await requestCare(plant.name, "refresh");
+    const wasAi = (key) => !plant.ai || isAiValue(plant, key);
+    if (!plant.species || wasAi("species")) plant.species = care.species || plant.species;
+    for (const k of SEASONS) {
+      for (const kind of ["water", "feed"]) if (wasAi(`${k}.${kind}`) || !plant.seasons) { plant.seasons ??= {}; plant.seasons[k] = { ...(plant.seasons[k] ?? {}), [kind]: care.seasons[k][kind] }; }
+    }
+    if (!plant.notes?.trim() || wasAi("notes")) plant.notes = care.notes;
+    plant.tips = care.tips;
+    plant.feedTypes = care.feedTypes;
+    plant.info = infoFields(care);
+    const sun = sunFields(care);
+    if (!plant.sunNeed) { plant.sunNeed = sun.sunNeed; plant.sunSensitive = sun.sunSensitive; }
+    if (plant.minTemp == null) plant.minTemp = sun.minTemp;
+    plant.ai = aiSnapshot(care);
+    withCurrentIntervals(plant);
+    try {
+      const cal = await requestCalendar(plant.name, plant.species);
+      applyCalendar(plant, cal);
+    } catch (err) {
+      if (err.message === "code" || err.message === "limit") throw err;
+    }
+    plant.careVersion = CARE_VERSION;
+    save();
+    plantRefresh = { id, ok: true, at: Date.now(), text: "Ficha actualizada." };
+  } catch (err) {
+    plantRefresh = { id, ok: false, at: Date.now(), text: aiErrorText(err.message) };
+  }
+  render();
+  redraw();
 }
 
 let draftPhoto = null;
@@ -2093,10 +2202,12 @@ const actions = {
   "wiz-save": wizSave,
   "wiz-notes": () => { wiz.notesOpen = !wiz.notesOpen; renderWizard(); },
   "edit-plant": (d) => plantForm(d.id),
+  "plant-refresh": (d) => refreshPlantAi(d.id),
   "open-plant": (d) => { if (confirmDiscard()) plantSheet(d.id); },
   close: leaveSheet,
   "retry-weather": loadWeather,
   "open-place": placeSheet,
+  "zone-open": (d) => zoneSheet(d.zone ?? ""),
   "welcome-install": installSheet,
   "welcome-hide": () => { store.set("mj_welcome", "off"); render(); },
   "open-ai": () => aiSheet(),
@@ -2430,6 +2541,11 @@ document.addEventListener("change", async (e) => {
 });
 
 document.addEventListener("submit", (e) => {
+  if (e.target.id === "zoneForm") {
+    e.preventDefault();
+    saveZoneInfo(e.target);
+    return;
+  }
   if (e.target.id === "aiCodeForm") {
     e.preventDefault();
     saveCode(new FormData(e.target).get("code").trim());

@@ -412,3 +412,27 @@ function whenLabel(today, date) {
   if (n === 1) return "mañana";
   return "el " + new Date(date + "T12:00:00Z").toLocaleDateString("es-ES", { weekday: "long" });
 }
+
+// Irrigation programmed by the user for a zone («cada N días», Ajustes → zona) against what each
+// irrigated plant of that zone asks for in this season. A gap of 2× or more either way is flagged:
+// less than that is noise (rain, pot size, drip flow). Returns one entry per zone and direction.
+export function irrigationChecks(plants, zoneInfo = {}, season) {
+  const out = [];
+  for (const [zone, info] of Object.entries(zoneInfo)) {
+    const every = Number(info?.every);
+    if (!(every >= 1)) continue;
+    const more = [];
+    const less = [];
+    for (const plant of plants) {
+      if ((plant.zone || "") !== zone || !irrigated(plant)) continue;
+      const need = intervalFor(plant, "water", season);
+      if (!need) continue;
+      if (every * 2 <= need) more.push({ plant, need });
+      else if (every >= need * 2) less.push({ plant, need });
+    }
+    for (const [kind, items] of [["more", more], ["less", less]]) {
+      if (items.length) out.push({ zone, kind, every, items, suggest: Math.min(...items.map((x) => x.need)) });
+    }
+  }
+  return out;
+}

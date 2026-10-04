@@ -513,6 +513,7 @@ function mergeGardens(a, b) {
     deleted,
     pausedZones: settings.pausedZones ?? [],
     zoneSun: settings.zoneSun ?? {},
+    zoneInfo: settings.zoneInfo ?? {},
     settingsAt: settings.settingsAt ?? 0,
   };
 }
@@ -558,6 +559,7 @@ async function handleGarden(request, env, headers, key) {
     deleted: Object.fromEntries(Object.entries(incoming.deleted && typeof incoming.deleted === "object" ? incoming.deleted : {}).slice(0, 5000).filter(([id, t]) => id.length <= 40 && Number.isFinite(t))),
     pausedZones: (Array.isArray(incoming.pausedZones) ? incoming.pausedZones : []).slice(0, 50).map((z) => vStr(z, 60)),
     zoneSun: vZoneSun(incoming.zoneSun),
+    zoneInfo: vZoneInfo(incoming.zoneInfo),
     settingsAt: Number.isFinite(incoming.settingsAt) ? incoming.settingsAt : 0,
   };
   const merged = mergeGardens(stored, incoming);
@@ -841,6 +843,10 @@ const vCalendar = (c) => (c && Array.isArray(c.tasks) ? {
   tasks: c.tasks.slice(0, 8).map((t) => ({ type: vEnum(t?.type, TASK_TYPES, "other"), title: vStr(t?.title, 80), how: vStr(t?.how, 160), months: vMonths(t?.months), matureOnly: t?.matureOnly === true })).filter((t) => t.title && t.months.length),
   risks: (Array.isArray(c.risks) ? c.risks : []).filter((r) => RISKS.includes(r)),
 } : null);
+// Per-zone details typed by the user: programmed irrigation (every N days, optional minutes) and a short description.
+const vZoneInfo = (z) => Object.fromEntries(Object.entries(z && typeof z === "object" ? z : {}).slice(0, 50).map(([k, v]) => [vStr(k, 60), {
+  every: vInt(v?.every, 0, 60, 0), mins: vInt(v?.mins, 0, 600, 0), desc: vStr(v?.desc, 300),
+}]));
 const vZoneSun = (z) => Object.fromEntries(Object.entries(z && typeof z === "object" ? z : {}).slice(0, 50).filter(([, v]) => SUN.includes(v)).map(([k, v]) => [vStr(k, 60), v]));
 
 // ---------- Shared copies (read-only) ----------

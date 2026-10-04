@@ -22,13 +22,14 @@ export function mergeGardens(a, b) {
     deleted,
     pausedZones: settings.pausedZones ?? [],
     zoneSun: settings.zoneSun ?? {},
+    zoneInfo: settings.zoneInfo ?? {},
     settingsAt: settings.settingsAt ?? 0,
   };
 }
 
 // The part of the app's data that syncs (location and view choices stay per phone).
 export const gardenDoc = (data) => ({
-  plants: data.plants, log: data.log, deleted: data.deleted ?? {}, pausedZones: data.pausedZones ?? [], zoneSun: data.zoneSun ?? {}, settingsAt: data.settingsAt ?? 0,
+  plants: data.plants, log: data.log, deleted: data.deleted ?? {}, pausedZones: data.pausedZones ?? [], zoneSun: data.zoneSun ?? {}, zoneInfo: data.zoneInfo ?? {}, settingsAt: data.settingsAt ?? 0,
 });
 
 // Cheap content hash (without `_at`) to notice what changed since the last save.
@@ -43,7 +44,7 @@ function hash(str) {
 const DERIVED = new Set(["_at", "irrigationOff", "irrigationOffSince", "refPhoto"]);
 const itemHash = (item) => hash(JSON.stringify(Object.fromEntries(Object.entries(item).filter(([k]) => !DERIVED.has(k)))));
 export function hashesOf(data) {
-  const out = { settings: hash(JSON.stringify([data.pausedZones ?? [], data.zoneSun ?? {}])) };
+  const out = { settings: hash(JSON.stringify([data.pausedZones ?? [], data.zoneSun ?? {}, data.zoneInfo ?? {}])) };
   for (const item of [...data.plants, ...data.log]) out[item.id] = itemHash(item);
   return out;
 }
