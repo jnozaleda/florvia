@@ -1,13 +1,13 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004i";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004j";
 import {
   CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport,
-} from "./rules.js?v=20261004i";
-import { buildICS } from "./calendar.js?v=20261004i";
-import { scrubPlant } from "./clean.js?v=20261004i";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004i";
+} from "./rules.js?v=20261004j";
+import { buildICS } from "./calendar.js?v=20261004j";
+import { scrubPlant } from "./clean.js?v=20261004j";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004j";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -551,7 +551,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004i";
+      sc.src = "vendor/qrcode.min.js?v=20261004j";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -887,6 +887,12 @@ const UPGRADES = [
     apply: (plant, cal) => applyCalendar(plant, cal),
   },
   {
+    version: 8,
+    label: "cómo regarla, con método y cantidad",
+    // Adds «Cómo regarla» to «Sobre la planta»; whatever else is already in the plant's info stays.
+    apply: (plant, care) => { plant.info = { ...infoFields(care), ...(plant.info ?? {}), waterHow: care.waterHow ?? plant.info?.waterHow ?? "" }; },
+  },
+  {
     version: 4,
     label: "calendario de cuidados del año",
     source: "calendar",
@@ -964,7 +970,9 @@ async function upgradePlants() {
         for (const u of careUps) u.apply(plant, care);
         if (!plant.species) plant.species = care.species;
         if (!plant.notes) plant.notes = care.notes;
-        plant.careVersion = Math.max(...careUps.map((u) => u.version));
+        // Not past a calendar upgrade still to come in this run: if that one fails, it is asked again next time.
+        const calPending = missing.filter((u) => u.source === "calendar").map((u) => u.version);
+        plant.careVersion = Math.min(Math.max(...careUps.map((u) => u.version)), ...(calPending.length ? [Math.min(...calPending) - 1] : []));
         withCurrentIntervals(plant);
         save();
       }
