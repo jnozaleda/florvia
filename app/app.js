@@ -1,13 +1,13 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004c";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004d";
 import {
   CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport,
-} from "./rules.js?v=20261004c";
-import { buildICS } from "./calendar.js?v=20261004c";
-import { scrubPlant } from "./clean.js?v=20261004c";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004c";
+} from "./rules.js?v=20261004d";
+import { buildICS } from "./calendar.js?v=20261004d";
+import { scrubPlant } from "./clean.js?v=20261004d";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004d";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -469,7 +469,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004c";
+      sc.src = "vendor/qrcode.min.js?v=20261004d";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -664,10 +664,11 @@ function aiSheet() {
   openSheet(`
     <div class="sheet-head"><h2>Asistente IA</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>
     <p class="muted">Al añadir una planta, la IA propone sola sus cuidados por estación para tu zona; también puedes pedírselo desde Editar.${aiOpen ? " Ahora mismo está abierta: no hace falta código." : " Necesita tu código de acceso."}</p>
-    ${aiOpen ? "" : `<form id="aiCodeForm" class="row">
+    ${aiOpen ? `<p class="muted">Código de acceso: solo si administras la app (activa las métricas «Solo para ti»).</p>` : ""}
+    <form id="aiCodeForm" class="row">
       <input type="text" name="code" class="code-input" placeholder="Código de acceso" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(store.get("mj_ai_code", ""))}" />
       <button class="btn small" type="submit">Guardar</button>
-    </form>`}
+    </form>
     ${codeStatus ? `<p class="ai-status ${codeStatus.kind}">${esc(codeStatus.text)}</p>` : ""}`, "ai");
 }
 function upgradesSheet() {
