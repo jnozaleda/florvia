@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004n";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004o";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004n";
-import { buildICS } from "./calendar.js?v=20261004n";
-import { scrubPlant } from "./clean.js?v=20261004n";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004n";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004o";
+import { buildICS } from "./calendar.js?v=20261004o";
+import { scrubPlant } from "./clean.js?v=20261004o";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004o";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -600,7 +600,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004n";
+      sc.src = "vendor/qrcode.min.js?v=20261004o";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1112,7 +1112,7 @@ function aboutCard(p) {
   const row = (icon, title, text, level = "info") => `<div class="fit-row"><span class="fit-ic ${level}">${ICONS[icon]}</span><div><b>${esc(title)}</b>${text ? `<span>${esc(text)}</span>` : ""}</div></div>`;
   return `<section class="card"><div class="sec">Sobre la planta</div>
     ${i.matureNote ? row("sprout", `Tamaño adulto ${SIZE_FINAL[i.matureSize] ?? ""}`.trim(), i.matureNote) : ""}
-    ${monthStrip(i.bloomMonths, i.bloomWhat || "Flor o fruto")}
+    ${monthStrip(i.bloomMonths, "Floración", i.bloomWhat)}
     ${i.difficulty ? row("check", DIFFICULTY[i.difficulty], "") : ""}
     ${i.waterHow ? row("droplet", "Cómo regarla", i.waterHow) : ""}
     ${i.plantIn ? row(i.plantIn === "suelo" ? "ground" : "pot", PLANT_IN[i.plantIn], i.potAdvice) : ""}
@@ -1889,7 +1889,7 @@ function exploreSheet() {
     <section class="card"><div class="sec">Cuándo y cómo será</div>
       ${care.plantWhen ? `<p class="muted">${esc(care.plantWhen)}</p>` : ""}
       ${monthStrip(care.plantMonths, "Mejores meses para plantarla")}
-      ${monthStrip(care.bloomMonths, care.bloomWhat || "Flor o fruto")}
+      ${monthStrip(care.bloomMonths, "Floración", care.bloomWhat)}
       ${care.matureNote ? row("sprout", `Tamaño adulto ${SIZE_FINAL[care.matureSize] ?? ""}`.trim(), care.matureNote) : ""}</section>
     <section class="card"><div class="sec">Riego y abono por estación</div>
       <div class="season-read"><span></span><span class="st-h">Regar cada</span><span class="st-h">Abonar cada</span>${seasons}</div>
