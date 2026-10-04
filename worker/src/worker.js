@@ -1,5 +1,6 @@
 import { dueTasks, weatherAlerts, weatherChecks, plantLabel, monthTasks, groupGardenTasks } from "../../app/rules.js";
 import { verifyGoogleToken } from "./google.js";
+import { EmailMessage } from "cloudflare:email";
 import { fetchWeather } from "../../app/weather.js";
 // my-garden-api (Florvia's backend) — the app's small backend. For now one job: fill in a plant's care sheet from
 // its name ("✨ Rellenar con IA"). The AI provider is a setting (PROVIDER) so moving from the free
@@ -570,7 +571,44 @@ async function handleUsageLabel(request, env, headers) {
 // version, screen mode and language. Errors are the browser's own message and file:line, a few per session.
 const FEEDBACK_TYPES = ["idea", "bug", "other"];
 const clean = (v, n) => String(v ?? "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim().slice(0, n);
-async function handleFeedback(request, env, headers) {
+const FEEDBACK_TYPE_ES = { idea: "Idea", bug: "Algo no funciona", other: "Otro" };
+const b64text = (text) => { const bytes = new TextEncoder().encode(text); let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(bin); };
+// New comment → an email to Noza (Cloudflare Email Routing: the destination is the secret NOTIFY_EMAIL, which must be a
+// verified address there) and a push to the devices Noza enabled in «Uso de la app».
+async function emailFeedback(env, f) {
+  if (!env.EMAIL || !env.NOTIFY_EMAIL) return;
+  const from = "feedback@florvia.app";
+  const subject = `Florvia · ${FEEDBACK_TYPE_ES[f.type] ?? "Comentario"} nuevo`;
+  const replyTo = /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(f.contact) ? f.contact : "";
+  const body = [`${FEEDBACK_TYPE_ES[f.type] ?? "Comentario"} · ${f.day}`, "", f.text, "", f.contact ? `Contacto: ${f.contact}` : "Sin contacto", f.tech ? `Técnico: ${f.tech}` : "", `Persona: ${(f.garden || f.device || "—").slice(0, 4).toUpperCase()}`, "", "Léelo y márcalo en Florvia → Ajustes → Uso de la app → Comentarios."].filter((l) => l !== undefined).join("\n");
+  const lines = [`From: Florvia <${from}>`, `To: ${env.NOTIFY_EMAIL}`, ...(replyTo ? [`Reply-To: ${replyTo}`] : []), `Subject: =?UTF-8?B?${b64text(subject)}?=`, `Date: ${new Date().toUTCString()}`, `Message-ID: <${crypto.randomUUID()}@florvia.app>`, "MIME-Version: 1.0", "Content-Type: text/plain; charset=utf-8", "Content-Transfer-Encoding: base64", "", (b64text(body).match(/.{1,76}/g) ?? []).join("\r\n")];
+  await env.EMAIL.send(new EmailMessage(from, env.NOTIFY_EMAIL, lines.join("\r\n")));
+}
+async function pushFeedback(env, f) {
+  const names = [];
+  let cursor;
+  do { const page = await env.CACHE.list({ prefix: "adm:", cursor }); names.push(...page.keys.map((k) => k.name)); cursor = page.list_complete ? undefined : page.cursor; } while (cursor);
+  const msg = { title: "Comentario nuevo en Florvia", body: `${FEEDBACK_TYPE_ES[f.type] ?? "Comentario"}: ${f.text.slice(0, 90)}`, url: "./" };
+  for (const name of names) {
+    const rec = await env.CACHE.get(name, "json");
+    if (!rec?.sub) continue;
+    const status = await sendPush(rec.sub, msg, env).catch(() => 0);
+    if (status === 404 || status === 410) await env.CACHE.delete(name);
+  }
+}
+async function handleAdminPush(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  const body = await request.json().catch(() => null);
+  const endpoint = validPushEndpoint(body?.sub?.endpoint);
+  if (!endpoint) return json({ error: "endpoint" }, 400, headers);
+  const name = `adm:${(await gardenKey(endpoint)).slice(7, 47)}`;
+  if (body.on === false) { await env.CACHE.delete(name); return json({ ok: true, on: false }, 200, headers); }
+  const { p256dh, auth } = body.sub.keys ?? {};
+  if (typeof p256dh !== "string" || typeof auth !== "string" || p256dh.length > 120 || auth.length > 40) return json({ error: "input" }, 400, headers);
+  await env.CACHE.put(name, JSON.stringify({ sub: { endpoint, keys: { p256dh, auth } }, since: new Date().toISOString().slice(0, 10) }));
+  return json({ ok: true, on: true }, 200, headers);
+}
+async function handleFeedback(request, env, headers, ctx) {
   if (!env.DB) return json({ error: "db" }, 500, headers);
   let body;
   try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
@@ -586,6 +624,11 @@ async function handleFeedback(request, env, headers) {
   const tech = JSON.stringify({ version: clean(t.version, 20), mode: clean(t.mode, 20), lang: clean(t.lang, 10), ua: clean(t.ua, 120), screen: clean(t.screen, 20) });
   await env.DB.prepare("INSERT INTO feedback (ts, day, src, type, text, contact, tech, device, garden, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
     .bind(Date.now(), day, originSrc(request), type, text, clean(body.contact, 80), body.tech ? tech : "", who.device, who.garden, ip).run();
+  // Only comments sent from the app notify (not tests from localhost or scripts); Noza's own test comments do too.
+  if (["prod", "old"].includes(originSrc(request))) {
+    const f = { type, text, contact: clean(body.contact, 80), tech: body.tech ? tech : "", day, device: who.device, garden: who.garden };
+    ctx.waitUntil(Promise.allSettled([emailFeedback(env, f), pushFeedback(env, f)]).then((rs) => rs.forEach((r) => r.status === "rejected" && console.error("feedback notify", r.reason?.message))));
+  }
   return json({ ok: true }, 200, headers);
 }
 async function handleError(request, env, headers, ctx) {
@@ -1329,7 +1372,8 @@ export default {
     if (pathname === "/event" && request.method === "POST") return handleEvent(request, env, headers, ctx);
     if (pathname === "/stats") return handleStats(request, env, headers);
     if (pathname === "/stats2") return handleStats2(request, env, headers);
-    if (pathname === "/feedback" && request.method === "POST") return handleFeedback(request, env, headers);
+    if (pathname === "/feedback" && request.method === "POST") return handleFeedback(request, env, headers, ctx);
+    if (pathname === "/push/admin" && request.method === "POST") return handleAdminPush(request, env, headers);
     if (pathname === "/feedback" && request.method === "GET") return handleFeedbackList(request, env, headers);
     if (pathname === "/feedback/status" && request.method === "POST") return handleFeedbackStatus(request, env, headers);
     if (pathname === "/error" && request.method === "POST") return handleError(request, env, headers, ctx);

@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004u";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004v";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004u";
-import { buildICS } from "./calendar.js?v=20261004u";
-import { scrubPlant } from "./clean.js?v=20261004u";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004u";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004v";
+import { buildICS } from "./calendar.js?v=20261004v";
+import { scrubPlant } from "./clean.js?v=20261004v";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004v";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -602,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004u";
+      sc.src = "vendor/qrcode.min.js?v=20261004v";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -863,6 +863,7 @@ function reportError(msg, at) {
 window.addEventListener("error", (e) => reportError(e.message, `${String(e.filename ?? "").split("/").pop().split("?")[0]}:${e.lineno}`));
 window.addEventListener("unhandledrejection", (e) => reportError(e.reason?.message ?? e.reason, "promesa"));
 // For the admin: new comments (badge in Ajustes), and the list inside «Uso de la app».
+let adminPushMsg = "";
 let feedbackNew = 0;
 let feedbackData = null;
 async function loadFeedback(render_ = true) {
@@ -956,6 +957,10 @@ function usageSheet() {
       <p class="muted small">${buckets ? `Fuera de las cifras: ${esc(buckets)}.` : "Nada fuera de las cifras por ahora."}</p>
       <button type="button" class="btn block secondary" data-action="usage-mine" data-on="${usage.me.internal ? "0" : "1"}">${usage.me.internal ? "Este dispositivo está marcado como tuyo · quitar la marca" : "Marcar este dispositivo como mío"}</button></section>
     ${feedbackAdminCards()}
+    <section class="card"><div class="sec">Avisos de comentarios nuevos</div>
+      <p class="muted small">Te llega un correo cada vez que alguien manda un comentario. Aquí puedes recibir también un aviso en este dispositivo (en el iPhone, con la app instalada).</p>
+      <button type="button" class="btn block secondary" data-action="admin-push" data-on="${store.get("mj_admin_push", false) ? "0" : "1"}">${store.get("mj_admin_push", false) ? "Avisos en este dispositivo activados · desactivar" : "Avisarme en este dispositivo"}</button>
+      ${adminPushMsg ? `<p class="ai-status ${/No |Sin /.test(adminPushMsg) ? "warn" : "ok"}">${esc(adminPushMsg)}</p>` : ""}</section>
     <section class="card"><div class="sec">Cómo se cuenta</div>
       <p class="muted small">Una <b>persona</b> es un jardín sincronizado (con clave o Google, aunque tenga varios móviles) o, si no sincroniza, un móvil: si cambia de móvil o reinstala sin sincronizar, cuenta como otra. Las <b>aperturas</b> son veces que se abre la app. Solo se cuenta lo que llega de florvia.app (y de la dirección antigua), no de localhost ni de scripts, y tampoco lo de dispositivos marcados como tuyos.</p></section>
     <p class="group-foot">Recuentos anónimos: sin nombres de plantas, notas, ubicación ni datos personales. Los nombres que pones a las personas solo los ves tú.</p>`, "usage");
@@ -2457,6 +2462,26 @@ const actions = {
   "edit-plant": (d) => plantForm(d.id),
   "plant-refresh": (d) => refreshPlantAi(d.id),
   "open-feedback": () => { fb = null; feedbackSheet(); },
+  "admin-push": async (d) => {
+    const on = d.on === "1";
+    adminPushMsg = "";
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (on) {
+        if (!("PushManager" in window) || !("Notification" in window)) throw new Error("No se pueden recibir avisos en este navegador.");
+        if ((await Notification.requestPermission()) !== "granted") throw new Error("No se han concedido los permisos de avisos.");
+        const key = Uint8Array.from(atob(VAPID_PUBLIC.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+        sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+      }
+      if (!sub) throw new Error("Sin suscripción en este dispositivo.");
+      const res = await fetch(`${API}/push/admin`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ sub: sub.toJSON(), on }) });
+      if (!res.ok) throw new Error("No se ha podido guardar en el servidor.");
+      store.set("mj_admin_push", on);
+      adminPushMsg = on ? "Avisos activados en este dispositivo." : "Avisos desactivados en este dispositivo.";
+    } catch (err) { adminPushMsg = err.message || "No se ha podido activar."; }
+    usageSheet();
+  },
   "fb-type": (d) => { fbRead(); fb.type = d.t; fb.state = "idle"; feedbackSheet(); },
   "fb-send": () => feedbackSend(),
   "fb-status": async (d) => {
