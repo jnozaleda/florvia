@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004o";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004p";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004o";
-import { buildICS } from "./calendar.js?v=20261004o";
-import { scrubPlant } from "./clean.js?v=20261004o";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004o";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004p";
+import { buildICS } from "./calendar.js?v=20261004p";
+import { scrubPlant } from "./clean.js?v=20261004p";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004p";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -600,7 +600,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004o";
+      sc.src = "vendor/qrcode.min.js?v=20261004p";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -838,8 +838,8 @@ function usageSheet() {
     const sum = (r, ...keys) => keys.reduce((a, k) => a + (r[k] ?? 0), 0);
     const counters = { g: 0, d: 0 };
     return Object.entries(rows).map(([id, r]) => ({
-      id, ficha: sum(r, "care", "care_edit", "care_upgrade"), explorar: sum(r, "care_explore"), calendario: sum(r, "calendar"), foto: sum(r, "identify"),
-      calls: sum(r, "care", "care_edit", "care_upgrade", "care_explore", "calendar", "identify"),
+      id, ficha: sum(r, "care", "care_edit", "care_upgrade"), explorar: sum(r, "care_explore"), calendario: sum(r, "calendar"), foto: sum(r, "identify"), ubicacion: sum(r, "place"),
+      calls: sum(r, "care", "care_edit", "care_upgrade", "care_explore", "calendar", "identify", "place"),
       hits: sum(r, "care_hit", "care_edit_hit", "care_upgrade_hit", "care_explore_hit", "calendar_hit"), limit: sum(r, "limit"), errors: sum(r, "error"),
     })).sort((a, b) => b.calls - a.calls || b.hits - a.hits).map((g) => ({ ...g, label: g.id === "anon" ? "Versión antigua" : `${g.id[0] === "g" ? "Jardín" : "Móvil"} ${String.fromCharCode(65 + counters[g.id[0]]++)}${g.id === usageId ? " (tú)" : ""}` }));
   })();
@@ -1191,10 +1191,83 @@ function plantSheet(id) {
     <section class="card"><div class="sec">Historial</div>${log.length ? `<ul class="log">${log.map((e) => `
       <li><span class="log-ico ${e.type}">${ICONS[LOG_ICON[e.type]] ?? ""}</span><span class="log-what">${esc(CARE[e.type]?.done ?? e.type)}${e.note ? ` — ${esc(e.note)}` : ""}</span><span class="d">${fmtDate(e.date)}</span>
       <button class="x" data-action="del-log" data-log="${e.id}" data-id="${p.id}" aria-label="Borrar">${ICONS.x}</button></li>`).join("")}</ul>` : `<p class="muted">Sin registros todavía.</p>`}</section>
+    ${placeSection(p)}
     ${refreshSection(p)}
     ${provenance}
     `);
   sheet.dataset.plant = id;
+}
+
+// «¿Dónde está mejor?»: the AI judges a plant against each of the user's zones (sun, programmed
+// irrigation and the description they wrote) and may suggest moving it with the seasons (Worker /place).
+const allZones = () => [...new Set([...state.data.plants.map((p) => p.zone || ""), ...Object.keys(zoneSun()), ...Object.keys(zoneInfo())])].filter(Boolean).sort((a, b) => a.localeCompare(b, "es"));
+const zonePayload = () => allZones().map((name) => ({ name, sun: zoneSun()[name] ?? "", every: zoneInfo()[name]?.every ?? 0, mins: zoneInfo()[name]?.mins ?? 0, desc: zoneInfo()[name]?.desc ?? "" }));
+async function requestPlace({ name, species, needs, current }) {
+  if (aiOff()) throw new Error("off");
+  if (aiOpen === false && !aiCode()) throw new Error("code");
+  const loc = here();
+  let res;
+  try {
+    res = await fetch(`${API}/place`, { method: "POST", signal: AbortSignal.timeout(50000), headers: aiHeaders(), body: JSON.stringify({ name, species, needs, current, zones: zonePayload(), place: loc.name, lat: loc.lat, lon: loc.lon }) });
+  } catch (err) { throw new Error(err?.name === "TimeoutError" ? "timeout" : "network"); }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error in AI_ERRORS ? body.error : "ai");
+  return body;
+}
+const FIT_LV = { bien: ["check", "ok"], reservas: ["alert", "warn"], mal: ["x", "no"] };
+// The answer as rows: where it fits, the best zone and any seasonal move. `current` marks the zone it is in.
+function placeAdviceHtml(a, current = "") {
+  if (!a?.zones?.length) return "";
+  const row = (icon, title, text, level) => `<div class="fit-row"><span class="fit-ic ${level}">${ICONS[icon]}</span><div><b>${esc(title)}</b>${text ? `<span>${esc(text)}</span>` : ""}</div></div>`;
+  return `${a.summary ? `<p class="muted">${esc(a.summary)}</p>` : ""}
+    ${a.zones.map((z) => { const [ic, lv] = FIT_LV[z.fit] ?? FIT_LV.reservas; return row(ic, `${z.name}${z.name === current ? " · está aquí" : ""}`, z.note, lv); }).join("")}
+    ${a.best && a.best !== current ? row("pin", `Mejor en ${a.best}`, a.bestWhy, "info") : ""}
+    ${(a.seasonal ?? []).map((x) => row("refresh", `${SEASON_LABEL[x.season] ?? x.season}: llévala a ${x.zone}`, x.why, "info")).join("")}`;
+}
+const zonesDescribed = () => Object.values(zoneInfo()).some((i) => i?.desc);
+const placeNudge = () => (zonesDescribed() ? "" : `<p class="muted small">Cuanto mejor describas tus zonas (Ajustes → Zonas), más acertado el consejo.</p>`);
+async function askExplorePlace() {
+  const e = explore;
+  if (!e?.care || e.place?.running) return;
+  const care = e.care;
+  const season = seasonOf(localToday(), here().lat);
+  e.place = { running: true };
+  exploreSheet();
+  try {
+    const needs = { sunNeed: care.sunNeed, sunSensitive: Boolean(care.sunSensitive), minTemp: care.minTemp ?? null, frostSensitive: Boolean(care.frostSensitive), windSensitive: Boolean(care.windSensitive), waterDays: care.seasons?.[season]?.water ?? 0, inPot: care.plantIn === "maceta" ? true : care.plantIn === "suelo" ? false : null };
+    e.place = await requestPlace({ name: care.commonName || e.name, species: care.species ?? "", needs, current: "" });
+  } catch (err) { e.place = { error: aiErrorText(err.message) }; }
+  if (explore === e && $("sheet").open) exploreSheet();
+}
+let plantPlace = null; // { id, running, ok, at, text }
+function placeSection(p) {
+  if (!allZones().length) return "";
+  const busy = plantPlace?.id === p.id && (plantPlace.running || (!plantPlace.ok && Date.now() - plantPlace.at < 15000)) ? plantPlace : null;
+  const a = p.placeAdvice;
+  const stale = a && (a.zone ?? "") !== (p.zone || "");
+  return `<section class="card"><div class="sec">¿Dónde está mejor?</div>
+    ${a ? `<p class="muted small">Valorado el ${fmtDate(a.at)}${stale ? ` para «${esc(a.zone || "sin zona")}»: ha cambiado de zona, vuelve a valorar` : ""}.</p>${placeAdviceHtml(a, p.zone || "")}` : `<p class="muted small">La IA compara esta planta con tus zonas (sol, riego y lo que hayas escrito de cada una) y te dice dónde está mejor, también según la estación.</p>`}
+    ${busy ? `<p class="ai-status ${busy.running ? "" : "warn"}">${busy.running ? `<span class="spinner" aria-hidden="true"></span> ` : ""}${esc(busy.text)}</p>` : ""}
+    ${placeNudge()}
+    <button type="button" class="btn block secondary" style="margin-top:12px" data-action="plant-place" data-id="${p.id}" ${busy?.running || aiOff() ? "disabled" : ""}>✦ ${a ? "Volver a valorar" : "¿Dónde está mejor?"}</button></section>`;
+}
+async function askPlantPlace(id) {
+  const p = plantById(id);
+  if (!p || plantPlace?.running) return;
+  const redraw = () => { if ($("sheet").open && sheet.dataset.plant === id) plantSheet(id); };
+  plantPlace = { id, running: true, text: "Consultando a la IA…" };
+  redraw();
+  try {
+    const season = seasonOf(localToday(), here().lat);
+    const needs = { sunNeed: p.sunNeed, sunSensitive: Boolean(p.sunSensitive), minTemp: p.minTemp ?? null, frostSensitive: Boolean(p.frostSensitive), windSensitive: Boolean(p.info?.windSensitive), waterDays: intervalFor(p, "water", season) ?? 0, inPot: p.inPot ?? null };
+    const res = await requestPlace({ name: p.name, species: p.species ?? "", needs, current: p.zone || "" });
+    p.placeAdvice = { at: localToday(), zone: p.zone || "", zones: res.zones, best: res.best, bestWhy: res.bestWhy, seasonal: res.seasonal, summary: res.summary };
+    save();
+    plantPlace = null;
+  } catch (err) {
+    plantPlace = { id, ok: false, at: Date.now(), text: aiErrorText(err.message) };
+  }
+  redraw();
 }
 
 // «Actualizar con la IA» in a plant's sheet: asks again for this one plant and refreshes what came from
@@ -1882,6 +1955,13 @@ function exploreSheet() {
       <div class="vchips">${report.chips.map((c) => `<span class="vchip ${c.level}">${ICONS[LV[c.level]]}${c.label}</span>`).join("")}</div></section>
     <section class="card">${report.rows.map((r) => row(ICON[r.kind], r.title, r.text, r.level)).join("")}</section>
     <section class="card"><div class="sec">Dónde ponerla</div>
+      ${(() => {
+        if (!allZones().length) return "";
+        const pl = e.place;
+        return `<div class="place-ai">${pl?.zones ? `<div class="sec start">Con la IA y tus descripciones <span class="ai-mark">✦</span></div>${placeAdviceHtml(pl)}` : ""}
+          ${pl?.running ? `<p class="ai-status"><span class="spinner" aria-hidden="true"></span> Consultando a la IA…</p>` : ""}${pl?.error ? `<p class="ai-status warn">${esc(pl.error)}</p>` : ""}
+          ${pl?.running ? "" : `<button type="button" class="btn block secondary" style="margin:10px 0 4px" data-action="explore-place">✦ ${pl?.zones ? "Volver a valorar" : "Valorar con mis zonas"}</button>${pl?.zones ? "" : placeNudge()}`}</div>`;
+      })()}
       ${report.zones.length ? report.zones.map((z) => row(LV[z.level], z.zone, z.text, z.level)).join("") : `<p class="muted small">Aún no tienes zonas. Cuando añadas plantas y marques el sol de cada zona (Ajustes), te diré dónde encaja.</p>`}
       ${care.waterHow ? row("droplet", "Cómo regarla", care.waterHow) : ""}
       ${care.plantIn ? row(care.plantIn === "suelo" ? "ground" : "pot", PLANT_IN[care.plantIn], care.potAdvice) : ""}
@@ -2193,6 +2273,8 @@ const actions = {
   "wiz-notes": () => { wiz.notesOpen = !wiz.notesOpen; renderWizard(); },
   "edit-plant": (d) => plantForm(d.id),
   "plant-refresh": (d) => refreshPlantAi(d.id),
+  "plant-place": (d) => askPlantPlace(d.id),
+  "explore-place": () => askExplorePlace(),
   "open-plant": (d) => { if (confirmDiscard()) plantSheet(d.id); },
   close: leaveSheet,
   "retry-weather": loadWeather,

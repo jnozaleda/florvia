@@ -14,6 +14,7 @@ export function scrubPlant(p) {
   if (p.seasons && typeof p.seasons === "object") {
     for (const k of SEASONS) p.seasons[k] = { water: Math.min(60, Math.max(1, Math.round(num(p.seasons[k]?.water, 3)))), feed: Math.min(365, Math.max(0, Math.round(num(p.seasons[k]?.feed, 0)))) };
   }
+  if (p.placeAdvice !== undefined && !(p.placeAdvice && typeof p.placeAdvice === "object" && Array.isArray(p.placeAdvice.zones))) delete p.placeAdvice;
   if (p.size && !["small", "medium", "large"].includes(p.size)) p.size = "";
   if (p.sun && !["sun", "partial", "shade"].includes(p.sun)) p.sun = "";
   if (p.sunNeed && !["sun", "partial", "shade"].includes(p.sunNeed)) p.sunNeed = "sun";
