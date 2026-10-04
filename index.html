@@ -5,55 +5,112 @@
 <meta name="theme-color" content="#0f4628"><link rel="icon" href="app/favicon.png" type="image/png"><link rel="apple-touch-icon" href="app/icon-180.png">
 <meta property="og:title" content="Florvia · Tu jardín, sin tener que acordarte de todo"><meta property="og:description" content="Dime qué plantas tienes y te digo qué toca esta semana: regar, abonar, podar o proteger del frío, según tu clima."><meta property="og:type" content="website"><meta property="og:url" content="https://florvia.app/"><meta property="og:image" content="https://florvia.app/app/og.png">
 <style>
-:root{color-scheme:light dark;--bg:#f6f7f4;--card:#fff;--text:#16241b;--muted:#5d6b62;--green:#2f8f4e;--green-d:#1d7a45;--line:#e1e6df;--frame:#16241b}
-@media (prefers-color-scheme:dark){:root{--bg:#0d140f;--card:#16201a;--text:#eef3ee;--muted:#9fb0a4;--line:#243229;--frame:#2c3a31}}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:17px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-a{color:var(--green)}.wrap{max-width:980px;margin:0 auto;padding:0 20px}
-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 0}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;text-decoration:none;color:var(--text)}.brand img{width:36px;height:36px;border-radius:9px}
-nav{display:flex;align-items:center;gap:18px;font-size:15px}nav a.l{color:var(--muted);text-decoration:none}nav a.l:hover{color:var(--text)}
-.btn{display:inline-block;background:var(--green);color:#fff;font-weight:700;padding:14px 22px;border-radius:14px;text-decoration:none;border:0;font:inherit;font-weight:700;cursor:pointer}.btn.sec{background:transparent;color:var(--green);border:2px solid var(--green)}.btn.small{padding:9px 16px;font-size:15px;border-radius:12px}.btn:disabled{opacity:.6;cursor:default}
-h1{font-size:clamp(34px,6vw,54px);line-height:1.08;margin:12px 0 14px;letter-spacing:-.02em}h2{font-size:26px;margin:56px 0 14px;letter-spacing:-.01em}h3{font-size:18px;margin:26px 0 6px}
-.lead{font-size:20px;color:var(--muted);margin:0 0 24px;max-width:34em}.cta{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 12px}.note{color:var(--muted);font-size:15px;margin:0}
-.hero{display:grid;gap:34px;align-items:center;padding-top:8px}@media(min-width:860px){.hero{grid-template-columns:1.05fr 1fr}}
-.shots{display:flex;gap:14px;justify-content:center;align-items:flex-start}.phone{width:clamp(96px,28vw,200px);border:6px solid var(--frame);border-radius:26px;overflow:hidden;background:var(--card);box-shadow:0 10px 30px rgba(0,0,0,.18)}.phone img{display:block;width:100%;height:auto}.phone:nth-child(2){margin-top:26px}
-.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}.card b{display:block;margin-bottom:4px}.card p{margin:0;color:var(--muted);font-size:15.5px}
-ol{padding-left:22px}li{margin:6px 0}p,li{max-width:62ch}
-details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 16px;margin:8px 0;max-width:720px}summary{cursor:pointer;font-weight:700;padding:12px 0;list-style:none;display:flex;justify-content:space-between;gap:12px}summary::-webkit-details-marker{display:none}summary::after{content:"+";color:var(--green);font-size:22px;line-height:1}details[open] summary::after{content:"–"}details p{margin:0 0 14px;color:var(--muted)}
-form{max-width:560px;display:grid;gap:12px}label{font-weight:600;font-size:15px;display:grid;gap:6px}input,textarea{font:inherit;color:var(--text);background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;width:100%}input:focus,textarea:focus{outline:2px solid var(--green);outline-offset:1px}textarea{min-height:130px;resize:vertical}
-.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}.msg{margin:0;padding:12px 14px;border-radius:12px;font-size:15px}.msg.ok{background:#dff2e3;color:#1f5f33}.msg.err{background:#fbdfdb;color:#8c1f17}@media(prefers-color-scheme:dark){.msg.ok{background:#16301f;color:#8bd49a}.msg.err{background:#3a1a17;color:#ff9d93}}
-footer{margin:64px 0 28px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14.5px}
+:root{color-scheme:light;--deep:#0f4628;--deep2:#0b3320;--leaf:#2f8f4e;--leaf-d:#23773f;--sage:#a9cba7;--mist:#e6efe3;--cream:#fbf9f4;--ink:#17261c;--mut:#5b6a5f;--serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--cream);color:var(--ink);font:17px/1.6 var(--sans);-webkit-text-size-adjust:100%}
+a{color:var(--leaf-d)}img{display:block;max-width:100%;height:auto}.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.serif{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:15px 26px;border-radius:999px;font:inherit;font-weight:700;font-size:16px;text-decoration:none;border:2px solid transparent;cursor:pointer;line-height:1.2}
+.btn.cream{background:var(--cream);color:var(--deep)}.btn.ghost{color:var(--cream);border-color:#ffffff55}.btn.green{background:var(--leaf);color:#fff}.btn.small{padding:10px 20px;font-size:15px}.btn:disabled{opacity:.6;cursor:default}
+.btn:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--sage);outline-offset:3px}
+/* hero */
+.hero{background:radial-gradient(1200px 600px at 85% 20%,#1b6a3d 0%,transparent 60%),var(--deep);color:var(--cream);position:relative;overflow:hidden}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0;position:relative;z-index:3}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:21px;text-decoration:none;color:var(--cream)}.brand img{width:38px;height:38px;border-radius:10px}
+.nav nav{display:flex;align-items:center;gap:26px;font-size:15px}.nav nav a{text-decoration:none;color:#d6e6d3}.nav nav a.btn{color:var(--deep)}
+@media(max-width:640px){.nav nav a.l{display:none}}
+.hero-grid{display:grid;gap:28px;align-items:end;padding:36px 0 0;position:relative;z-index:2}
+@media(min-width:900px){.hero-grid{grid-template-columns:1.1fr 1fr;min-height:640px;padding-top:56px}}
+.eyebrow{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--sage);font-weight:700;margin:0 0 16px}
+h1{font-size:clamp(40px,6.4vw,72px);line-height:1.04;margin:0 0 20px}h1 em{color:var(--sage);font-style:italic;font-weight:500}
+.lead{font-size:clamp(18px,2vw,21px);color:#cfe0cc;max-width:30em;margin:0 0 28px}
+.cta{display:flex;gap:12px;flex-wrap:wrap}.trust{display:flex;gap:8px 18px;flex-wrap:wrap;margin:26px 0 40px;font-size:14.5px;color:#b9d1b6}.trust span:before{content:"✓";color:var(--sage);margin-right:7px;font-weight:800}
+.phones{position:relative;height:520px;align-self:end}
+.ph{position:absolute;width:clamp(170px,24vw,270px);border-radius:34px;border:7px solid #0a2416;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.45);background:#fff}
+.ph.a{left:50%;bottom:-70px;transform:translateX(-8%) rotate(3deg);z-index:2}.ph.b{left:50%;bottom:-20px;transform:translateX(-82%) rotate(-5deg)}
+@media(max-width:899px){.hero-grid{gap:0}.trust{margin-bottom:24px}.phones{height:340px}.ph{width:clamp(150px,38vw,230px)}.ph.a{bottom:-110px;transform:translateX(-4%) rotate(3deg)}.ph.b{bottom:-80px;transform:translateX(-92%) rotate(-5deg)}}
+.leaf{position:absolute;opacity:.12;pointer-events:none}
+/* how */
+.how{padding-top:84px;padding-bottom:24px}.how h2,.sec h2{font-size:clamp(30px,4.2vw,44px);line-height:1.12;margin:0 0 12px}
+.steps{display:grid;gap:18px;margin-top:34px}@media(min-width:800px){.steps{grid-template-columns:repeat(3,1fr)}}
+.step{padding:26px;border-radius:24px;background:#fff;border:1px solid #e8ece4}.step .n{font-family:var(--serif);font-size:44px;color:var(--leaf);line-height:1}.step b{display:block;font-size:19px;margin:12px 0 4px}.step p{margin:0;color:var(--mut)}
+/* feature rows */
+.row{display:grid;gap:30px;align-items:center;padding:56px 0}@media(min-width:860px){.row{grid-template-columns:1fr 1fr}.row.rev .shot{order:2}}
+.shot{background:var(--mist);border-radius:36px;padding:34px 0 0;display:flex;justify-content:center;overflow:hidden;min-height:420px}.shot .ph{position:relative;left:auto;bottom:-6px;transform:none;width:clamp(210px,26vw,260px)}
+.row h3{font-size:clamp(26px,3.4vw,36px);line-height:1.15;margin:0 0 12px}.row p{color:var(--mut);margin:0 0 14px;max-width:34em}
+.ticks{list-style:none;padding:0;margin:0;display:grid;gap:9px}.ticks li{padding-left:28px;position:relative}.ticks li:before{content:"";position:absolute;left:0;top:.5em;width:14px;height:8px;border-left:3px solid var(--leaf);border-bottom:3px solid var(--leaf);transform:rotate(-45deg)}
+.mini{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));padding:20px 0 70px}.mini div{padding:22px;border-radius:20px;background:#fff;border:1px solid #e8ece4}.mini b{display:block;margin:10px 0 4px}.mini p{margin:0;color:var(--mut);font-size:15.5px}
+.ico{width:42px;height:42px;border-radius:12px;background:var(--mist);display:grid;place-items:center}.ico svg{width:22px;height:22px;stroke:var(--leaf);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.fine{color:var(--mut);font-size:14.5px;margin:0}
+/* band */
+.band{background:var(--deep);color:var(--cream);padding:80px 0}.band h2{font-size:clamp(30px,4.2vw,44px);line-height:1.12;margin:0 0 30px;max-width:16em}
+.cols{display:grid;gap:22px}@media(min-width:800px){.cols{grid-template-columns:repeat(3,1fr)}}.cols div{border-top:2px solid #ffffff2a;padding-top:16px}.cols b{display:block;font-size:18px;margin-bottom:4px;color:#fff}.cols p{margin:0;color:#b9d1b6;font-size:16px}
+/* install */
+.install{display:grid;gap:18px;margin-top:22px}@media(min-width:800px){.install{grid-template-columns:1fr 1fr}}.install div{background:#fff;border:1px solid #e8ece4;border-radius:22px;padding:24px}.install h3{margin:0 0 8px;font-size:20px}.install ol{margin:0;padding-left:22px}.install li{margin:6px 0}
+/* faq */
+.sec{padding:84px 0 20px}.faq{display:grid;gap:34px}@media(min-width:900px){.faq{grid-template-columns:.8fr 1.2fr}}
+details{border-bottom:1px solid #dfe5da;padding:4px 0}summary{cursor:pointer;font-family:var(--serif);font-weight:600;font-size:21px;padding:16px 0;list-style:none;display:flex;justify-content:space-between;gap:14px}summary::-webkit-details-marker{display:none}summary:after{content:"+";color:var(--leaf);font-size:26px;line-height:1}details[open] summary:after{content:"–"}details p{margin:0 0 16px;color:var(--mut)}
+/* contact */
+.contact{margin:70px 0 0;background:var(--mist);border-radius:36px;padding:clamp(26px,5vw,56px);display:grid;gap:28px;scroll-margin-top:12px}@media(min-width:860px){.contact{grid-template-columns:1fr 1fr}}
+.contact h2{font-size:clamp(28px,3.8vw,40px);line-height:1.12;margin:0 0 10px}.contact p{color:var(--mut);margin:0 0 10px}
+form{display:grid;gap:12px}label{font-weight:600;font-size:15px;display:grid;gap:6px;color:var(--ink)}
+input,textarea{font:inherit;color:var(--ink);background:#fff;border:1.5px solid #d6dfd2;border-radius:14px;padding:13px 15px;width:100%}input:focus,textarea:focus{outline:2px solid var(--leaf);outline-offset:1px}textarea{min-height:130px;resize:vertical}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}.msg{margin:0;padding:12px 14px;border-radius:12px;font-size:15px}.msg.ok{background:#dff2e3;color:#1f5f33}.msg.err{background:#fbdfdb;color:#8c1f17}
+footer{background:var(--deep2);color:#b9d1b6;margin-top:80px;padding:34px 0;font-size:15px}footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}footer a{color:#d6e6d3}
 section[id]{scroll-margin-top:12px}
-</style></head><body><div class="wrap"><header><a class="brand" href="./"><img src="app/icon-rounded.png" alt="">Florvia</a><nav><a class="l" href="#preguntas">Preguntas</a><a class="l" href="#contacto">Contacto</a><a class="btn small" href="app/">Abrir</a></nav></header>
+</style></head><body>
+
+<section class="hero">
+<svg class="leaf" style="left:-60px;top:80px;width:300px" viewBox="0 0 100 100" fill="none" stroke="#fff" stroke-width="1.2" aria-hidden="true"><path d="M20 90C20 50 45 20 85 12c0 40-25 70-65 78z"/><path d="M20 90C40 62 58 42 85 12"/></svg>
+<div class="wrap">
+ <div class="nav"><a class="brand" href="./"><img src="app/icon-rounded.png" width="38" height="38" alt="">Florvia</a><nav><a class="l" href="#como">Cómo funciona</a><a class="l" href="#preguntas">Preguntas</a><a class="l" href="#contacto">Contacto</a><a class="btn cream small" href="app/">Abrir</a></nav></div>
+ <div class="hero-grid">
+  <div>
+   <p class="eyebrow">Tu jardín, al día</p>
+   <h1 class="serif">Tu jardín, sin tener que <em>acordarte de todo.</em></h1>
+   <p class="lead">Dime qué plantas tienes y te digo qué toca esta semana: regar, abonar, podar o proteger del frío, según tu clima.</p>
+   <div class="cta"><a class="btn cream" href="app/">Abrir Florvia</a><a class="btn ghost" href="#instalar">Cómo instalarla</a></div>
+   <div class="trust"><span>Gratis mientras la probamos</span><span>Sin cuenta obligatoria</span><span>Móvil y ordenador</span></div>
+  </div>
+  <div class="phones" aria-label="Capturas de la app"><div class="ph b"><img src="img/ficha.jpg" width="540" height="1169" alt="Ficha de una lavanda con su riego, abono y floración" loading="eager"></div><div class="ph a"><img src="img/hoy.jpg" width="540" height="1169" alt="Pantalla Hoy: el tiempo y las tareas de riego de hoy" loading="eager"></div></div>
+ </div>
+</div></section>
+
 <main>
-<section class="hero"><div>
-<h1>Tu jardín, sin tener que acordarte de todo.</h1>
-<p class="lead">Dime qué plantas tienes y te digo qué toca esta semana: regar, abonar, podar o proteger del frío, según tu clima.</p>
-<div class="cta"><a class="btn" href="app/">Abrir Florvia</a><a class="btn sec" href="#instalar">Cómo instalarla</a></div>
-<p class="note">Gratis mientras la probamos · Sin cuenta obligatoria · Funciona en el móvil y en el ordenador</p></div>
-<div class="shots" aria-label="Capturas de la app"><div class="phone"><img src="img/hoy.jpg" width="540" height="1169" alt="Pantalla Hoy: el tiempo y las tareas de riego de hoy" loading="eager"></div><div class="phone"><img src="img/ficha.jpg" width="540" height="1169" alt="Ficha de una lavanda con su riego, abono y floración" loading="lazy"></div><div class="phone"><img src="img/explorar.jpg" width="540" height="1169" alt="Explorar: si un limonero encaja en tu jardín" loading="lazy"></div></div></section>
+<section class="wrap how" id="como"><h2 class="serif">Tres pasos, y te olvidas.</h2><p style="color:var(--mut);max-width:34em;margin:0">No hace falta saber de jardinería: Florvia lo propone y tú lo ajustas.</p>
+<div class="steps">
+<div class="step"><div class="n">1</div><b>Dime qué plantas tienes</b><p>Escribe su nombre o hazle una foto. También puedes explorar una antes de comprarla.</p></div>
+<div class="step"><div class="n">2</div><b>Florvia prepara su ficha</b><p>Riego y abono por estación, el sol que pide, el frío que aguanta y su calendario del año.</p></div>
+<div class="step"><div class="n">3</div><b>Cada día, lo que toca</b><p>Con el tiempo de tu zona: si llueve, no te hace regar; si hiela, te avisa.</p></div>
+</div></section>
 
-<section id="que-hace"><h2>Qué hace</h2>
-<div class="grid">
-<div class="card"><b>Qué toca hoy</b><p>Riego y abonado ajustados al tiempo: lluvia, calor y heladas de tu zona.</p></div>
-<div class="card"><b>La ficha de cada planta</b><p>Escribe el nombre o hazle una foto. Florvia propone su riego por estación, cómo regarla, el sol que pide, el frío que aguanta y su calendario del año.</p></div>
-<div class="card"><b>Explora antes de comprar</b><p>Mira si una planta encaja en tu terraza o jardín, y en qué zona, sin añadirla.</p></div>
-<div class="card"><b>Qué planto aquí</b><p>Elige un rincón (un pasillo con poca luz, una pared en sombra) y te propone plantas que encajen.</p></div>
-<div class="card"><b>Tus zonas</b><p>Cuenta cuánto sol recibe cada zona y cada cuánto riega tu programador: te avisa si una planta está mal ubicada o recibe más o menos agua de la que pide.</p></div>
-<div class="card"><b>Aviso diario y compartir</b><p>Un aviso a las 8:00 con lo que toca. Comparte tu jardín o una planta, solo para ver.</p></div>
-</div>
-<p class="note" style="margin-top:12px">Las fichas las propone una inteligencia artificial: son una estimación, no una garantía, y puedes corregirlas a mano.</p></section>
+<div class="wrap" id="que-hace">
+<div class="row"><div class="shot"><div class="ph"><img src="img/hoy.jpg" width="540" height="1169" alt="Pantalla Hoy con el tiempo y las tareas del día" loading="lazy"></div></div>
+ <div><h3 class="serif">Qué toca hoy, de un vistazo</h3><p>El tiempo de tu zona y la lista del día, sin pensar.</p><ul class="ticks"><li>Riego y abonado ajustados a lluvia, calor y heladas</li><li>Un aviso a las 8:00, solo si hay algo que hacer</li><li>Marca como hecho con un toque</li></ul></div></div>
+<div class="row rev"><div class="shot"><div class="ph"><img src="img/ficha.jpg" width="540" height="1169" alt="Ficha de una lavanda" loading="lazy"></div></div>
+ <div><h3 class="serif">Cada planta, su ficha</h3><p>Propuesta por una inteligencia artificial y corregible por ti: es una estimación, no una garantía.</p><ul class="ticks"><li>Cuándo y cómo regarla, estación por estación</li><li>Sol, frío, tamaño adulto y floración</li><li>Calendario del año: podar, trasplantar, proteger</li></ul></div></div>
+<div class="row"><div class="shot"><div class="ph"><img src="img/explorar.jpg" width="540" height="1169" alt="Explorar: si un limonero encaja en tu jardín" loading="lazy"></div></div>
+ <div><h3 class="serif">Explora antes de comprar</h3><p>¿Encaja en tu terraza? Míralo sin añadirla.</p><ul class="ticks"><li>Si aguanta tu clima y en qué zona estaría mejor</li><li>«Qué planto aquí»: ideas para un rincón con poca luz</li><li>Compártela con quien quieras, solo para ver</li></ul></div></div>
+<div class="mini">
+ <div><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="11" r="3"/><path d="M17.7 16.7l-4.3 4.2a2 2 0 0 1-2.8 0l-4.3-4.2a8 8 0 1 1 11.4 0z"/></svg></span><b>Tus zonas</b><p>Cuánto sol recibe cada rincón y cada cuánto riega tu programador. Te avisa si una planta no está bien ubicada o recibe más o menos agua de la que pide.</p></div>
+ <div><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg></span><b>Qué planto aquí</b><p>Elige un rincón (un pasillo con poca luz, una pared en sombra) y te propone plantas que encajen.</p></div>
+ <div><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span><b>Varios móviles</b><p>Sincroniza con tu cuenta de Google o con una clave y tenlo en todos tus dispositivos.</p></div>
+ <div><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><b>Tus datos, tuyos</b><p>Viven en tu móvil. Borras lo del servidor cuando quieras. <a href="/privacidad/">Privacidad</a>.</p></div>
+</div></div>
 
-<section id="instalar"><h2>Cómo instalarla</h2>
-<p>Florvia es una web que se instala en la pantalla de inicio: no hay que pasar por ninguna tienda.</p>
-<h3>iPhone (Safari)</h3>
-<ol><li>Abre <a href="app/">florvia.app/app</a> en Safari.</li><li>Pulsa <b>Compartir</b> y luego <b>Añadir a pantalla de inicio</b>.</li><li>Ábrela desde el icono. Así podrás activar el aviso diario.</li></ol>
-<h3>Android (Chrome)</h3>
-<ol><li>Abre <a href="app/">florvia.app/app</a> en Chrome.</li><li>Menú <b>⋮</b> → <b>Instalar aplicación</b> (o <b>Añadir a pantalla de inicio</b>).</li></ol></section>
+<section class="band"><div class="wrap"><h2 class="serif">Hecha para usarla sin complicarte.</h2><div class="cols">
+<div><b>Sin tiendas</b><p>Se instala desde el navegador, en la pantalla de inicio de tu móvil.</p></div>
+<div><b>Sin cuenta obligatoria</b><p>Empieza ya. Si quieres copia de seguridad, entra con Google o con una clave.</p></div>
+<div><b>Con cabeza, no con ruido</b><p>Si no hay nada que hacer, no te avisa de nada.</p></div></div></div></section>
 
-<section id="datos"><h2>Tus datos</h2>
-<p>Tus plantas viven en tu móvil. Si quieres tenerlas en varios dispositivos, se pueden sincronizar con tu cuenta de Google o con una clave, y puedes borrarlo todo del servidor cuando quieras. Lo explicamos con detalle en la <a href="/privacidad/">política de privacidad</a>.</p></section>
+<div class="wrap">
+<section class="sec" id="instalar"><h2 class="serif">Cómo instalarla</h2>
+<p style="color:var(--mut);max-width:38em;margin:0">Florvia es una web que se instala en la pantalla de inicio: no hay que pasar por ninguna tienda.</p>
+<div class="install">
+<div><h3>iPhone (Safari)</h3><ol><li>Abre <a href="app/">florvia.app/app</a> en Safari.</li><li>Pulsa <b>Compartir</b> y luego <b>Añadir a pantalla de inicio</b>.</li><li>Ábrela desde el icono. Así podrás activar el aviso diario.</li></ol></div>
+<div><h3>Android (Chrome)</h3><ol><li>Abre <a href="app/">florvia.app/app</a> en Chrome.</li><li>Menú <b>⋮</b> → <b>Instalar aplicación</b> (o <b>Añadir a pantalla de inicio</b>).</li></ol></div>
+</div></section>
 
-<section id="preguntas"><h2>Preguntas frecuentes</h2>
+<section class="sec" id="preguntas"><div class="faq"><div><h2 class="serif">Preguntas frecuentes</h2><p style="color:var(--mut)">¿No está la tuya? <a href="#contacto">Escríbenos</a>.</p></div>
+<div>
 <details><summary>¿Es gratis?</summary><p>Ahora mismo sí, mientras la probamos. Si algún día hubiera funciones de pago, lo anunciaríamos antes.</p></details>
 <details><summary>¿Necesito crear una cuenta?</summary><p>No. Funciona sin cuenta. Si quieres tus plantas en varios móviles o una copia de seguridad, puedes sincronizar con Google o con una clave.</p></details>
 <details><summary>¿Dónde se guardan mis plantas?</summary><p>En tu móvil. Solo se suben a nuestro servidor si activas la sincronización, y puedes borrarlas desde Ajustes → «Borrar mis datos del servidor».</p></details>
@@ -61,17 +118,19 @@ section[id]{scroll-margin-top:12px}
 <details><summary>¿Funciona en Android y en el ordenador?</summary><p>Sí. En Android se instala desde Chrome; en el ordenador funciona en el navegador.</p></details>
 <details><summary>¿Puedo usarla en varios móviles?</summary><p>Sí: activa la sincronización en Ajustes → Sincronizar y entra con Google o con tu clave en el otro móvil.</p></details>
 <details><summary>No me llegan los avisos</summary><p>En iPhone los avisos solo funcionan con la app instalada en la pantalla de inicio y abierta desde su icono. Después, activa «Aviso diario» en Ajustes.</p></details>
-<p class="note" style="margin-top:14px">¿Tu duda no está aquí? <a href="#contacto">Escríbenos</a>.</p></section>
+</div></div></section>
 
-<section id="contacto"><h2>¿Dudas o ideas? Escríbenos</h2>
-<p>Te respondemos por correo. Cuéntanos qué te preguntas o qué no te funciona.</p>
+<section class="contact" id="contacto"><div><h2 class="serif">¿Dudas o ideas?</h2><p>Te respondemos por correo. Cuéntanos qué te preguntas o qué no te funciona.</p><p style="font-size:15px">O escribe directamente a <a href="mailto:hello@florvia.app?subject=Duda%20sobre%20Florvia"><b>hello@florvia.app</b></a></p></div>
 <form id="contactForm" novalidate>
 <label>Tu correo<input type="email" name="contact" autocomplete="email" inputmode="email" maxlength="80" required placeholder="nombre@correo.com"></label>
 <label>Tu mensaje<textarea name="text" maxlength="1000" required placeholder="Cuéntanos…"></textarea></label>
 <div class="hp" aria-hidden="true"><label>No rellenar<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
-<p class="note">Usamos tu correo solo para responderte. Más en la <a href="/privacidad/">política de privacidad</a>.</p>
+<p class="fine">Usamos tu correo solo para responderte. Más en la <a href="/privacidad/">política de privacidad</a>.</p>
 <p class="msg" id="contactMsg" role="status" hidden></p>
-<div><button class="btn" type="submit" id="contactBtn">Enviar</button></div>
-</form>
-<p class="note" style="margin-top:14px">También puedes escribir directamente a <a href="mailto:hello@florvia.app?subject=Duda%20sobre%20Florvia">hello@florvia.app</a>.</p></section>
-</main><footer><p>© Florvia · <a href="/privacidad/">Privacidad</a> · Contacto: <a href="mailto:hello@florvia.app">hello@florvia.app</a></p></footer></div><script src="landing.js"></script></body></html>
+<div><button class="btn green" type="submit" id="contactBtn">Enviar</button></div>
+</form></section>
+</div>
+</main>
+<footer><div class="wrap"><span>© Florvia</span><span><a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer>
+<script src="landing.js"></script>
+</body></html>
