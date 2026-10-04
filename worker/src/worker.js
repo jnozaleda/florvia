@@ -43,7 +43,7 @@ const CARE_SCHEMA = {
     matureSize: { type: "string", enum: ["pequena", "mediana", "grande"], description: "Tamaño adulto: pequena (hasta 50 cm), mediana (hasta 2 m) o grande (más de 2 m)" },
     matureNote: { type: "string", description: "Tamaño adulto aproximado y ritmo de crecimiento, en menos de 80 caracteres (p. ej. «Hasta 3 m de alto y 2 de ancho; crece rápido»)" },
     bloomMonths: { type: "array", items: { type: "integer", minimum: 1, maximum: 12 }, description: "Meses (1-12) con flores o fruto notable; vacío si no florece de forma notable" },
-    bloomWhat: { type: "string", description: "Qué da en esos meses (flores rosas, limones, hojas de colores…); vacío si no" },
+    bloomWhat: { type: "string", description: "Qué da en esos meses, en una frase corta y completa de menos de 100 caracteres (p. ej. «Flores rosas en racimos»); vacío si no" },
     difficulty: { type: "string", enum: ["facil", "media", "exigente"], description: "Lo exigente que es de cuidar para un aficionado en ese clima" },
     buyTips: { type: "array", maxItems: 4, items: { type: "string" }, description: "De 3 a 4 consejos cortos (menos de 90 caracteres cada uno) para elegir un buen ejemplar en el vivero" },
     toxic: { type: "string", enum: ["no", "mascotas", "personas", "ambos"], description: "Para quién es tóxica si se ingiere: no, mascotas, personas o ambos" },
@@ -292,7 +292,7 @@ function sanitize(c) {
     matureSize: ["pequena", "mediana", "grande"].includes(c.matureSize) ? c.matureSize : "mediana",
     matureNote: clipSentences(str(c.matureNote, 200), 100),
     bloomMonths: monthList(c.bloomMonths),
-    bloomWhat: str(c.bloomWhat, 60),
+    bloomWhat: clipSentences(str(c.bloomWhat, 250), 110),
     difficulty: ["facil", "media", "exigente"].includes(c.difficulty) ? c.difficulty : "media",
     buyTips: (Array.isArray(c.buyTips) ? c.buyTips : []).map((t) => clipSentences(str(t, 200), 110)).filter(Boolean).slice(0, 4),
     toxic: ["no", "mascotas", "personas", "ambos"].includes(c.toxic) ? c.toxic : "no",
@@ -370,7 +370,7 @@ async function handleCare(request, env, headers, ctx) {
   const kind = ["explore", "edit", "upgrade"].includes(body.src) ? `care_${body.src}` : "care";
 
   // Same plant, same climate cell (~100 km) → same answer, whatever the month.
-  const cacheKey = `care:v15:${normName(name)}:${Math.round(lat)}:${Math.round(lon)}`;
+  const cacheKey = `care:v16:${normName(name)}:${Math.round(lat)}:${Math.round(lon)}`;
   const cached = await env.CACHE.get(cacheKey, "json");
   if (cached) { recordAi(env, ctx, "cached", 0, request, kind); return json({ ...withLegacy(cached, body.month, lat), cached: true }, 200, headers); }
 
@@ -821,7 +821,7 @@ function vInfo(i) {
   return {
     plantIn: vEnum(i.plantIn, ["maceta", "suelo", "ambos"], "ambos"), potAdvice: vStr(i.potAdvice, 160), waterHow: vStr(i.waterHow, 200), windSensitive: i.windSensitive === true,
     plantMonths: vMonths(i.plantMonths), plantWhen: vStr(i.plantWhen, 140), matureSize: vEnum(i.matureSize, ["pequena", "mediana", "grande"], "mediana"), matureNote: vStr(i.matureNote, 120),
-    bloomMonths: vMonths(i.bloomMonths), bloomWhat: vStr(i.bloomWhat, 80), difficulty: vEnum(i.difficulty, ["facil", "media", "exigente"], "media"),
+    bloomMonths: vMonths(i.bloomMonths), bloomWhat: vStr(i.bloomWhat, 140), difficulty: vEnum(i.difficulty, ["facil", "media", "exigente"], "media"),
     toxic: vEnum(i.toxic, ["no", "mascotas", "personas", "ambos"], "no"), toxicNote: vStr(i.toxicNote, 160), invasive: i.invasive === true,
   };
 }
