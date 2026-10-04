@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004l";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004m";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004l";
-import { buildICS } from "./calendar.js?v=20261004l";
-import { scrubPlant } from "./clean.js?v=20261004l";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004l";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004m";
+import { buildICS } from "./calendar.js?v=20261004m";
+import { scrubPlant } from "./clean.js?v=20261004m";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004m";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -393,17 +393,6 @@ function plantsView() {
 // Editar) and whether it's running in its zone (state.data.pausedZones, «Riego» in Ajustes). Paused,
 // those plants ask for watering again; switched back on, only the ones that have it stop asking.
 const pausedZones = () => state.data.pausedZones ?? [];
-function zonesCard() {
-  const zones = [...new Set(state.data.plants.filter((p) => p.autoWater).map((p) => p.zone || ""))].sort((a, b) => a.localeCompare(b, "es"));
-  if (!zones.length) return "";
-  return `<div class="group-title">Riego automático</div>
-    <section class="card list-card settings">${zones.map((z) => {
-      const n = state.data.plants.filter((p) => p.autoWater && (p.zone || "") === z).length;
-      const on = !pausedZones().includes(z);
-      return `<button type="button" class="l-row switch-row" role="switch" aria-checked="${on}" data-action="zone-auto" data-zone="${esc(z)}"><span class="l-ico" style="background:${on ? "#1f8f86" : "#6e6e73"}">${ICONS.drip}</span><span class="l-label">${esc(z || "Sin zona")} <span class="muted">· ${n === 1 ? "1 planta con riego" : `${n} plantas con riego`}</span></span><span class="switch" aria-hidden="true"></span></button>`;
-    }).join("")}</section>
-    <p class="group-foot">Qué plantas tienen riego se marca en cada una (Editar). Aquí lo enciendes o lo pausas por zona: pausado, esas plantas vuelven a pedirte riego; encendido, solo te avisamos si la lluvia o el calor piden tocar el programador.</p>`;
-}
 // Sun of each zone: set in the zone sheet (Ajustes → Zonas); used to check a plant's light and by Explorar.
 const zoneSun = () => state.data.zoneSun ?? {};
 // Details the user types for each zone (Ajustes → «Detalles de cada zona»): programmed irrigation
@@ -430,7 +419,8 @@ function zoneDetailsCard() {
   return `<div class="group-title">Zonas</div>
     <section class="card list-card settings">${zones.map((z) => {
       const i = zoneInfo()[z] ?? {};
-      const bits = [SUN_LABEL[zoneSun()[z]] ?? "", i.every ? `riego cada ${i.every} ${i.every === 1 ? "día" : "días"}` : "", i.desc ? "descrita" : ""].filter(Boolean).join(" · ");
+      const hasAuto = state.data.plants.some((p) => p.autoWater && (p.zone || "") === z);
+      const bits = [SUN_LABEL[zoneSun()[z]] ?? "", hasAuto && pausedZones().includes(z) ? "riego pausado" : "", i.every ? `riego cada ${i.every} ${i.every === 1 ? "día" : "días"}` : "", i.desc ? "descrita" : ""].filter(Boolean).join(" · ");
       return `<button type="button" class="l-row" data-action="zone-open" data-zone="${esc(z)}"><span class="l-ico" style="background:#1f8f86">${ICONS.pin}</span><span class="l-label">${esc(z || "Sin zona")}</span><span class="l-value">${esc(bits)}<span class="chev">${ICONS.chevron}</span></span></button>`;
     }).join("")}</section>
     <p class="group-foot">Para cada zona: cuánto sol recibe, cada cuánto riega el programador y cómo es el sitio, con tus palabras. Con eso avisamos si una planta no está donde le conviene o recibe más o menos riego del que pide, y valoramos plantas nuevas para ese sitio.</p>`;
@@ -444,7 +434,14 @@ function zoneSheet(zone) {
       <div class="seg" role="radiogroup" aria-label="Sol en ${esc(zone || "Sin zona")}">${[["sun", "Sol"], ["partial", "Media sombra"], ["shade", "Sombra"]].map(([v, t]) =>
         `<button type="button" role="radio" aria-checked="${zoneSun()[zone] === v}" data-action="zone-sun" data-zone="${esc(zone)}" data-sun="${v}">${t}</button>`).join("")}</div>
       <p class="muted small">Cuánta luz recibe la zona. Toca otra vez para quitarlo. Cada planta puede tener su propio valor en Editar.</p>
-      <div class="group-title">Riego programado</div>
+      <div class="group-title">Riego</div>
+      ${(() => {
+        const n = state.data.plants.filter((p) => p.autoWater && (p.zone || "") === zone).length;
+        if (!n) return "";
+        const on = !pausedZones().includes(zone);
+        return `<button type="button" class="l-row switch-row" role="switch" aria-checked="${on}" data-action="zone-auto" data-zone="${esc(zone)}"><span class="l-label">Riego automático <span class="muted">· ${n === 1 ? "1 planta con riego" : `${n} plantas con riego`}</span></span><span class="switch" aria-hidden="true"></span></button>
+        <p class="muted small">Qué plantas tienen riego se marca en cada una (Editar). Pausado, esas plantas vuelven a pedirte riego; encendido, solo te avisamos si la lluvia o el calor piden tocar el programador.</p>`;
+      })()}
       <p class="muted small">Si la zona tiene programador, cada cuántos días riega. Déjalo vacío si no.</p>
       <div class="row zone-fields"><label class="grow">Cada <input type="number" name="every" min="1" max="60" inputmode="numeric" class="big-input" value="${i.every || ""}" placeholder="días" /></label>
       <label class="grow">Minutos <input type="number" name="mins" min="1" max="600" inputmode="numeric" class="big-input" value="${i.mins || ""}" placeholder="opcional" /></label></div>
@@ -603,7 +600,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004l";
+      sc.src = "vendor/qrcode.min.js?v=20261004m";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -773,7 +770,6 @@ function moreView() {
       ${row("open-ai", "sparkle", "#7a56d6", "Asistente IA", aiOff() ? "Apagada" : aiOn ? `<span class="ok">${ICONS.circleCheck}Activado</span>` : "Sin activar")}
       ${pending || upgrade ? row("open-upgrades", "refresh", "#c7771a", "Fichas por actualizar", pending ? `<span class="dot"></span>${pending}` : "Al día") : ""}
     </section>
-    ${zonesCard()}
     ${zoneDetailsCard()}
     <div class="group-title">Avisos y calendario</div>
     <section class="card list-card settings">
@@ -2252,6 +2248,8 @@ const actions = {
     state.data.pausedZones = paused ? pausedZones().filter((z) => z !== d.zone) : [...pausedZones(), d.zone];
     save();
     render();
+    const form = $("zoneForm");
+    if (form && form.dataset.zone === d.zone) form.querySelector('[data-action="zone-auto"]')?.setAttribute("aria-checked", String(!pausedZones().includes(d.zone)));
   },
   "task-skip": (d) => {
     const p = plantById(d.id);

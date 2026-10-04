@@ -708,3 +708,4 @@ label.link-btn { cursor: pointer; }
 .zone-fields input { width: 100%; }
 #zoneForm textarea { width: 100%; resize: vertical; }
 #zoneForm .group-title { margin: 6px 0 -6px; }
+#zoneForm .switch-row { padding: 12px 14px; font-weight: 600; }
