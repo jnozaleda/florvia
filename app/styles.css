@@ -698,3 +698,13 @@ label.link-btn { cursor: pointer; }
 .steps { margin: 4px 0 12px; padding-left: 22px; line-height: 1.5; }
 .steps li { margin: 6px 0; }
 .welcome .sec { padding: 14px 16px 4px; }
+
+/* Switch rows inside a list card are plain rows (no card of their own). */
+.list-card .switch-row { background: none; border: 0; border-radius: 0; padding: 11px 0; border-top: 0.5px solid var(--hairline); font-weight: 400; }
+.list-card .switch-row:first-child { border-top: 0; }
+/* Zone sheet */
+.zone-fields { display: flex; gap: 12px; }
+.zone-fields label { flex: 1; display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.zone-fields input { width: 100%; }
+#zoneForm textarea { width: 100%; resize: vertical; }
+#zoneForm .group-title { margin: 6px 0 -6px; }
