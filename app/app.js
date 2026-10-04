@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004q";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004r";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004q";
-import { buildICS } from "./calendar.js?v=20261004q";
-import { scrubPlant } from "./clean.js?v=20261004q";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004q";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004r";
+import { buildICS } from "./calendar.js?v=20261004r";
+import { scrubPlant } from "./clean.js?v=20261004r";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004r";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -450,6 +450,7 @@ function zoneSheet(zone) {
       <p class="muted small">Con tus palabras: a qué horas da el sol, sombras, viento… No escribas datos personales.</p>
       <textarea name="desc" maxlength="300" rows="4" class="big-input" placeholder="Sol de mañana hasta las 12:00 en invierno y hasta las 15:00 en verano; la pared da sombra por la tarde.">${esc(i.desc ?? "")}</textarea>
       <button class="btn block" type="submit">Guardar</button>
+      <button type="button" class="btn block secondary" data-action="suggest-open" data-zone="${esc(zone)}">✦ ¿Qué planto aquí?</button>
     </form>`);
 }
 function saveZoneInfo(form) {
@@ -600,7 +601,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004q";
+      sc.src = "vendor/qrcode.min.js?v=20261004r";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -879,7 +880,7 @@ document.addEventListener("focusin", (e) => { if (e.target.classList?.contains("
 document.addEventListener("pointerover", (e) => { const b = e.target.closest?.(".u-bar"); if (b && $("usageTip")) $("usageTip").textContent = b.getAttribute("aria-label"); });
 document.addEventListener("focusin", (e) => { const b = e.target.closest?.(".u-bar"); if (b && $("usageTip")) $("usageTip").textContent = b.getAttribute("aria-label"); });
 
-const SHEET_VIEWS = { ai: aiSheet, upgrades: upgradesSheet, usage: usageSheet };
+const SHEET_VIEWS = { ai: aiSheet, upgrades: upgradesSheet, usage: usageSheet, suggest: () => { suggestRead(); suggestSheet(); } };
 
 // ---------- Care sheet upgrades ----------
 // When an improvement needs new data from the AI, it gets a version and an entry here. Plants
@@ -1199,6 +1200,95 @@ function plantSheet(id) {
     ${provenance}
     `);
   sheet.dataset.plant = id;
+}
+
+// «Qué planto aquí»: the AI proposes plants for one of the user's zones or for a site they describe
+// (Worker /suggest). Each pick opens in Explorar, which already knows how to judge and add it.
+const SG_PREFS = [["facil", "Fácil de cuidar"], ["flores", "Con flores"], ["poca_agua", "Poca agua"], ["comestible", "Comestible"], ["mascotas", "Segura para mascotas"], ["perenne", "Hoja perenne"]];
+let suggest = null; // { zone: name | null (= otro sitio), siteSun, siteDesc, prefs: [], note, state: "idle" | "loading" | "done" | "error", res, error }
+function suggestOpen(zone) {
+  const zones = allZones();
+  suggest = { zone: zone && zones.includes(zone) ? zone : zone === "" ? null : zones[0] ?? null, siteSun: "", siteDesc: "", prefs: [], note: "", state: "idle" };
+  if (zone === undefined && !zones.length) suggest.zone = null;
+  suggestSheet();
+}
+function suggestRead() { // keep what is typed before the sheet redraws
+  if (!suggest) return;
+  if ($("sgDesc")) suggest.siteDesc = $("sgDesc").value;
+  if ($("sgNote")) suggest.note = $("sgNote").value;
+}
+function suggestSiteName() { return suggest.zone ?? "Otro sitio"; }
+function suggestSheet() {
+  const sg = suggest;
+  const head = `<div class="sheet-head"><h2>Qué planto aquí</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>`;
+  if (!sg) return;
+  if (sg.state === "loading") return openSheet(`${head}<div class="ai-step"><span class="spinner" aria-hidden="true"></span>Buscando plantas para ${esc(suggestSiteName())}…</div>`, "suggest");
+  if (sg.state === "done") {
+    const picks = sg.res.picks;
+    return openSheet(`${head}
+      <p class="sub-line">Para «${esc(suggestSiteName())}»${sg.prefs.length ? ` · ${esc(sg.prefs.map((p) => SG_PREFS.find((x) => x[0] === p)?.[1]).filter(Boolean).join(" · ").toLowerCase())}` : ""}</p>
+      ${sg.res.summary ? `<p class="muted">${esc(sg.res.summary)}</p>` : ""}
+      <section class="card">${picks.map((p, i) => `<button type="button" class="sg-row" data-action="sg-open" data-i="${i}">
+        <span class="sg-ph">${p.photo?.url ? `<img src="${esc(p.photo.url)}" alt="" />` : ICONS.sprout}</span>
+        <span class="sg-body"><span class="verdict-dot ${p.fit === "bien" ? "good" : "mid"}">${p.fit === "bien" ? "Encaja bien" : "Con reservas"}</span>
+          <b>${esc(p.commonName)}</b><i>${esc(p.species)}</i><span class="sg-why">${esc(p.why)}</span>
+          <span class="sg-tags"><span>${esc(SUN_NEED_LABEL[p.sunNeed] ?? "")}</span><span>riego cada ${Number(p.waterDays)} d.</span><span>${esc(SIZE_FINAL[p.size] ?? "")}</span></span></span>
+        <span class="chev">${ICONS.chevron}</span></button>`).join("") || `<p class="muted small">La IA no ha propuesto nada esta vez. Cambia la búsqueda y prueba otra vez.</p>`}</section>
+      <p class="muted small">Toca una para abrirla en Explorar. Es una estimación de la IA, no una garantía.</p>
+      <button type="button" class="btn block secondary" data-action="sg-back">Cambiar la búsqueda</button>`, "suggest");
+  }
+  const zones = allZones();
+  const zoneCard = (name) => {
+    const i = zoneInfo()[name] ?? {};
+    const bits = [SUN_LABEL[zoneSun()[name]] ?? "", i.every ? `riego cada ${i.every} ${i.every === 1 ? "día" : "días"}` : "", i.desc ? `«${i.desc.length > 70 ? `${i.desc.slice(0, 70)}…` : i.desc}»` : ""].filter(Boolean).join(" · ");
+    return `<button type="button" class="sg-zone ${sg.zone === name ? "on" : ""}" data-action="sg-zone" data-zone="${esc(name)}" aria-pressed="${sg.zone === name}"><b>${esc(name)}</b>${bits ? `<small>${esc(bits)}</small>` : ""}</button>`;
+  };
+  openSheet(`${head}
+    <p class="muted small">La IA propone plantas que encajen con el sol, el riego y lo que hayas escrito del sitio.</p>
+    <div class="group-title">¿Dónde?</div>
+    ${zones.map(zoneCard).join("")}
+    <button type="button" class="sg-zone ${sg.zone === null ? "on" : ""}" data-action="sg-zone" data-zone="" data-other="1" aria-pressed="${sg.zone === null}"><b>Otro sitio…</b><small>Un pasillo, una terraza, una ventana…</small></button>
+    ${sg.zone === null ? `<div class="seg" role="radiogroup" aria-label="Luz del sitio">${[["sun", "Sol"], ["partial", "Media sombra"], ["shade", "Sombra"]].map(([v, t]) => `<button type="button" role="radio" aria-checked="${sg.siteSun === v}" data-action="sg-sun" data-sun="${v}">${t}</button>`).join("")}</div>
+      <textarea id="sgDesc" maxlength="300" rows="3" class="big-input" placeholder="Cómo es el sitio: luz, viento, si es maceta o suelo…">${esc(sg.siteDesc)}</textarea>` : ""}
+    <div class="group-title">Qué busco <span class="muted">(opcional)</span></div>
+    <div class="chips">${SG_PREFS.map(([k, t]) => `<button type="button" class="chip ${sg.prefs.includes(k) ? "on" : ""}" data-action="sg-pref" data-p="${k}" aria-pressed="${sg.prefs.includes(k)}">${t}</button>`).join("")}</div>
+    <input id="sgNote" maxlength="120" class="big-input" placeholder="Algo más: «que no pase de 1 m»…" value="${esc(sg.note)}" />
+    <p class="muted small">No escribas datos personales: el texto se envía a la IA.</p>
+    ${sg.state === "error" ? `<p class="ai-status warn">${esc(sg.error)}</p>` : ""}
+    <button type="button" class="btn block" data-action="sg-go" ${aiOff() ? "disabled" : ""}>✦ Proponer plantas</button>
+    ${aiOff() ? `<p class="muted small">La IA está apagada en este móvil (Ajustes → Asistente IA).</p>` : ""}`, "suggest");
+}
+async function suggestGo() {
+  suggestRead();
+  const sg = suggest;
+  if (!sg) return;
+  if (sg.zone === null && !sg.siteSun && !sg.siteDesc.trim()) { sg.state = "error"; sg.error = "Elige una zona o describe el sitio (luz o cómo es)."; return suggestSheet(); }
+  sg.state = "loading";
+  suggestSheet();
+  try {
+    if (aiOff()) throw new Error("off");
+    if (aiOpen === false && !aiCode()) throw new Error("code");
+    const loc = here();
+    const info = sg.zone !== null ? zoneInfo()[sg.zone] ?? {} : {};
+    const site = sg.zone !== null ? { name: sg.zone, sun: zoneSun()[sg.zone] ?? "", every: info.every ?? 0, mins: info.mins ?? 0, desc: info.desc ?? "" } : { name: "", sun: sg.siteSun, every: 0, mins: 0, desc: sg.siteDesc.trim() };
+    const owned = [...new Set(state.data.plants.map((p) => p.species || p.name).filter(Boolean))];
+    let res;
+    try {
+      res = await fetch(`${API}/suggest`, { method: "POST", signal: AbortSignal.timeout(50000), headers: aiHeaders(), body: JSON.stringify({ site, prefs: sg.prefs, note: sg.note.trim(), owned, place: loc.name, lat: loc.lat, lon: loc.lon }) });
+    } catch (err) { throw new Error(err?.name === "TimeoutError" ? "timeout" : "network"); }
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error in AI_ERRORS ? body.error : "ai");
+    if (suggest !== sg) return;
+    sg.res = body;
+    sg.state = "done";
+    suggestSheet();
+    body.picks.forEach((p) => refPhoto(p.species).then((ph) => { if (ph && suggest === sg && sg.state === "done") { p.photo = ph; if ($("sheet").open && sheet.dataset.view === "suggest") suggestSheet(); } }));
+  } catch (err) {
+    if (suggest !== sg) return;
+    sg.state = "error";
+    sg.error = aiErrorText(err.message);
+    suggestSheet();
+  }
 }
 
 // «¿Dónde está mejor?»: the AI judges a plant against each of the user's zones (sun, programmed
@@ -2293,6 +2383,13 @@ const actions = {
     loadUsage();
   },
   "plant-place": (d) => askPlantPlace(d.id),
+  "suggest-open": (d) => suggestOpen(d.zone),
+  "sg-zone": (d) => { suggestRead(); suggest.zone = d.other ? null : d.zone; suggest.state = "idle"; suggestSheet(); },
+  "sg-sun": (d) => { suggestRead(); suggest.siteSun = suggest.siteSun === d.sun ? "" : d.sun; suggestSheet(); },
+  "sg-pref": (d) => { suggestRead(); suggest.prefs = suggest.prefs.includes(d.p) ? suggest.prefs.filter((x) => x !== d.p) : [...suggest.prefs, d.p]; suggestSheet(); },
+  "sg-go": () => suggestGo(),
+  "sg-back": () => { suggest.state = "idle"; suggestSheet(); },
+  "sg-open": (d) => { const p = suggest?.res?.picks?.[+d.i]; if (p) exploreLookup(p.species, p.commonName); },
   "explore-place": () => askExplorePlace(),
   "open-plant": (d) => { if (confirmDiscard()) plantSheet(d.id); },
   close: leaveSheet,
@@ -2458,7 +2555,8 @@ const actions = {
   },
   "add-menu": () => openSheet(`<div class="sheet-head"><h2>Añadir</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>
     <button type="button" class="menu-row" data-action="new-plant"><span class="menu-ic add">${ICONS.plus}</span><span><b>Añadir planta</b><small>Guardarla en tu jardín</small></span></button>
-    <button type="button" class="menu-row" data-action="explore-open"><span class="menu-ic explore">${ICONS.search}</span><span><b>Explorar una planta</b><small>Ver si encaja, sin añadirla</small></span></button>`),
+    <button type="button" class="menu-row" data-action="explore-open"><span class="menu-ic explore">${ICONS.search}</span><span><b>Explorar una planta</b><small>Ver si encaja, sin añadirla</small></span></button>
+    <button type="button" class="menu-row" data-action="suggest-open"><span class="menu-ic suggest">${ICONS.sparkle}</span><span><b>Qué planto aquí</b><small>Ideas de plantas para un sitio</small></span></button>`),
   "explore-open": () => { explore = { state: "idle" }; exploreSheet(); },
   "explore-again": () => { explore = { state: "idle" }; exploreSheet(); },
   "explore-recent": (d) => { const r = d.w !== undefined ? wishlist()[+d.w] : recentExplore()[+d.i]; if (r) exploreLookup(r.query, r.name); },
