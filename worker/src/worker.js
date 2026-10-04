@@ -415,30 +415,150 @@ async function updateStats(env, fn) {
 // id per day: { care, care_edit, care_upgrade, care_explore, calendar, identify: real AI calls;
 // <kind>_hit: answered from memory (free); limit; error }. Written in the same update as the totals.
 const usageId = (request) => { const v = request.headers.get("X-Usage") ?? ""; return /^[gd]:[a-f0-9]{16}$/.test(v) ? v : "anon"; };
-const recordAi = (env, ctx, what, ms = 0, request = null, kind = "") => ctx.waitUntil(updateStats(env, (doc) => {
-  if (what === "cached") doc.ai.cached += 1;
-  else if (what === "error") doc.ai.errors += 1;
-  else if (what === "not_plant") doc.ai.notPlant += 1;
-  else if (what === "limit") doc.ai.limits = (doc.ai.limits ?? 0) + 1;
-  else { doc.ai.calls += 1; doc.ai.ms += ms; }
-  const key = { cached: `${kind}_hit`, error: "error", limit: "limit", call: kind }[what];
-  if (request && kind && key) {
-    const row = ((doc.u ??= {})[usageId(request)] ??= {});
-    row[key] = (row[key] ?? 0) + 1;
-  }
-}).catch(() => {}));
+// Every AI call and app event is a row in D1 (see schema.sql), tagged with where it came from.
+const originSrc = (request) => {
+  const o = request.headers.get("Origin") ?? "";
+  if (o === "https://florvia.app" || o === "https://www.florvia.app") return "prod";
+  if (o === "https://jnozaleda.github.io") return "old";
+  if (/^http:\/\/localhost(:\d+)?$/.test(o)) return "dev";
+  return "none"; // curl, scripts, anything without an Origin
+};
+// Who is asking: the garden hash (X-Usage "g:…") when synced and the device hash (X-Device, hashed here).
+async function usageWho(request, rawDevice = null) {
+  const u = request.headers.get("X-Usage") ?? "";
+  const garden = /^g:[a-f0-9]{16}$/.test(u) ? u.slice(2) : "";
+  const raw = String(rawDevice ?? request.headers.get("X-Device") ?? "").slice(0, 64);
+  return { garden, device: raw ? await hashId(raw) : "" };
+}
+async function logUsage(env, request, rows, rawDevice = null, gardenOverride = "") {
+  if (!env.DB || !rows.length) return;
+  const who = await usageWho(request, rawDevice);
+  const garden = gardenOverride || who.garden;
+  const src = originSrc(request);
+  const now = Date.now();
+  const day = new Date(now).toISOString().slice(0, 10);
+  const stmt = env.DB.prepare("INSERT INTO events (ts, day, src, kind, name, device, garden, ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+  await env.DB.batch(rows.map((r) => stmt.bind(now, day, src, r.kind, r.name, who.device, garden, r.ms ?? 0)));
+}
+const recordAi = (env, ctx, what, ms = 0, request = null, kind = "") => {
+  if (!request) return;
+  const name = { cached: `${kind}_hit`, error: "error", limit: "limit", call: kind, not_plant: "not_plant" }[what];
+  if (name) ctx.waitUntil(logUsage(env, request, [{ kind: "ai", name, ms }]).catch((err) => console.error("usage log", err?.message)));
+};
 
-async function handleEvent(request, env, headers) {
+async function handleEvent(request, env, headers, ctx) {
   let body;
   try { body = JSON.parse(await request.text()); } catch { return json({ error: "input" }, 400, headers); }
   const device = String(body.device ?? "").slice(0, 64);
   const events = (Array.isArray(body.events) ? body.events : []).slice(0, 50).filter((e) => EVENTS.includes(e));
   if (!device || !events.length) return json({ ok: true }, 200, headers);
-  const id = await hashId(device);
-  await updateStats(env, (doc) => {
-    for (const e of events) doc.e[e] = (doc.e[e] ?? 0) + 1;
-    if (!doc.d.includes(id)) doc.d.push(id);
-  });
+  const garden = /^g:[a-f0-9]{16}$/.test(String(body.garden ?? "")) ? body.garden.slice(2) : "";
+  ctx.waitUntil(logUsage(env, request, events.map((name) => ({ kind: "event", name })), device, garden).catch((err) => console.error("usage log", err?.message)));
+  return json({ ok: true }, 200, headers);
+}
+
+// ---------- Usage report (GET /stats2), «marcar como mío» (POST /internal), names (POST /usage/label) ----------
+// A person is a synced garden, or a device that isn't synced (its earlier rows join the garden once it syncs).
+// «Real» use = from the app on florvia.app (or the old address), not from a device Noza marked as theirs, and
+// from the clean start date on. Everything else is reported apart, never mixed into the real numbers.
+const needCode = (request, env) => Boolean(env.ACCESS_CODE) && request.headers.get("X-Access-Code") === env.ACCESS_CODE;
+const USAGE_SQL = `
+  WITH dg AS (SELECT device, MAX(garden) AS garden FROM events WHERE garden <> '' AND device <> '' GROUP BY device)
+  SELECT e.day AS day,
+    CASE WHEN e.garden <> '' THEN e.garden WHEN dg.garden IS NOT NULL THEN dg.garden WHEN e.device <> '' THEN e.device ELSE 'anon' END AS person,
+    e.src AS src, e.kind AS kind, e.name AS name, COUNT(*) AS n, SUM(e.ms) AS ms,
+    MAX(CASE WHEN e.garden IN (SELECT id FROM internal) OR e.device IN (SELECT id FROM internal) OR dg.garden IN (SELECT id FROM internal) THEN 1 ELSE 0 END) AS internal
+  FROM events e LEFT JOIN dg ON dg.device = e.device
+  GROUP BY e.day, person, e.src, e.kind, e.name`;
+const AI_NOT_CALL = ["error", "limit", "not_plant"];
+async function handleStats2(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  const n = Math.min(90, Math.max(1, Number(new URL(request.url).searchParams.get("days")) || 30));
+  const today = new Date().toISOString().slice(0, 10);
+  const dayList = [...Array(n).keys()].map((i) => new Date(Date.now() - (n - 1 - i) * 86400000).toISOString().slice(0, 10));
+  const [rowsRes, labelsRes, metaRes] = await Promise.all([
+    env.DB.prepare(USAGE_SQL).all(), env.DB.prepare("SELECT id, label FROM labels").all(), env.DB.prepare("SELECT v FROM meta WHERE k = 'clean_start'").first(),
+  ]);
+  const rows = rowsRes.results ?? [];
+  const labels = Object.fromEntries((labelsRes.results ?? []).map((l) => [l.id, l.label]));
+  const cleanStart = metaRes?.v ?? today;
+  const internalPeople = new Set(rows.filter((r) => r.internal).map((r) => r.person));
+  const isReal = (r) => (r.src === "prod" || r.src === "old") && !internalPeople.has(r.person) && r.day >= cleanStart;
+  const isCall = (r) => r.kind === "ai" && !r.name.endsWith("_hit") && !AI_NOT_CALL.includes(r.name);
+
+  const days = Object.fromEntries(dayList.map((d) => [d, { date: d, opens: 0, people: new Set(), events: {}, ai: { calls: 0, hits: 0, errors: 0, limits: 0, ms: 0 } }]));
+  const people = {};
+  const tests = { events: 0, ai: 0, byBucket: {}, people: new Set() };
+  for (const r of rows) {
+    if (!isReal(r)) {
+      const bucket = internalPeople.has(r.person) ? "internal" : r.day < cleanStart && (r.src === "prod" || r.src === "old") ? "before" : r.src;
+      tests.byBucket[bucket] = (tests.byBucket[bucket] ?? 0) + r.n;
+      tests[r.kind === "ai" ? "ai" : "events"] += r.n;
+      if (bucket !== "before") tests.people.add(`${bucket}:${r.person}`);
+      continue;
+    }
+    const p = (people[r.person] ??= { id: r.person, first: r.day, last: r.day, days: new Set(), opens: 0, aiCalls: 0, srcs: new Set() });
+    p.first = r.day < p.first ? r.day : p.first; p.last = r.day > p.last ? r.day : p.last; p.days.add(r.day); p.srcs.add(r.src);
+    if (r.kind === "event" && r.name === "app_open") p.opens += r.n;
+    if (isCall(r)) p.aiCalls += r.n;
+    const d = days[r.day];
+    if (!d) continue;
+    d.people.add(r.person);
+    if (r.kind === "event") { d.events[r.name] = (d.events[r.name] ?? 0) + r.n; if (r.name === "app_open") d.opens += r.n; }
+    else if (isCall(r)) { d.ai.calls += r.n; d.ai.ms += r.ms ?? 0; }
+    else if (r.name.endsWith("_hit")) d.ai.hits += r.n;
+    else if (r.name === "limit") d.ai.limits += r.n;
+    else d.ai.errors += r.n;
+  }
+  const kindOf = (id) => (id === "anon" ? "anon" : id.length === 16 ? "garden" : "device");
+  const list = Object.values(people).map((p) => ({ id: p.id, code: p.id.slice(0, 4).toUpperCase(), kind: kindOf(p.id), label: labels[p.id] ?? "", first: p.first, last: p.last, activeDays: p.days.size, opens: p.opens, aiCalls: p.aiCalls }))
+    .sort((a, b) => (b.last > a.last ? 1 : b.last < a.last ? -1 : b.activeDays - a.activeDays));
+  const who = await usageWho(request);
+  const mine = await env.DB.prepare("SELECT id FROM internal WHERE id IN (?, ?)").bind(who.device || "-", who.garden || "-").all();
+  return json({
+    cleanStart, today,
+    me: { internal: (mine.results ?? []).length > 0, code: (who.garden || who.device || "").slice(0, 4).toUpperCase() },
+    days: dayList.map((d) => ({ ...days[d], people: days[d].people.size })),
+    people: list,
+    tests: { events: tests.events, ai: tests.ai, byBucket: tests.byBucket, people: tests.people.size },
+  }, 200, headers);
+}
+async function handleInternal(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const who = await usageWho(request);
+  const ids = [who.device, who.garden].filter(Boolean);
+  if (!ids.length) return json({ error: "input" }, 400, headers);
+  if (body.on === false) await env.DB.batch(ids.map((id) => env.DB.prepare("DELETE FROM internal WHERE id = ?").bind(id)));
+  else await env.DB.batch(ids.map((id) => env.DB.prepare("INSERT OR REPLACE INTO internal (id, ts) VALUES (?, ?)").bind(id, Date.now())));
+  return json({ ok: true, internal: body.on !== false }, 200, headers);
+}
+// «Borrar mis datos del servidor» also removes this phone's and garden's usage rows, names and marks.
+async function handleUsageDelete(request, env, headers) {
+  if (!env.DB) return json({ ok: true }, 200, headers);
+  const who = await usageWho(request);
+  const ids = [who.device, who.garden].filter(Boolean);
+  if (ids.length) {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM events WHERE device = ? OR garden = ?").bind(who.device || "-", who.garden || "-"),
+      ...ids.flatMap((id) => [env.DB.prepare("DELETE FROM labels WHERE id = ?").bind(id), env.DB.prepare("DELETE FROM internal WHERE id = ?").bind(id)]),
+    ]);
+  }
+  return json({ ok: true }, 200, headers);
+}
+async function handleUsageLabel(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const id = String(body.id ?? "");
+  const label = String(body.label ?? "").trim().slice(0, 30);
+  if (!/^[a-f0-9]{12,16}$/.test(id)) return json({ error: "input" }, 400, headers);
+  if (label) await env.DB.prepare("INSERT OR REPLACE INTO labels (id, label) VALUES (?, ?)").bind(id, label).run();
+  else await env.DB.prepare("DELETE FROM labels WHERE id = ?").bind(id).run();
   return json({ ok: true }, 200, headers);
 }
 
@@ -1015,6 +1135,7 @@ export default {
   // 06:00 and 07:00 UTC: whichever is 08:00 in Madrid (summer or winter) sends the daily push.
   async scheduled(event, env, ctx) {
     if (madridNow().hour !== 8) return;
+    if (env.DB) ctx.waitUntil(env.DB.prepare("DELETE FROM events WHERE day < date('now', '-400 days')").run().catch(() => {}));
     console.log("daily push sent:", await sendDaily(env));
   },
   async fetch(request, env, ctx) {
@@ -1025,8 +1146,12 @@ export default {
     if (pathname === "/check") return json({ ok: authorized(request, env) }, authorized(request, env) ? 200 : 401, headers);
     if (pathname === "/care" && request.method === "POST") return handleCare(request, env, headers, ctx);
     if (pathname === "/calendar" && request.method === "POST") return handleCalendar(request, env, headers, ctx);
-    if (pathname === "/event" && request.method === "POST") return handleEvent(request, env, headers);
+    if (pathname === "/event" && request.method === "POST") return handleEvent(request, env, headers, ctx);
     if (pathname === "/stats") return handleStats(request, env, headers);
+    if (pathname === "/stats2") return handleStats2(request, env, headers);
+    if (pathname === "/internal" && request.method === "POST") return handleInternal(request, env, headers);
+    if (pathname === "/usage/label" && request.method === "POST") return handleUsageLabel(request, env, headers);
+    if (pathname === "/usage/delete" && request.method === "POST") return handleUsageDelete(request, env, headers);
     if (pathname === "/identify" && request.method === "POST") return handleIdentify(request, env, headers, ctx);
     if (pathname === "/share" && request.method === "POST") return handleShareCreate(request, env, headers);
     const shared = pathname.match(/^\/share\/([a-z0-9]+)$/);

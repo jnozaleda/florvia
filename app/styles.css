@@ -715,3 +715,8 @@ label.link-btn { cursor: pointer; }
 .mstrip-row:first-child { border-top: 0; }
 .mstrip-label { font-size: 15px; }
 .mstrip-row small { line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+
+.u-person { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; width: 100%; text-align: left; padding: 10px 0; border-top: 0.5px solid var(--hairline); font-size: 15px; }
+.u-person:first-of-type { border-top: 0; }
+.u-person b { text-align: right; font-weight: 600; }
+.u-person small { display: block; font-weight: 400; font-size: 12px; color: var(--text-2); }

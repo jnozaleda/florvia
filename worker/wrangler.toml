@@ -9,6 +9,12 @@ workers_dev = true  # keep the old address alive for apps already installed
 [observability]
 enabled = true
 
+# Usage log (see schema.sql).
+[[d1_databases]]
+binding = "DB"
+database_name = "florvia-usage"
+database_id = "ad47e1e4-e5f0-440e-844f-95a1b058201d"
+
 # Workers AI (free daily allocation). Used while PROVIDER = "workers-ai".
 [ai]
 binding = "AI"

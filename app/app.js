@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004p";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004q";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004p";
-import { buildICS } from "./calendar.js?v=20261004p";
-import { scrubPlant } from "./clean.js?v=20261004p";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004p";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004q";
+import { buildICS } from "./calendar.js?v=20261004q";
+import { scrubPlant } from "./clean.js?v=20261004q";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004q";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -600,7 +600,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004p";
+      sc.src = "vendor/qrcode.min.js?v=20261004q";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -766,7 +766,7 @@ function moreView() {
       ${row("open-place", "pin", "#3b82f6", "Ubicación", esc(loc.name))}
       ${row("open-sync", "sync", "#0a84ff", "Sincronizar", syncKey() ? `<span class="ok">${ICONS.circleCheck}Activada</span>` : "Desactivada")}
       ${row("open-share", "share", "#0a84ff", "Compartir mi jardín", "Solo ver")}
-      ${syncKey() || store.get("mj_push", false) || store.get("mj_shares", []).length ? row("delete-server", "x", "#c93b30", "Borrar mis datos del servidor", "", true) : ""}
+      ${row("delete-server", "x", "#c93b30", "Borrar mis datos del servidor", "", true)}
       ${row("open-ai", "sparkle", "#7a56d6", "Asistente IA", aiOff() ? "Apagada" : aiOn ? `<span class="ok">${ICONS.circleCheck}Activado</span>` : "Sin activar")}
       ${pending || upgrade ? row("open-upgrades", "refresh", "#c7771a", "Fichas por actualizar", pending ? `<span class="dot"></span>${pending}` : "Al día") : ""}
     </section>
@@ -785,7 +785,7 @@ function moreView() {
       ${row("export-json", "download", "#6e6e73", "Exportar copia")}
       ${row("import-json", "upload", "#6e6e73", "Importar copia")}
     </section>
-    <p class="group-foot">Tus plantas se guardan solo en este móvil. Exporta una copia de vez en cuando.</p>
+    <p class="group-foot">Tus plantas se guardan solo en este móvil. Exporta una copia de vez en cuando.${usageCode ? ` Código de uso: <b>${usageCode}</b>.` : ""}</p>
     <input type="file" id="importFile" accept="application/json" hidden />`;
 }
 
@@ -807,48 +807,48 @@ function upgradesSheet() {
     <div class="sheet-head"><h2>Fichas por actualizar</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>
     ${upgradesCard() || `<p class="muted">Todas tus fichas están al día.</p>`}`, "upgrades");
 }
-// «Uso de la app»: 30 days of anonymous counts from the Worker (needs the access code).
-let usage = null; // null = loading · { error } · { days }
+// «Uso de la app» (needs the access code): real use only, from the Worker's D1 log (/stats2).
+// «Real» = opened from florvia.app (or the old address), not from a device marked as Noza's, and since the
+// clean start date. Tests and your own devices are listed apart and never added to the real numbers.
+let usage = null; // null = loading · { error } · the /stats2 report
 async function loadUsage() {
   try {
-    const res = await fetch(`${API}/stats?days=30`, { headers: aiHeaders() });
+    const res = await fetch(`${API}/stats2?days=30`, { headers: aiHeaders() });
     usage = res.ok ? await res.json() : { error: res.status === 401 ? "code" : "ai" };
   } catch { usage = { error: "network" }; }
   if (sheet.open && sheet.dataset.view === "usage") usageSheet();
 }
+const BUCKET_LABEL = { dev: "desde localhost (desarrollo)", none: "sin origen (scripts, curl)", internal: "de dispositivos marcados como tuyos", old: "de la dirección antigua", prod: "de producción", before: "anteriores a la fecha limpia" };
 function usageSheet() {
   const head = `<div class="sheet-head"><h2>Uso de la app</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>`;
   if (!usage) return openSheet(`${head}<div class="ai-step"><span class="spinner" aria-hidden="true"></span>Cargando…</div>`, "usage");
   if (usage.error) return openSheet(`${head}<p class="ai-status warn">${usage.error === "code" ? "El código guardado no es válido para ver el uso." : "No se ha podido cargar el uso. Prueba más tarde."}</p>`, "usage");
   const days = usage.days;
-  const devicesIn = (n) => new Set(days.slice(-n).flatMap((d) => d.d)).size;
-  const sum = (key, n = 30) => days.slice(-n).reduce((a, d) => a + (d.e[key] ?? 0), 0);
-  const ai = days.reduce((a, d) => ({ calls: a.calls + d.ai.calls, cached: a.cached + d.ai.cached, errors: a.errors + d.ai.errors, notPlant: a.notPlant + d.ai.notPlant, ms: a.ms + d.ai.ms }), { calls: 0, cached: 0, errors: 0, notPlant: 0, ms: 0 });
-  const opens = days.map((d) => d.e.app_open ?? 0);
+  const activeSince = (n) => { const from = days[Math.max(0, days.length - n)].date; return usage.people.filter((p) => p.last >= from).length; };
+  const sum = (key) => days.reduce((a, d) => a + (d.events[key] ?? 0), 0);
+  const ai = days.reduce((a, d) => ({ calls: a.calls + d.ai.calls, hits: a.hits + d.ai.hits, errors: a.errors + d.ai.errors, limits: a.limits + d.ai.limits, ms: a.ms + d.ai.ms }), { calls: 0, hits: 0, errors: 0, limits: 0, ms: 0 });
+  const opens = days.map((d) => d.opens);
   const max = Math.max(4, ...opens);
   const bars = days.map((d, i) => {
-    const label = `${fmtDate(d.date, { weekday: "short", day: "numeric", month: "short" })} · ${opens[i]} ${opens[i] === 1 ? "apertura" : "aperturas"}`;
+    const label = `${fmtDate(d.date, { weekday: "short", day: "numeric", month: "short" })} · ${opens[i]} ${opens[i] === 1 ? "apertura" : "aperturas"} · ${d.people} ${d.people === 1 ? "persona" : "personas"}`;
     return `<span class="u-bar ${opens[i] ? "" : "zero"}" style="height:${Math.max(3, (opens[i] / max) * 100)}%" tabindex="0" title="${esc(label)}" aria-label="${esc(label)}"></span>`;
   }).join("");
-  const total = ai.calls + ai.cached;
-  // AI use per garden (g = synced garden, d = a phone that isn't synced): real calls by kind, and memory hits.
-  const gardens = (() => {
-    const rows = {};
-    for (const d of days) for (const [id, r] of Object.entries(d.u ?? {})) { const t = (rows[id] ??= {}); for (const [k, n] of Object.entries(r)) t[k] = (t[k] ?? 0) + n; }
-    const sum = (r, ...keys) => keys.reduce((a, k) => a + (r[k] ?? 0), 0);
-    const counters = { g: 0, d: 0 };
-    return Object.entries(rows).map(([id, r]) => ({
-      id, ficha: sum(r, "care", "care_edit", "care_upgrade"), explorar: sum(r, "care_explore"), calendario: sum(r, "calendar"), foto: sum(r, "identify"), ubicacion: sum(r, "place"),
-      calls: sum(r, "care", "care_edit", "care_upgrade", "care_explore", "calendar", "identify", "place"),
-      hits: sum(r, "care_hit", "care_edit_hit", "care_upgrade_hit", "care_explore_hit", "calendar_hit"), limit: sum(r, "limit"), errors: sum(r, "error"),
-    })).sort((a, b) => b.calls - a.calls || b.hits - a.hits).map((g) => ({ ...g, label: g.id === "anon" ? "Versión antigua" : `${g.id[0] === "g" ? "Jardín" : "Móvil"} ${String.fromCharCode(65 + counters[g.id[0]]++)}${g.id === usageId ? " (tú)" : ""}` }));
-  })();
-  const known = gardens.filter((g) => g.id !== "anon");
-  const gardenCalls = known.reduce((a, g) => a + g.calls, 0);
+  const total = ai.calls + ai.hits;
+  const people = usage.people;
+  const newWeek = people.filter((p) => p.first >= days[Math.max(0, days.length - 7)].date).length;
+  const returning = people.filter((p) => p.activeDays >= 2).length;
+  const synced = people.filter((p) => p.kind === "garden").length;
   const row = (icon, label, n, small = "") => `<div class="u-row">${ICONS[icon]}<span>${label}</span><b>${n}${small ? `<small>${small}</small>` : ""}</b></div>`;
+  const t = usage.tests;
+  const buckets = Object.entries(t.byBucket).map(([k, n]) => `${n} ${BUCKET_LABEL[k] ?? k}`).join(" · ");
+  const nameOf = (p, i) => esc(p.label || `${p.kind === "garden" ? "Jardín" : p.kind === "device" ? "Móvil" : "Sin identificar"} ${p.code}`);
   openSheet(`${head}
-    <section class="card"><div class="sec">Dispositivos activos</div>
-      <div class="u-tiles"><div><span>Hoy</span><b>${devicesIn(1)}</b></div><div><span>7 días</span><b>${devicesIn(7)}</b></div><div><span>30 días</span><b>${devicesIn(30)}</b></div></div></section>
+    <p class="ai-status ok">Solo uso real desde el ${fmtDate(usage.cleanStart)}. Tus pruebas y tus dispositivos se cuentan aparte.</p>
+    <section class="card"><div class="sec">Personas activas</div>
+      <div class="u-tiles"><div><span>Hoy</span><b>${activeSince(1)}</b></div><div><span>7 días</span><b>${activeSince(7)}</b></div><div><span>30 días</span><b>${activeSince(30)}</b></div></div>
+      ${row("sprout", "Personas en total", people.length, `${synced} con sincronización · ${people.length - synced} sin sincronizar`)}
+      ${row("check", "Nuevas esta semana", newWeek)}
+      ${row("refresh", "Han vuelto (2 o más días)", returning)}</section>
     <section class="card"><div class="sec">Aperturas por día <span class="meta">30 días · ${opens.reduce((a, b) => a + b, 0)}</span></div>
       <div class="u-chart" role="img" aria-label="Aperturas por día en los últimos 30 días">${bars}</div>
       <div class="u-axis"><span>${fmtDate(days[0].date)}</span><span>hoy</span></div>
@@ -861,15 +861,18 @@ function usageSheet() {
       ${row("refresh", "Fichas actualizadas", sum("upgrade_done"))}</section>
     <section class="card"><div class="sec">Inteligencia artificial <span class="meta ai-mark">✦ 30 días</span></div>
       ${row("sparkle", "Consultas", total)}
-      ${row("database", "Desde la memoria (gratis)", ai.cached, total ? `${Math.round((ai.cached / total) * 100)} %` : "")}
+      ${row("database", "Desde la memoria (gratis)", ai.hits, total ? `${Math.round((ai.hits / total) * 100)} %` : "")}
       ${row("clock", "Tiempo medio de respuesta", ai.calls ? `${Math.round(ai.ms / ai.calls / 1000)} s` : "—")}
-      ${row("alert", "Errores", ai.errors + ai.notPlant, ai.notPlant ? `${ai.notPlant} «no es una planta»` : "")}</section>
-    ${!gardens.length ? `<section class="card"><div class="sec">IA por jardín <span class="meta ai-mark">✦ 30 días</span></div>
-      <p class="muted small">Aún no hay datos. Cuenta desde la siguiente consulta de IA hecha con la versión nueva de la app (buscar una planta, Explorar, una foto…): ciérrala y ábrela de nuevo, y haz una. Verás una fila por cada jardín sincronizado y por cada móvil sin sincronizar.</p></section>` : ""}
-    ${gardens.length ? `<section class="card"><div class="sec">IA por jardín <span class="meta ai-mark">✦ 30 días</span></div>
-      ${gardens.map((g) => `<div class="u-row"><span class="u-garden">${esc(g.label)}</span><b>${g.calls}<small>${[g.ficha && `${g.ficha} ficha`, g.calendario && `${g.calendario} calendario`, g.foto && `${g.foto} foto`, g.explorar && `${g.explorar} explorar`, g.hits && `${g.hits} de memoria`, g.limit && `${g.limit} sin cupo`, g.errors && `${g.errors} error`].filter(Boolean).join(" · ") || "sin consultas"}</small></b></div>`).join("")}
-      <div class="u-row"><span class="u-garden">Media por jardín</span><b>${(known.length ? gardenCalls / known.length : 0).toFixed(1)}<small>consultas reales (las de memoria no cuestan)</small></b></div></section>` : ""}
-    <p class="group-foot">Recuentos anónimos: sin nombres de plantas, notas, ubicación ni datos personales. Cada instalación cuenta como un dispositivo. Los datos empiezan el 2 de octubre de 2026.</p>`, "usage");
+      ${row("alert", "Errores y límites", ai.errors + ai.limits, ai.limits ? `${ai.limits} por límite diario` : "")}</section>
+    <section class="card"><div class="sec">Personas</div>
+      ${people.length ? people.map((p) => `<button type="button" class="u-person" data-action="usage-label" data-id="${esc(p.id)}" data-name="${esc(p.label)}"><span class="u-garden">${nameOf(p)}</span><b>${p.activeDays} ${p.activeDays === 1 ? "día" : "días"}<small>desde ${fmtDate(p.first)} · última ${fmtDate(p.last)} · ${p.opens} aperturas · ${p.aiCalls} consultas IA</small></b></button>`).join("") : `<p class="muted small">Todavía no hay uso real desde la fecha limpia.</p>`}
+      <p class="muted small">Toca una persona para ponerle nombre. Cada persona ve su «Código de uso» al final de Ajustes: así sabes quién es quién.</p></section>
+    <section class="card"><div class="sec">Pruebas y dispositivos tuyos</div>
+      <p class="muted small">${buckets ? `Fuera de las cifras: ${esc(buckets)}.` : "Nada fuera de las cifras por ahora."}</p>
+      <button type="button" class="btn block secondary" data-action="usage-mine" data-on="${usage.me.internal ? "0" : "1"}">${usage.me.internal ? "Este dispositivo está marcado como tuyo · quitar la marca" : "Marcar este dispositivo como mío"}</button></section>
+    <section class="card"><div class="sec">Cómo se cuenta</div>
+      <p class="muted small">Una <b>persona</b> es un jardín sincronizado (con clave o Google, aunque tenga varios móviles) o, si no sincroniza, un móvil: si cambia de móvil o reinstala sin sincronizar, cuenta como otra. Las <b>aperturas</b> son veces que se abre la app. Solo se cuenta lo que llega de florvia.app (y de la dirección antigua), no de localhost ni de scripts, y tampoco lo de dispositivos marcados como tuyos.</p></section>
+    <p class="group-foot">Recuentos anónimos: sin nombres de plantas, notas, ubicación ni datos personales. Los nombres que pones a las personas solo los ves tú.</p>`, "usage");
 }
 // Tap or hover a bar to read its day.
 document.addEventListener("focusin", (e) => { if (e.target.classList?.contains("select-on-focus")) e.target.select(); });
@@ -1540,7 +1543,7 @@ const aiOff = () => store.get("mj_ai_off", false) === true;
 const hasAI = () => !aiOff() && (aiOpen === true || Boolean(aiCode()));
 // True when a lookup can be tried: AI not switched off here, and either open, with a code, or not known yet.
 const aiGo = () => !aiOff() && (hasAI() || aiOpen === null);
-const aiHeaders = () => ({ "Content-Type": "application/json", ...(aiCode() ? { "X-Access-Code": aiCode() } : {}), ...(usageId ? { "X-Usage": usageId } : {}) });
+const aiHeaders = () => ({ "Content-Type": "application/json", ...(aiCode() ? { "X-Access-Code": aiCode() } : {}), ...(usageId ? { "X-Usage": usageId } : {}), "X-Device": deviceId });
 // Anonymous id for the Worker's usage counters: a hash of the garden key when synced, else of this
 // device. It's hashed here with its own prefix, so the garden key itself is never sent with AI requests.
 let usageId = null;
@@ -1548,7 +1551,12 @@ async function refreshUsageId() {
   const sha = async (text) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
   const key = store.get("mj_sync", null)?.key;
   usageId = key ? `g:${await sha(`usage:${key}`)}` : `d:${await sha(`usage:${store.get("mj_device", "")}`)}`;
+  // Short code of this person in the usage report (the Worker hashes the device id like this, and the garden id is used as is).
+  const dev = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`mj:${store.get("mj_device", "")}`)))].slice(0, 6).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const code = (key ? usageId.slice(2) : dev).slice(0, 4).toUpperCase();
+  if (code !== usageCode) { usageCode = code; if (typeof render === "function" && state?.data) render(); }
 }
+let usageCode = "";
 fetch(`${API}/health`).then((r) => r.json()).then((h) => { aiOpen = h.code === false; render(); }).catch(() => {});
 
 // Resolves to the care sheet, or throws an Error whose message is a key of AI_ERRORS
@@ -2273,6 +2281,17 @@ const actions = {
   "wiz-notes": () => { wiz.notesOpen = !wiz.notesOpen; renderWizard(); },
   "edit-plant": (d) => plantForm(d.id),
   "plant-refresh": (d) => refreshPlantAi(d.id),
+  "usage-mine": async (d) => {
+    const on = d.on === "1";
+    try { await fetch(`${API}/internal`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ on }) }); } catch {}
+    loadUsage();
+  },
+  "usage-label": async (d) => {
+    const name = prompt("Nombre para esta persona (vacío para quitarlo):", d.name ?? "");
+    if (name === null) return;
+    try { await fetch(`${API}/usage/label`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ id: d.id, label: name }) }); } catch {}
+    loadUsage();
+  },
   "plant-place": (d) => askPlantPlace(d.id),
   "explore-place": () => askExplorePlace(),
   "open-plant": (d) => { if (confirmDiscard()) plantSheet(d.id); },
@@ -2457,7 +2476,7 @@ const actions = {
   "delete-server": async () => {
     if (!confirm("Se borrará de nuestro servidor tu jardín sincronizado, el aviso diario y los enlaces que has compartido. Tus plantas siguen en este móvil. Otros móviles que usen la misma clave dejarán de sincronizar.\n\n¿Borrar?")) return;
     toast("Borrando…");
-    const calls = [];
+    const calls = [fetch(`${API}/usage/delete`, { method: "POST", headers: aiHeaders() })]; // the usage counts tied to this phone and garden
     const key = syncKey();
     if (key) calls.push(fetch(`${API}/garden/${key}`, { method: "DELETE" }));
     try {
@@ -2468,6 +2487,8 @@ const actions = {
     const results = await Promise.allSettled(calls);
     if (results.some((r) => r.status === "rejected" || !r.value.ok)) return toast("No se ha podido borrar todo. Prueba otra vez.");
     for (const k of ["mj_sync", "mj_shares"]) localStorage.removeItem(k);
+    store.set("mj_device", crypto.randomUUID()); // a new anonymous id from the next time the app opens
+    store.set("mj_events", []);
     store.set("mj_push", false);
     clearTimeout(pushTimer);
     refreshUsageId();
@@ -2696,7 +2717,6 @@ const deviceId = store.get("mj_device", null) ?? (() => { const id = crypto.rand
 let eventQueue = store.get("mj_events", []);
 let flushTimer = null;
 function track(name) {
-  if (aiCode()) return; // Noza's own device (has the access code): not counted
   eventQueue.push(name);
   store.set("mj_events", eventQueue);
   clearTimeout(flushTimer);
@@ -2707,7 +2727,7 @@ function flushEvents() {
   const batch = eventQueue.splice(0, 50);
   store.set("mj_events", eventQueue);
   // text/plain keeps it a "simple" request (no CORS preflight); keepalive lets it finish on close.
-  fetch(`${API}/event`, { method: "POST", keepalive: true, headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ device: deviceId, events: batch }) })
+  fetch(`${API}/event`, { method: "POST", keepalive: true, headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ device: deviceId, garden: usageId?.startsWith("g:") ? usageId : "", events: batch }) })
     .catch(() => { eventQueue = batch.concat(eventQueue); store.set("mj_events", eventQueue); });
 }
 document.addEventListener("visibilitychange", () => {
