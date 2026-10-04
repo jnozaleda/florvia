@@ -1,13 +1,13 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004e";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004f";
 import {
   CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport,
-} from "./rules.js?v=20261004e";
-import { buildICS } from "./calendar.js?v=20261004e";
-import { scrubPlant } from "./clean.js?v=20261004e";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004e";
+} from "./rules.js?v=20261004f";
+import { buildICS } from "./calendar.js?v=20261004f";
+import { scrubPlant } from "./clean.js?v=20261004f";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004f";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -426,7 +426,7 @@ function applyRemote(remote) {
   for (const p of state.data.plants) p.irrigationOff = Boolean(p.autoWater && (state.data.pausedZones ?? []).includes(p.zone || ""));
   store.set("mj_data", state.data);
   syncStatus = { at: Date.now(), error: null, devices: Object.keys(remote.devices ?? {}).length };
-  store.set("mj_sync", { key: syncKey(), at: syncStatus.at, devices: syncStatus.devices });
+  store.set("mj_sync", { ...store.get("mj_sync", {}), key: syncKey(), at: syncStatus.at, devices: syncStatus.devices });
   if (needsPush(state.data, remote)) schedulePush();
   if (docHash(state.data) !== before) render();
   if ($("syncSheet")) syncSheet();
@@ -443,11 +443,13 @@ function syncSheet(message = null, enterKey = false) {
       <p>Guarda tu jardín en el servidor de Florvia para tenerlo igual en varios móviles o compartirlo con otra persona.</p>
       <p class="muted small">Tu jardín tendrá una clave secreta: quien la tenga puede verlo y editarlo. No hace falta crear cuenta.</p>
       ${message ? `<p class="ai-status warn">${esc(message)}</p>` : ""}
+      ${GOOGLE_CLIENT_ID && !enterKey ? `<div id="gBtn" class="g-btn"></div><p class="muted small">Con Google recuperas tu jardín en cualquier móvil sin apuntar la clave. Solo guardamos una huella de tu cuenta, no tu nombre ni tu correo.</p>` : ""}
       ${enterKey ? `<input id="syncKeyInput" class="big-input key-input" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" />
         <button class="btn block" data-action="sync-enter-key">Continuar</button>`
         : `<button class="btn block" data-action="sync-on">Activar sincronización</button>
         <button class="btn block secondary" data-action="sync-have-key">Ya tengo una clave</button>`}`);
     if (enterKey) setTimeout(() => $("syncKeyInput")?.focus(), 50);
+    else mountGoogleButton();
     return;
   }
   const n = state.data.plants.length;
@@ -461,15 +463,63 @@ function syncSheet(message = null, enterKey = false) {
     <div class="sync-qr" id="syncQr"></div>
     <div class="two-btns"><button class="btn secondary" data-action="sync-copy">Copiar clave</button><button class="btn" data-action="sync-share">Compartir enlace</button></div>
     <p class="muted small">Para tenerlo en otro móvil o compartirlo: abre el enlace allí, escanea el QR con la cámara o escribe la clave en «Ya tengo una clave».</p>
+    ${GOOGLE_CLIENT_ID ? (store.get("mj_sync", {}).google
+      ? `<p class="ai-status ok">Vinculado a tu cuenta de Google: en otro móvil, entra con Google y tendrás este jardín.</p>`
+      : `<div class="group-title">Cuenta de Google</div><div id="gBtn" class="g-btn"></div><p class="muted small">Vincúlala para recuperar este jardín sin la clave. Solo guardamos una huella de tu cuenta, no tu nombre ni tu correo.</p>`) : ""}
     <button class="btn block danger-text" data-action="sync-off">Dejar de sincronizar en este móvil</button>`);
   drawQr(gardenLink(key));
+  if (GOOGLE_CLIENT_ID && !store.get("mj_sync", {}).google) mountGoogleButton();
 }
+// «Continuar con Google»: Google's own button (script loaded only when this sheet opens). The server turns
+// the Google account into the garden key, so syncing itself still works by key.
+const GOOGLE_CLIENT_ID = "";
+let googleLoad = null;
+const loadGoogle = () => googleLoad ??= new Promise((resolve) => {
+  const sc = document.createElement("script");
+  sc.src = "https://accounts.google.com/gsi/client";
+  sc.async = true;
+  sc.onload = () => resolve(true);
+  sc.onerror = () => { googleLoad = null; resolve(false); };
+  document.head.append(sc);
+});
+async function mountGoogleButton() {
+  const el = $("gBtn");
+  if (!el || !GOOGLE_CLIENT_ID) return;
+  if (!(await loadGoogle()) || !window.google?.accounts?.id) { el.innerHTML = `<p class="muted small">No se ha podido cargar el acceso con Google.</p>`; return; }
+  window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: (r) => googleSignedIn(r.credential), auto_select: false });
+  const target = $("gBtn");
+  if (target) window.google.accounts.id.renderButton(target, { theme: "outline", size: "large", text: "continue_with", shape: "pill", locale: "es", width: Math.min(320, target.clientWidth || 320) });
+}
+function activateSync(key, google = false) {
+  for (const item of [...state.data.plants, ...state.data.log]) item._at ??= Date.now();
+  store.set("mj_sync", { key, ...(google ? { google: true } : {}) });
+}
+let joinViaGoogle = false;
+async function googleSignedIn(credential) {
+  const mine = syncKey();
+  const key = mine ?? newKey();
+  syncSheet("Conectando con Google…");
+  let body;
+  try {
+    const res = await fetch(`${API}/auth/google`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ credential, key }) });
+    if (!res.ok) throw new Error(String(res.status));
+    body = await res.json();
+  } catch { return syncSheet(mine ? "No se ha podido entrar con Google. Prueba otra vez." : "No se ha podido entrar con Google. Prueba otra vez o usa la clave."); }
+  if (body.key === mine) { store.set("mj_sync", { ...store.get("mj_sync", {}), google: true }); return syncSheet("Google vinculado a tu jardín."); }
+  if (body.existing) { joinViaGoogle = true; return joinSheet(body.key); }
+  activateSync(body.key, true);
+  await refreshUsageId();
+  syncSheet("Activando…");
+  await pushNow();
+  syncSheet("Google vinculado. Tu jardín ya se sincroniza.");
+}
+
 // QR code drawn by qrcode-generator (our own copy in vendor/, loaded on first use).
 async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004e";
+      sc.src = "vendor/qrcode.min.js?v=20261004f";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -2109,9 +2159,7 @@ const actions = {
     pushSheet();
   },
   "sync-on": async () => {
-    const key = newKey();
-    for (const item of [...state.data.plants, ...state.data.log]) item._at ??= Date.now();
-    store.set("mj_sync", { key });
+    activateSync(newKey());
     await refreshUsageId();
     syncSheet("Activando…");
     await pushNow();
@@ -2121,6 +2169,7 @@ const actions = {
   "sync-enter-key": () => {
     const key = parseKey($("syncKeyInput")?.value);
     if (!key) return syncSheet("Esa clave no es válida: son 16 letras y números.", true);
+    joinViaGoogle = false;
     joinSheet(key);
   },
   "sync-copy": async () => { await navigator.clipboard?.writeText(formatKey(syncKey())).catch(() => {}); syncSheet("Clave copiada."); },
@@ -2139,7 +2188,8 @@ const actions = {
   "sync-join": async (d) => {
     const remote = joinRemote;
     if (!remote) return;
-    store.set("mj_sync", { key: d.key });
+    store.set("mj_sync", { key: d.key, ...(joinViaGoogle ? { google: true } : {}) });
+    joinViaGoogle = false;
     await refreshUsageId();
     if ($("joinReplace")?.checked) {
       store.set("mj_backup_before_join", state.data);

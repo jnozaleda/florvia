@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://my-garden-api.tempcheck-app.workers.dev https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.inaturalist.org https://es.wikipedia.org https://en.wikipedia.org; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com/gsi/ https://my-garden-api.tempcheck-app.workers.dev https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.inaturalist.org https://es.wikipedia.org https://en.wikipedia.org; manifest-src 'self'; frame-src https://accounts.google.com/gsi/; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Florvia</title>
@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="icon-180.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Florvia" />
-  <link rel="stylesheet" href="styles.css?v=20261004e" />
+  <link rel="stylesheet" href="styles.css?v=20261004f" />
 </head>
 <body>
   <header class="top">
@@ -44,6 +44,6 @@
 
   <dialog id="sheet"></dialog>
 
-  <script type="module" src="app.js?v=20261004e"></script>
+  <script type="module" src="app.js?v=20261004f"></script>
 </body>
 </html>

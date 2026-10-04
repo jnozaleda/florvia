@@ -693,3 +693,5 @@ label.link-btn { cursor: pointer; }
 #toast.show { opacity: 1; }
 .two-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .shared-note { margin: 0; }
+
+.g-btn { display: flex; justify-content: center; min-height: 44px; margin: 4px 0; }

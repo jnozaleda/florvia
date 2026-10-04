@@ -1,4 +1,5 @@
 import { dueTasks, weatherAlerts, weatherChecks, plantLabel, monthTasks, groupGardenTasks } from "../../app/rules.js";
+import { verifyGoogleToken } from "./google.js";
 import { fetchWeather } from "../../app/weather.js";
 // my-garden-api (Florvia's backend) — the app's small backend. For now one job: fill in a plant's care sheet from
 // its name ("✨ Rellenar con IA"). The AI provider is a setting (PROVIDER) so moving from the free
@@ -521,6 +522,9 @@ async function gardenKey(key) {
 async function handleGardenDelete(env, headers, key) {
   if (!KEY_RE.test(key)) return json({ error: "key" }, 400, headers);
   await env.CACHE.delete(await gardenKey(key));
+  const gk = `gk:${(await sha(`gk:${key}`)).slice(0, 40)}`;
+  for (const gid of (await env.CACHE.get(gk, "json")) ?? []) if ((await env.CACHE.get(gid)) === key) await env.CACHE.delete(gid);
+  await env.CACHE.delete(gk);
   let push = 0;
   let cursor;
   do {
@@ -563,6 +567,33 @@ async function handleGarden(request, env, headers, key) {
   const doc = { ...merged, devices, updatedAt: Date.now() };
   await env.CACHE.put(kvKey, JSON.stringify(doc));
   return json(doc, 200, headers);
+}
+
+// ---------- «Continuar con Google» ----------
+// Google only proves who the person is; the garden keeps working with its key. We store, under a hash
+// of the Google account id, the key of that person's garden (gid:), and under a hash of the key the
+// list of accounts linked to it (gk:) so «Borrar mis datos» can remove the link. No name, email or photo.
+const sha = async (text) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+async function googleKeys(env) {
+  const res = await fetch("https://www.googleapis.com/oauth2/v3/certs", { cf: { cacheTtl: 3600, cacheEverything: true } });
+  if (!res.ok) throw new Error("jwks");
+  return res.json();
+}
+async function handleGoogleAuth(request, env, headers) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  if (!KEY_RE.test(body.key ?? "")) return json({ error: "key" }, 400, headers);
+  let sub;
+  try { sub = await verifyGoogleToken(body.credential, env.GOOGLE_CLIENT_ID, () => googleKeys(env)); } catch { return json({ error: "google" }, 502, headers); }
+  if (!sub) return json({ error: "google" }, 401, headers);
+  const gid = `gid:${(await sha(`google:${sub}`)).slice(0, 40)}`;
+  const known = await env.CACHE.get(gid);
+  if (known && KEY_RE.test(known)) return json({ key: known, existing: true }, 200, headers);
+  await env.CACHE.put(gid, body.key);
+  const gk = `gk:${(await sha(`gk:${body.key}`)).slice(0, 40)}`;
+  const list = (await env.CACHE.get(gk, "json")) ?? [];
+  if (!list.includes(gid) && list.length < 20) await env.CACHE.put(gk, JSON.stringify([...list, gid]));
+  return json({ key: body.key, existing: false }, 200, headers);
 }
 
 // ---------- Daily push («Aviso diario») ----------
@@ -882,6 +913,7 @@ export default {
       await env.CACHE.delete(`share:${shared[1]}`);
       return json({ ok: true }, 200, headers);
     }
+    if (pathname === "/auth/google" && request.method === "POST") return handleGoogleAuth(request, env, headers);
     const push = pathname.match(/^\/push\/(subscribe|unsubscribe|test)$/);
     if (push && request.method === "POST") return handlePush(request, env, headers, push[1]);
     const garden = pathname.match(/^\/garden\/([^/]+)$/);
