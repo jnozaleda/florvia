@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004r";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004s";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004r";
-import { buildICS } from "./calendar.js?v=20261004r";
-import { scrubPlant } from "./clean.js?v=20261004r";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004r";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004s";
+import { buildICS } from "./calendar.js?v=20261004s";
+import { scrubPlant } from "./clean.js?v=20261004s";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004s";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -26,7 +26,7 @@ const store = {
 const state = {
   data: store.get("mj_data", { plants: [], log: [] }),
   loc: store.get("mj_loc", null),
-  tab: store.get("mj_tab", "today"),
+  tab: "today", // the app always opens on Hoy
   weather: null,
   weatherError: false,
 };
@@ -601,7 +601,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004r";
+      sc.src = "vendor/qrcode.min.js?v=20261004s";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1179,7 +1179,7 @@ function plantSheet(id) {
   const sunWarn = sunAdvice(p, zoneSun());
   const LOG_ICON = { water: "droplet", feed: "flask", prune: "scissors", treat: "bug", note: "notes", task: "check" };
   openSheet(`
-    <div class="sheet-head"><h2>${esc(plantLabel(p))}</h2><div class="row"><button class="btn small secondary icon-btn" data-action="dup-plant" data-id="${p.id}" aria-label="Duplicar planta" title="Duplicar">${ICONS.copy}</button><button class="btn small secondary" data-action="edit-plant" data-id="${p.id}">Editar</button><button class="btn small secondary" data-action="close">Cerrar</button></div></div>
+    <div class="sheet-head"><h2>${esc(plantLabel(p))}</h2><div class="row"><button class="btn small secondary icon-btn" data-action="plant-share" data-id="${p.id}" aria-label="Compartir esta planta" title="Compartir">${ICONS.share}</button><button class="btn small secondary icon-btn" data-action="dup-plant" data-id="${p.id}" aria-label="Duplicar planta" title="Duplicar">${ICONS.copy}</button><button class="btn small secondary" data-action="edit-plant" data-id="${p.id}">Editar</button><button class="btn small secondary" data-action="close">Cerrar</button></div></div>
     ${p.photo ? `<img class="hero-photo" src="${esc(p.photo)}" alt="" />` : p.refPhoto ? `<figure class="ref-photo"><img class="hero-photo" src="${esc(p.refPhoto.url)}" alt="" /><figcaption>Foto de referencia · ${esc(p.refPhoto.credit)}</figcaption></figure>` : ""}
     ${p.species || p.zone || p.nick ? `<p class="muted">${p.nick ? `${esc(p.name)} · ` : ""}${p.species ? `<em>${esc(p.species)}</em>${aiMark(isAiValue(p, "species"))}` : ""}${p.species && p.zone ? " · " : ""}${esc(p.zone)}</p>` : ""}
     <div class="traits">${traits.map(([icon, label]) => `<span class="trait">${ICONS[icon]}${label}</span>`).join("")}</div>
@@ -2607,6 +2607,24 @@ const actions = {
   "share-garden-send": () => shareOut(gardenShare.link, "Mira mi jardín en Florvia"),
   "view-plant": (d) => viewPlantSheet(+d.i),
   "view-back": () => viewGardenSheet(),
+  "plant-share": async (d) => {
+    const p = plantById(d.id);
+    if (!p) return;
+    toast("Preparando el enlace…");
+    try {
+      // The care sheet of this plant, as a fixed copy. Notes only if they are the AI's; history, nickname and exact location stay on the phone.
+      const care = {
+        commonName: p.name, species: p.species || p.name,
+        seasons: p.seasons, feedTypes: p.feedTypes ?? {}, tips: p.tips ?? {},
+        frostSensitive: Boolean(p.frostSensitive), sunNeed: p.sunNeed || "sun", sunSensitive: Boolean(p.sunSensitive), minTemp: p.minTemp ?? null,
+        climateFit: "ok", climateNote: "", ...(p.info ?? {}),
+        buyTips: [], alternatives: [], notes: isAiValue(p, "notes") ? p.notes : "",
+      };
+      const calendar = (p.yearTasks ?? []).length ? { tasks: p.yearTasks.filter((t) => !t.off), risks: p.risks ?? [] } : null;
+      const { id } = await createShare({ kind: "plant", care, calendar, refPhoto: p.refPhoto ?? null, photo: p.photo ?? null, place: here().name });
+      await shareOut(shareLink("planta", id), `Mira mi ${p.name} en Florvia`);
+    } catch (err) { toast(shareErrorText(err)); }
+  },
   "explore-share": async () => {
     const e = explore;
     if (!e?.care) return;
@@ -2683,7 +2701,7 @@ const actions = {
 
 document.addEventListener("click", (e) => {
   const tab = e.target.closest(".tabbar button");
-  if (tab) { state.tab = tab.dataset.tab; store.set("mj_tab", state.tab); render(); return; }
+  if (tab) { state.tab = tab.dataset.tab; render(); return; }
   if (e.target.closest("#placeBtn")) return placeSheet();
   const el = e.target.closest("[data-action]");
   if (el && actions[el.dataset.action]) { e.preventDefault(); actions[el.dataset.action](el.dataset, el); }
