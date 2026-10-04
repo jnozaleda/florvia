@@ -472,7 +472,7 @@ function syncSheet(message = null, enterKey = false) {
 }
 // «Continuar con Google»: Google's own button (script loaded only when this sheet opens). The server turns
 // the Google account into the garden key, so syncing itself still works by key.
-const GOOGLE_CLIENT_ID = "";
+const GOOGLE_CLIENT_ID = "234825738422-hsj10ho80vvuoosfn6rr7njjkbt751c6.apps.googleusercontent.com";
 let googleLoad = null;
 const loadGoogle = () => googleLoad ??= new Promise((resolve) => {
   const sc = document.createElement("script");

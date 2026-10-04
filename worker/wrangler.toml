@@ -32,7 +32,7 @@ IP_DAILY_LIMIT = "50"
 # Set it back to "on" before moving to a paid provider (mygarden-backlog#5).
 REQUIRE_CODE = "off"
 # Google OAuth client id («Continuar con Google»); public by design. Empty = the endpoint refuses everything.
-GOOGLE_CLIENT_ID = ""
+GOOGLE_CLIENT_ID = "234825738422-hsj10ho80vvuoosfn6rr7njjkbt751c6.apps.googleusercontent.com"
 # THINKING = "on" turns on the model's reasoning; in tests it was slower and no better.
 
 # Secret, set once with `npx wrangler secret put ACCESS_CODE` (local dev: .dev.vars).
