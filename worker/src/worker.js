@@ -458,7 +458,8 @@ async function handleCalendar(request, env, headers, ctx) {
   if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) return json({ error: "input" }, 400, headers);
   const place = String(body.place ?? "").slice(0, 60);
 
-  const cacheKey = `cal:v4:${normName(species || name)}:${Math.round(lat)}:${Math.round(lon)}`;
+  const subject = species || name; // the cache is keyed by it, so the prompt must use nothing else (a free-text name could poison the shared entry)
+  const cacheKey = `cal:v4:${normName(subject)}:${Math.round(lat)}:${Math.round(lon)}`;
   const cached = await env.CACHE.get(cacheKey, "json");
   if (cached) { recordAi(env, ctx, "cached", 0, request, "calendar"); return json({ ...cached, cached: true }, 200, headers); }
 
@@ -468,7 +469,7 @@ async function handleCalendar(request, env, headers, ctx) {
   let cal;
   const t0 = Date.now();
   try {
-    const { from, out } = await askAI(env, calendarMessages({ name, species, place, lat }), CALENDAR_SCHEMA, "calendario");
+    const { from, out } = await askAI(env, calendarMessages({ name: subject, species: "", place, lat }), CALENDAR_SCHEMA, "calendario");
     cal = { ...sanitizeCalendar(out), provider: from };
   } catch (err) {
     console.error("calendar failed", env.PROVIDER, err?.message);
@@ -542,6 +543,17 @@ async function handleGarden(request, env, headers, key) {
   let incoming;
   try { incoming = JSON.parse(text); } catch { return json({ error: "input" }, 400, headers); }
   if (!Array.isArray(incoming.plants) || !Array.isArray(incoming.log)) return json({ error: "input" }, 400, headers);
+  // Shape and size checks: items must be plain objects with a short string id; only known top-level fields are kept.
+  const item = (x) => x && typeof x === "object" && !Array.isArray(x) && typeof x.id === "string" && x.id.length > 0 && x.id.length <= 40;
+  if (incoming.plants.length > 500 || incoming.log.length > 20000 || !incoming.plants.every(item) || !incoming.log.every(item)) return json({ error: "input" }, 400, headers);
+  incoming = {
+    plants: incoming.plants,
+    log: incoming.log,
+    deleted: Object.fromEntries(Object.entries(incoming.deleted && typeof incoming.deleted === "object" ? incoming.deleted : {}).slice(0, 5000).filter(([id, t]) => id.length <= 40 && Number.isFinite(t))),
+    pausedZones: (Array.isArray(incoming.pausedZones) ? incoming.pausedZones : []).slice(0, 50).map((z) => vStr(z, 60)),
+    zoneSun: vZoneSun(incoming.zoneSun),
+    settingsAt: Number.isFinite(incoming.settingsAt) ? incoming.settingsAt : 0,
+  };
   const merged = mergeGardens(stored, incoming);
   // Devices seen in the last 60 days (hashed ids), for «N dispositivos».
   const device = (request.headers.get("X-Device") ?? "").slice(0, 64);
@@ -750,6 +762,54 @@ async function handleIdentify(request, env, headers, ctx) {
   return json({ error: "ai" }, 502, headers);
 }
 
+// Strict validators for anything that comes from a client and is shown to someone else (shared copies).
+// They build new objects from allowed types and values only: strings are clipped, numbers are numbers,
+// enums are checked, photo URLs must be data images or come from the photo sources we use.
+const vStr = (v, max = 120) => (typeof v === "string" ? v.slice(0, max) : "");
+const vInt = (v, min, max, d) => (v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? d : Math.min(max, Math.max(min, Math.round(Number(v)))));
+const vEnum = (v, list, d) => (list.includes(v) ? v : d);
+const vMonths = (v) => [...new Set((Array.isArray(v) ? v : []).map(Number).filter((m) => Number.isInteger(m) && m >= 1 && m <= 12))].sort((a, b) => a - b);
+const vPhoto = (v) => (typeof v === "string" && v.length <= 600000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v) ? v : undefined);
+const PHOTO_HOSTS = ["inaturalist-open-data.s3.amazonaws.com", "static.inaturalist.org", "upload.wikimedia.org"];
+function vRef(v) {
+  if (!v || typeof v.url !== "string" || v.url.length > 500) return undefined;
+  let u;
+  try { u = new URL(v.url); } catch { return undefined; }
+  if (u.protocol !== "https:" || !PHOTO_HOSTS.includes(u.hostname)) return undefined;
+  return { url: u.href, credit: vStr(v.credit, 120) };
+}
+const vSeasons = (v) => Object.fromEntries(SEASONS.map((k) => [k, { water: vInt(v?.[k]?.water, 1, 60, 3), feed: vInt(v?.[k]?.feed, 0, 365, 0) }]));
+const vBySeason = (v, max) => Object.fromEntries(SEASONS.map((k) => [k, vStr(v?.[k], max)]));
+const SUN = ["sun", "partial", "shade"];
+function vInfo(i) {
+  if (!i || typeof i !== "object") return undefined;
+  return {
+    plantIn: vEnum(i.plantIn, ["maceta", "suelo", "ambos"], "ambos"), potAdvice: vStr(i.potAdvice, 160), windSensitive: i.windSensitive === true,
+    plantMonths: vMonths(i.plantMonths), plantWhen: vStr(i.plantWhen, 140), matureSize: vEnum(i.matureSize, ["pequena", "mediana", "grande"], "mediana"), matureNote: vStr(i.matureNote, 120),
+    bloomMonths: vMonths(i.bloomMonths), bloomWhat: vStr(i.bloomWhat, 80), difficulty: vEnum(i.difficulty, ["facil", "media", "exigente"], "media"),
+    toxic: vEnum(i.toxic, ["no", "mascotas", "personas", "ambos"], "no"), toxicNote: vStr(i.toxicNote, 160), invasive: i.invasive === true,
+  };
+}
+const vPlant = (p) => ({
+  name: vStr(p?.name, 80), nick: vStr(p?.nick, 80), species: vStr(p?.species, 80), zone: vStr(p?.zone, 60),
+  photo: vPhoto(p?.photo), refPhoto: vRef(p?.refPhoto), seasons: vSeasons(p?.seasons), tips: vBySeason(p?.tips, 200), feedTypes: vBySeason(p?.feedTypes, 100),
+  frostSensitive: p?.frostSensitive === true, minTemp: vInt(p?.minTemp, -40, 25, null), sunNeed: vEnum(p?.sunNeed, SUN, undefined), sunSensitive: p?.sunSensitive === true,
+  sun: vEnum(p?.sun, ["", ...SUN], ""), rainReaches: p?.rainReaches === true, inPot: p?.inPot === true, autoWater: p?.autoWater === true,
+  size: vEnum(p?.size, ["", "small", "medium", "large"], ""), info: vInfo(p?.info),
+});
+const vCare = (c) => ({
+  commonName: vStr(c?.commonName, 80), species: vStr(c?.species, 80), seasons: vSeasons(c?.seasons), feedTypes: vBySeason(c?.feedTypes, 100), tips: vBySeason(c?.tips, 200),
+  frostSensitive: c?.frostSensitive === true, sunNeed: vEnum(c?.sunNeed, SUN, "sun"), sunSensitive: c?.sunSensitive === true, minTemp: vInt(c?.minTemp, -40, 25, null),
+  climateFit: vEnum(c?.climateFit, ["ok", "warn", "no"], "warn"), climateNote: vStr(c?.climateNote, 200), ...vInfo(c),
+  buyTips: (Array.isArray(c?.buyTips) ? c.buyTips : []).slice(0, 4).map((t) => vStr(t, 120)).filter(Boolean), notes: vStr(c?.notes, 800),
+  alternatives: (Array.isArray(c?.alternatives) ? c.alternatives : []).slice(0, 3).map((a) => ({ commonName: vStr(a?.commonName, 60), species: vStr(a?.species, 80) })).filter((a) => a.commonName && a.species),
+});
+const vCalendar = (c) => (c && Array.isArray(c.tasks) ? {
+  tasks: c.tasks.slice(0, 8).map((t) => ({ type: vEnum(t?.type, TASK_TYPES, "other"), title: vStr(t?.title, 80), how: vStr(t?.how, 160), months: vMonths(t?.months), matureOnly: t?.matureOnly === true })).filter((t) => t.title && t.months.length),
+  risks: (Array.isArray(c.risks) ? c.risks : []).filter((r) => RISKS.includes(r)),
+} : null);
+const vZoneSun = (z) => Object.fromEntries(Object.entries(z && typeof z === "object" ? z : {}).slice(0, 50).filter(([, v]) => SUN.includes(v)).map(([k, v]) => [vStr(k, 60), v]));
+
 // ---------- Shared copies (read-only) ----------
 // «Compartir»: the app uploads a fixed copy of a garden or of an explored plant and gets a short id;
 // anyone with the link can read it (no AI, nothing editable). Copies expire after 90 days. Only the
@@ -757,9 +817,6 @@ async function handleIdentify(request, env, headers, ctx) {
 const SHARE_TTL = 90 * 86400;
 const SHARE_MAX = 10 * 1024 * 1024;
 const SHARE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
-const SHARE_PLANT_KEYS = ["name", "nick", "species", "zone", "photo", "refPhoto", "seasons", "tips", "feedTypes", "frostSensitive", "minTemp", "sunNeed", "sunSensitive", "sun", "rainReaches", "inPot", "autoWater", "size", "info"];
-const SHARE_CARE_KEYS = ["commonName", "species", "seasons", "feedTypes", "tips", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "climateFit", "climateNote", "plantIn", "potAdvice", "windSensitive", "plantMonths", "plantWhen", "matureSize", "matureNote", "bloomMonths", "bloomWhat", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives"];
-const pickKeys = (o, keys) => Object.fromEntries(keys.filter((k) => o?.[k] !== undefined).map((k) => [k, o[k]]));
 async function handleShareCreate(request, env, headers) {
   const text = await request.text();
   if (text.length > SHARE_MAX) return json({ error: "too_big" }, 413, headers);
@@ -774,16 +831,17 @@ async function handleShareCreate(request, env, headers) {
   let data;
   if (body.kind === "plant" && body.care && typeof body.care === "object") {
     data = {
-      care: pickKeys(body.care, SHARE_CARE_KEYS),
-      calendar: body.calendar && Array.isArray(body.calendar.tasks) ? { tasks: body.calendar.tasks.slice(0, 8), risks: body.calendar.risks ?? [] } : null,
-      refPhoto: body.refPhoto && typeof body.refPhoto.url === "string" ? { url: String(body.refPhoto.url).slice(0, 500), credit: String(body.refPhoto.credit ?? "").slice(0, 120) } : null,
-      photo: typeof body.photo === "string" && body.photo.startsWith("data:image/") ? body.photo : null,
-      place: String(body.place ?? "").slice(0, 60),
+      care: vCare(body.care),
+      calendar: vCalendar(body.calendar),
+      refPhoto: vRef(body.refPhoto) ?? null,
+      photo: vPhoto(body.photo) ?? null,
+      place: vStr(body.place, 60),
     };
+    if (!data.care.species) return json({ error: "input" }, 400, headers);
   } else if (body.kind === "garden" && Array.isArray(body.plants) && body.plants.length) {
     data = {
-      plants: body.plants.slice(0, 200).map((p) => pickKeys(p, SHARE_PLANT_KEYS)),
-      zoneSun: body.zoneSun && typeof body.zoneSun === "object" ? body.zoneSun : {},
+      plants: body.plants.slice(0, 200).map(vPlant),
+      zoneSun: vZoneSun(body.zoneSun),
     };
   } else return json({ error: "input" }, 400, headers);
   const bytes = crypto.getRandomValues(new Uint8Array(10));
