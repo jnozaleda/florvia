@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004m";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004n";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004m";
-import { buildICS } from "./calendar.js?v=20261004m";
-import { scrubPlant } from "./clean.js?v=20261004m";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004m";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004n";
+import { buildICS } from "./calendar.js?v=20261004n";
+import { scrubPlant } from "./clean.js?v=20261004n";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004n";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -421,7 +421,7 @@ function zoneDetailsCard() {
       const i = zoneInfo()[z] ?? {};
       const hasAuto = state.data.plants.some((p) => p.autoWater && (p.zone || "") === z);
       const bits = [SUN_LABEL[zoneSun()[z]] ?? "", hasAuto && pausedZones().includes(z) ? "riego pausado" : "", i.every ? `riego cada ${i.every} ${i.every === 1 ? "día" : "días"}` : "", i.desc ? "descrita" : ""].filter(Boolean).join(" · ");
-      return `<button type="button" class="l-row" data-action="zone-open" data-zone="${esc(z)}"><span class="l-ico" style="background:#1f8f86">${ICONS.pin}</span><span class="l-label">${esc(z || "Sin zona")}</span><span class="l-value">${esc(bits)}<span class="chev">${ICONS.chevron}</span></span></button>`;
+      return `<button type="button" class="l-row" data-action="zone-open" data-zone="${esc(z)}"><span class="l-ico" style="background:#1f8f86">${ICONS.pin}</span><span class="l-label">${esc(z || "Sin zona")}${bits ? `<span class="muted small" style="display:block;font-weight:400">${esc(bits)}</span>` : ""}</span><span class="l-value"><span class="chev">${ICONS.chevron}</span></span></button>`;
     }).join("")}</section>
     <p class="group-foot">Para cada zona: cuánto sol recibe, cada cuánto riega el programador y cómo es el sitio, con tus palabras. Con eso avisamos si una planta no está donde le conviene o recibe más o menos riego del que pide, y valoramos plantas nuevas para ese sitio.</p>`;
 }
@@ -600,7 +600,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004m";
+      sc.src = "vendor/qrcode.min.js?v=20261004n";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
