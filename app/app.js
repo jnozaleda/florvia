@@ -1,13 +1,13 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004f";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004g";
 import {
   CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport,
-} from "./rules.js?v=20261004f";
-import { buildICS } from "./calendar.js?v=20261004f";
-import { scrubPlant } from "./clean.js?v=20261004f";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004f";
+} from "./rules.js?v=20261004g";
+import { buildICS } from "./calendar.js?v=20261004g";
+import { scrubPlant } from "./clean.js?v=20261004g";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004g";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -123,12 +123,44 @@ function emptyGarden() {
   return `<section class="card empty"><div class="big">${ICONS.sprout}</div><p class="muted">Aún no tienes plantas. Añade la primera y te diremos cuándo regarla, abonarla y cuándo el tiempo cambia el plan.</p><button class="btn" data-action="new-plant">Añadir planta</button></section>`;
 }
 
+// «Primeros pasos»: a checklist for people who open Florvia with an empty garden. It's shown from the first
+// empty visit until everything is done or the person hides it; existing gardens never see it.
+function welcomeCard() {
+  const flag = store.get("mj_welcome", null);
+  if (flag === "off" || (flag === null && state.data.plants.length)) return "";
+  if (flag === null) store.set("mj_welcome", "on");
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const steps = [
+    ["pin", "#3b82f6", "Elige dónde está tu jardín", "Para avisarte con el tiempo de tu zona", Boolean(store.get("mj_loc", null)), "open-place"],
+    ["share", "#6e6e73", "Instala Florvia en tu móvil", "Se abre como una app y permite los avisos", Boolean(standalone), "welcome-install"],
+    ["bell", "#c93b30", "Activa el aviso diario", "A las 8:00, solo si hay algo que hacer", Boolean(store.get("mj_push", false)), "open-push"],
+    ["sprout", "#2f8f4e", "Añade tu primera planta", "La IA propone sus cuidados por estación", state.data.plants.length > 0, "new-plant"],
+  ];
+  const done = steps.filter((x) => x[4]).length;
+  if (done === steps.length) { store.set("mj_welcome", "off"); return ""; }
+  const row = ([icon, color, title, sub, ok, action]) =>
+    `<button type="button" class="l-row" data-action="${action}"><span class="l-ico" style="background:${ok ? "#2f8f4e" : color}">${ICONS[ok ? "check" : icon]}</span><span class="l-label">${title}<span class="muted small" style="display:block;font-weight:400">${sub}</span></span><span class="l-value">${ok ? `<span class="ok">${ICONS.circleCheck}</span>` : `<span class="chev">${ICONS.chevron}</span>`}</span></button>`;
+  return `<section class="card list-card settings welcome"><div class="sec">Te damos la bienvenida a Florvia <span class="meta">${done} de ${steps.length}</span></div>
+    <p class="muted small" style="padding:0 16px 8px">Cuatro pasos para empezar. Puedes hacerlos en el orden que quieras.</p>
+    ${steps.map(row).join("")}
+    <div class="two-btns" style="padding:8px 16px 12px">${state.data.plants.length ? "" : `<button class="btn secondary" data-action="open-sync">Ya tengo un jardín</button>`}<button class="btn secondary" data-action="welcome-hide">Ocultar</button></div></section>`;
+}
+function installSheet() {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  openSheet(`<div class="sheet-head"><h2>Instalar Florvia</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>
+    ${standalone ? `<p class="ai-status ok">Ya estás usando Florvia instalada.</p>`
+      : ios ? `<ol class="steps"><li>Abre <b>florvia.app/app</b> en <b>Safari</b>.</li><li>Pulsa el botón <b>Compartir</b> (el cuadrado con la flecha).</li><li>Elige <b>Añadir a pantalla de inicio</b>.</li><li>Ábrela desde el icono nuevo: así podrás activar el aviso diario.</li></ol>`
+      : `<ol class="steps"><li>Abre el menú del navegador (⋮ o «Compartir»).</li><li>Elige <b>Instalar app</b> o <b>Añadir a pantalla de inicio</b>.</li><li>Ábrela desde el icono.</li></ol>`}
+    <p class="muted small">Si ya tienes plantas en el navegador, sincroniza antes (Ajustes → Sincronizar) para recuperarlas en la app instalada.</p>`);
+}
+
 function todayView() {
   const today = localToday();
   const { plants, log } = state.data;
   const alerts = state.weather ? weatherAlerts(plants, state.weather, today).map((a) => ({ ...a, kind: ALERT_ICON[a.icon] })) : [];
   let html = upgradeBanner() + forecastCard(alerts);
-  if (!plants.length) return html + emptyGarden();
+  if (!plants.length) return html + (welcomeCard() || emptyGarden());
 
   // Para hoy: overdue and due today (tomorrow onwards lives in «Próximos días»).
   const tasks = dueTasks(plants, log, state.weather, today, here().lat, 0);
@@ -519,7 +551,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004f";
+      sc.src = "vendor/qrcode.min.js?v=20261004g";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -2055,6 +2087,8 @@ const actions = {
   close: leaveSheet,
   "retry-weather": loadWeather,
   "open-place": placeSheet,
+  "welcome-install": installSheet,
+  "welcome-hide": () => { store.set("mj_welcome", "off"); render(); },
   "open-ai": () => aiSheet(),
   "ai-toggle": () => { store.set("mj_ai_off", !aiOff()); render(); },
   "open-upgrades": () => upgradesSheet(),

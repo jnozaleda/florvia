@@ -695,3 +695,6 @@ label.link-btn { cursor: pointer; }
 .shared-note { margin: 0; }
 
 .g-btn { display: flex; justify-content: center; min-height: 44px; margin: 4px 0; }
+.steps { margin: 4px 0 12px; padding-left: 22px; line-height: 1.5; }
+.steps li { margin: 6px 0; }
+.welcome .sec { padding: 14px 16px 4px; }
