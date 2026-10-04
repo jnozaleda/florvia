@@ -4,6 +4,12 @@
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
+// Pages always revalidate with the server, so an installed copy never keeps an old index.html.
+self.addEventListener("fetch", (event) => {
+  if (event.request.mode !== "navigate") return;
+  event.respondWith(fetch(event.request, { cache: "no-cache" }).catch(() => fetch(event.request)));
+});
+
 self.addEventListener("push", (event) => {
   let data = {};
   try { data = event.data?.json() ?? {}; } catch { data = { body: event.data?.text() }; }
