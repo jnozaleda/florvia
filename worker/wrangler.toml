@@ -2,6 +2,10 @@ name = "my-garden-api"
 main = "src/worker.js"
 compatibility_date = "2026-09-01"
 
+# api.florvia.app: own address for the app (the workers.dev one keeps answering for installed copies).
+routes = [{ pattern = "api.florvia.app", custom_domain = true }]
+workers_dev = true  # keep the old address alive for apps already installed
+
 [observability]
 enabled = true
 

@@ -43,7 +43,7 @@ Cada planta guarda `careVersion`. Cuando una mejora necesita datos nuevos (como 
 
 ## Backend: `worker/` (my-garden-api)
 
-Cloudflare Worker en https://my-garden-api.tempcheck-app.workers.dev
+Cloudflare Worker en https://api.florvia.app (la dirección antigua `my-garden-api.tempcheck-app.workers.dev` sigue activa para las apps ya instaladas)
 
 | Ruta | Qué hace |
 |---|---|
@@ -75,6 +75,6 @@ El backlog vive en GitHub Issues, en el repositorio privado [jnozaleda/mygarden-
 
 ## Notas de la mudanza (2026-10)
 
-- El Worker se llama aún `my-garden-api` (su dirección está dentro de la app y de los enlaces; no se cambia). Este repositorio es ahora su fuente de verdad: `cd worker && npx wrangler deploy`.
+- El Worker se llama aún `my-garden-api` (nombre interno; la app usa api.florvia.app y `workers_dev = true` mantiene la dirección antigua viva). Este repositorio es ahora su fuente de verdad: `cd worker && npx wrangler deploy`.
 - Las claves de almacenamiento del navegador siguen empezando por `mj_` (cambiarlas borraría datos de la gente).
 - Contacto: hello@florvia.app (Cloudflare Email Routing, reenvía al correo del autor).

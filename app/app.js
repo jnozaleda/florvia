@@ -1,17 +1,17 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004g";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004h";
 import {
   CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport,
-} from "./rules.js?v=20261004g";
-import { buildICS } from "./calendar.js?v=20261004g";
-import { scrubPlant } from "./clean.js?v=20261004g";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004g";
+} from "./rules.js?v=20261004h";
+import { buildICS } from "./calendar.js?v=20261004h";
+import { scrubPlant } from "./clean.js?v=20261004h";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004h";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
-const API = "https://my-garden-api.tempcheck-app.workers.dev";
+const API = "https://api.florvia.app";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -551,7 +551,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004g";
+      sc.src = "vendor/qrcode.min.js?v=20261004h";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
