@@ -1,13 +1,13 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004d";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004e";
 import {
   CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport,
-} from "./rules.js?v=20261004d";
-import { buildICS } from "./calendar.js?v=20261004d";
-import { scrubPlant } from "./clean.js?v=20261004d";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004d";
+} from "./rules.js?v=20261004e";
+import { buildICS } from "./calendar.js?v=20261004e";
+import { scrubPlant } from "./clean.js?v=20261004e";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004e";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -469,7 +469,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004d";
+      sc.src = "vendor/qrcode.min.js?v=20261004e";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -624,7 +624,7 @@ async function openShared(id) {
 
 function moreView() {
   const loc = state.loc ?? DEFAULT_LOC;
-  const aiOn = aiOpen === true || (aiCode() && codeStatus?.kind !== "warn");
+  const aiOn = !aiOff() && (aiOpen === true || (aiCode() && codeStatus?.kind !== "warn"));
   const pending = pendingUpgrades().length;
   const isStandalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   const row = (action, icon, color, label, value = "", chevron = true, disabled = false) =>
@@ -636,7 +636,7 @@ function moreView() {
       ${row("open-sync", "sync", "#0a84ff", "Sincronizar", syncKey() ? `<span class="ok">${ICONS.circleCheck}Activada</span>` : "Desactivada")}
       ${row("open-share", "share", "#0a84ff", "Compartir mi jardín", "Solo ver")}
       ${syncKey() || store.get("mj_push", false) || store.get("mj_shares", []).length ? row("delete-server", "x", "#c93b30", "Borrar mis datos del servidor", "", true) : ""}
-      ${row("open-ai", "sparkle", "#7a56d6", "Asistente IA", aiOn ? `<span class="ok">${ICONS.circleCheck}Activado</span>` : "Sin activar")}
+      ${row("open-ai", "sparkle", "#7a56d6", "Asistente IA", aiOff() ? "Apagada" : aiOn ? `<span class="ok">${ICONS.circleCheck}Activado</span>` : "Sin activar")}
       ${pending || upgrade ? row("open-upgrades", "refresh", "#c7771a", "Fichas por actualizar", pending ? `<span class="dot"></span>${pending}` : "Al día") : ""}
     </section>
     ${zonesCard()}
@@ -664,6 +664,7 @@ function aiSheet() {
   openSheet(`
     <div class="sheet-head"><h2>Asistente IA</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>
     <p class="muted">Al añadir una planta, la IA propone sola sus cuidados por estación para tu zona; también puedes pedírselo desde Editar.${aiOpen ? " Ahora mismo está abierta: no hace falta código." : " Necesita tu código de acceso."}</p>
+    <button type="button" class="l-row switch-row" role="switch" aria-checked="${!aiOff()}" data-action="ai-toggle"><span class="l-label">Usar la IA en este móvil</span><span class="switch" aria-hidden="true"></span></button>
     ${aiOpen ? `<p class="muted">Código de acceso: solo si administras la app (activa las métricas «Solo para ti»).</p>` : ""}
     <form id="aiCodeForm" class="row">
       <input type="text" name="code" class="code-input" placeholder="Código de acceso" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(store.get("mj_ai_code", ""))}" />
@@ -1255,6 +1256,7 @@ function download(name, text, type) {
 // Asks the backend for this plant's care sheet (for the current place and month) and fills the
 // form. Nothing is saved until the user reviews it and taps Guardar.
 const AI_ERRORS = {
+  off: "La IA está apagada. Puedes volver a encenderla en Ajustes → Asistente IA.",
   code: "Código de acceso incorrecto o sin poner: revísalo en Ajustes.",
   limit: "Se ha alcanzado el límite de hoy. Rellénalo a mano o prueba mañana.",
   not_plant: "No parece el nombre de una planta. Si es un apodo, prueba con su nombre común (por ejemplo «poto»), o rellena los cuidados a mano.",
@@ -1271,7 +1273,10 @@ const altQuery = (a) => `${a.commonName} (${a.species})`;
 // which /health reports; otherwise a saved code is needed. Unknown until /health answers.
 let aiOpen = null;
 const aiCode = () => store.get("mj_ai_code", "");
-const hasAI = () => aiOpen === true || Boolean(aiCode());
+const aiOff = () => store.get("mj_ai_off", false) === true;
+const hasAI = () => !aiOff() && (aiOpen === true || Boolean(aiCode()));
+// True when a lookup can be tried: AI not switched off here, and either open, with a code, or not known yet.
+const aiGo = () => !aiOff() && (hasAI() || aiOpen === null);
 const aiHeaders = () => ({ "Content-Type": "application/json", ...(aiCode() ? { "X-Access-Code": aiCode() } : {}), ...(usageId ? { "X-Usage": usageId } : {}) });
 // Anonymous id for the Worker's usage counters: a hash of the garden key when synced, else of this
 // device. It's hashed here with its own prefix, so the garden key itself is never sent with AI requests.
@@ -1286,6 +1291,7 @@ fetch(`${API}/health`).then((r) => r.json()).then((h) => { aiOpen = h.code === f
 // Resolves to the care sheet, or throws an Error whose message is a key of AI_ERRORS
 // ("code", "limit") or "timeout" / "network" / "ai".
 async function requestCare(name, src = "") {
+  if (aiOff()) throw new Error("off");
   if (aiOpen === false && !aiCode()) throw new Error("code");
   const loc = state.loc ?? DEFAULT_LOC;
   let res;
@@ -1306,6 +1312,7 @@ async function requestCare(name, src = "") {
 
 // The year calendar comes from its own endpoint and is slower: asked in the background.
 async function requestCalendar(name, species) {
+  if (aiOff()) throw new Error("off");
   if (aiOpen === false && !aiCode()) throw new Error("code");
   const loc = state.loc ?? DEFAULT_LOC;
   let res;
@@ -1353,6 +1360,7 @@ async function aiFill(query) {
   const show = (text, kind = "", extra = "") => { status.hidden = false; status.className = `ai-status ${kind}`; status.innerHTML = esc(text) + extra; };
   const name = form.elements.name.value.trim();
   if (!name) { form.elements.name.focus(); return show("Escribe primero el nombre de la planta.", "warn"); }
+  if (aiOff()) return show(AI_ERRORS.off, "warn");
   if (!hasAI()) return show(AI_ERRORS.code, "warn");
 
   const btn = form.querySelector('[data-action="ai-fill"]');
@@ -1633,6 +1641,7 @@ const recentExplore = () => store.get("mj_explore_recent", []);
 function exploreSheet() {
   const e = explore;
   const head = `<div class="sheet-head"><h2>Explorar</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>`;
+  if (!e?.shared && aiOff()) return openSheet(`${head}<p class="ai-status warn">${esc(AI_ERRORS.off)}</p>`);
   if (!e?.shared && !hasAI() && aiOpen !== null) return openSheet(`${head}<p class="ai-status warn">${esc(AI_ERRORS.code)}</p>`);
   if (!e || e.state === "idle") {
     const recent = recentExplore();
@@ -1768,7 +1777,7 @@ function renderWizard() {
   if (!wiz) return;
   const head = (right) => `<div class="sheet-head"><h2>Nueva planta</h2><div class="row"><span class="muted">${wiz.step} de 2</span>${right}</div></div>`;
   if (wiz.step === 1) {
-    const hasCode = hasAI() || aiOpen === null;
+    const hasCode = aiGo();
     openSheet(`
       ${head(`<button class="btn small secondary" data-action="close">Cancelar</button>`)}
       <form id="wizName" class="sheet-in" style="padding:0">
@@ -1776,7 +1785,7 @@ function renderWizard() {
         <input name="name" class="big-input" required placeholder="Olivo, limonero, geranio…" autocomplete="off" value="${esc(wiz.name)}" />
         <div class="photo-pick"><span id="photoPreview">${draftPhoto ? `<img src="${draftPhoto}" alt="" />` : `<span class="thumb placeholder">${ICONS.camera}</span>`}</span>
           <label class="btn small secondary">Añadir foto<input type="file" id="photoInput" accept="image/*" hidden /></label></div>
-        <p class="muted">${hasCode ? `<span class="ai-mark">✦</span> Con el nombre, la IA propondrá sus cuidados por estación para tu zona.` : "Activa el asistente IA en Ajustes para que proponga los cuidados."}</p>
+        <p class="muted">${hasCode ? `<span class="ai-mark">✦</span> Con el nombre, la IA propondrá sus cuidados por estación para tu zona.` : (aiOff() ? "La IA está apagada: rellena los cuidados a mano." : "Activa el asistente IA en Ajustes para que proponga los cuidados.")}</p>
         ${wiz.identify?.state === "loading"
           ? `<button class="btn block" type="submit" disabled aria-busy="true"><span class="spinner" aria-hidden="true"></span> Mirando la foto…</button>`
           : `<button class="btn block" type="submit">Siguiente</button>`}
@@ -1959,7 +1968,7 @@ const actions = {
     if (!c) return;
     draftPhoto = id.photo;
     Object.assign(wiz, { name: c.commonName, query: altQuery(c), identify: null, care: null, step: 2 });
-    if (hasAI() || aiOpen === null) wizLookup(); else renderWizard();
+    if (aiGo()) wizLookup(); else renderWizard();
   },
   "wiz-species-ok": () => { wiz.nick = $("wizNick")?.value ?? wiz.nick; wiz.checked = true; wiz.showAlts = false; renderWizard(); },
   "wiz-species-no": () => {
@@ -1997,6 +2006,7 @@ const actions = {
   "retry-weather": loadWeather,
   "open-place": placeSheet,
   "open-ai": () => aiSheet(),
+  "ai-toggle": () => { store.set("mj_ai_off", !aiOff()); render(); },
   "open-upgrades": () => upgradesSheet(),
   "open-usage": () => { usage = null; usageSheet(); loadUsage(); },
   noop: () => {},
@@ -2217,7 +2227,7 @@ const actions = {
       return renderWizard();
     }
     Object.assign(wiz, { name: e.name, query: e.query, step: 2 });
-    if (hasAI() || aiOpen === null) wizLookup(); else renderWizard();
+    if (aiGo()) wizLookup(); else renderWizard();
   },
   "plants-view": (d) => { store.set("mj_plants_view", d.view); render(); },
   "toggle-week-tasks": () => { weekAll = !weekAll; render(); },
@@ -2348,7 +2358,7 @@ document.addEventListener("submit", (e) => {
     wiz.step = 2;
     if (changed || wiz.ai === "error" || wiz.ai === "notplant") {
       wiz.care = null;
-      if (hasAI() || aiOpen === null) return wizLookup();
+      if (aiGo()) return wizLookup();
       wiz.ai = "idle";
     }
     renderWizard();
