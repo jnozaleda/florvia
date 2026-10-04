@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004s";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004t";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004s";
-import { buildICS } from "./calendar.js?v=20261004s";
-import { scrubPlant } from "./clean.js?v=20261004s";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004s";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004t";
+import { buildICS } from "./calendar.js?v=20261004t";
+import { scrubPlant } from "./clean.js?v=20261004t";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004t";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -132,6 +132,7 @@ function welcomeCard() {
   const steps = [
     ["pin", "#3b82f6", "Elige dónde está tu jardín", "Para avisarte con el tiempo de tu zona", Boolean(store.get("mj_loc", null)), "open-place"],
     ["share", "#6e6e73", "Instala Florvia en tu móvil", "Se abre como una app y permite los avisos", Boolean(standalone), "welcome-install"],
+    ["refresh", "#1f8f86", "Guarda tu jardín", "Copia de seguridad y en varios móviles, con tu cuenta de Google o una clave", Boolean(syncKey()), "open-sync"],
     ["bell", "#c93b30", "Activa el aviso diario", "A las 8:00, solo si hay algo que hacer", Boolean(store.get("mj_push", false)), "open-push"],
     ["sprout", "#2f8f4e", "Añade tu primera planta", "La IA propone sus cuidados por estación", state.data.plants.length > 0, "new-plant"],
   ];
@@ -140,7 +141,7 @@ function welcomeCard() {
   const row = ([icon, color, title, sub, ok, action]) =>
     `<button type="button" class="l-row" data-action="${action}"><span class="l-ico" style="background:${ok ? "#2f8f4e" : color}">${ICONS[ok ? "check" : icon]}</span><span class="l-label">${title}<span class="muted small" style="display:block;font-weight:400">${sub}</span></span><span class="l-value">${ok ? `<span class="ok">${ICONS.circleCheck}</span>` : `<span class="chev">${ICONS.chevron}</span>`}</span></button>`;
   return `<section class="card list-card settings welcome"><div class="sec">Te damos la bienvenida a Florvia <span class="meta">${done} de ${steps.length}</span></div>
-    <p class="muted small" style="padding:0 16px 8px">Cuatro pasos para empezar. Puedes hacerlos en el orden que quieras.</p>
+    <p class="muted small" style="padding:0 16px 8px">${steps.length} pasos para empezar. Puedes hacerlos en el orden que quieras; todos son opcionales.</p>
     ${steps.map(row).join("")}
     <div class="two-btns" style="padding:8px 16px 12px">${state.data.plants.length ? "" : `<button class="btn secondary" data-action="open-sync">Ya tengo un jardín</button>`}<button class="btn secondary" data-action="welcome-hide">Ocultar</button></div></section>`;
 }
@@ -601,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004s";
+      sc.src = "vendor/qrcode.min.js?v=20261004t";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
