@@ -19,3 +19,21 @@ CREATE TABLE IF NOT EXISTS internal (id TEXT PRIMARY KEY, ts INTEGER NOT NULL);
 -- Names Noza gave to people (person id = garden hash, or device hash when not synced).
 CREATE TABLE IF NOT EXISTS labels (id TEXT PRIMARY KEY, label TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
+
+-- Comments sent from the app (Ajustes → Enviar comentario) and technical errors reported by the app.
+CREATE TABLE IF NOT EXISTS feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts INTEGER NOT NULL, day TEXT NOT NULL, src TEXT NOT NULL,
+  type TEXT NOT NULL,             -- idea | bug | other
+  text TEXT NOT NULL, contact TEXT NOT NULL DEFAULT '', tech TEXT NOT NULL DEFAULT '',
+  device TEXT NOT NULL DEFAULT '', garden TEXT NOT NULL DEFAULT '', ip TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'new'   -- new | read | done
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);
+CREATE TABLE IF NOT EXISTS errors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts INTEGER NOT NULL, day TEXT NOT NULL, src TEXT NOT NULL,
+  version TEXT NOT NULL DEFAULT '', msg TEXT NOT NULL, at TEXT NOT NULL DEFAULT '',
+  device TEXT NOT NULL DEFAULT '', garden TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_errors_day ON errors(day);

@@ -739,3 +739,16 @@ label.link-btn { cursor: pointer; }
 .sg-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
 .sg-tags span { font-size: 12px; background: var(--hairline); border-radius: 8px; padding: 2px 7px; color: var(--text-2); }
 #sheet [data-view="suggest"] .chips { margin: 0; }
+
+/* Comentarios */
+.check-row { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--text-2); }
+.check-row input { margin-top: 3px; flex: none; }
+.fb-item { padding: 10px 0; border-top: 0.5px solid var(--hairline); }
+.fb-item:first-of-type { border-top: 0; }
+.fb-item.done { opacity: 0.55; }
+.fb-item p { margin: 6px 0; line-height: 1.4; }
+.fb-item small { display: block; color: var(--text-2); font-size: 12px; }
+.fb-top { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.fb-type { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--hairline); }
+.fb-type.bug { background: #c93b3033; color: #ff6b5e; } .fb-type.idea { background: #7a56d633; color: #a58bf0; }
+.fb-acts { display: flex; gap: 8px; margin-top: 8px; }

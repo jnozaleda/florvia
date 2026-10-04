@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004t";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004u";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004t";
-import { buildICS } from "./calendar.js?v=20261004t";
-import { scrubPlant } from "./clean.js?v=20261004t";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004t";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004u";
+import { buildICS } from "./calendar.js?v=20261004u";
+import { scrubPlant } from "./clean.js?v=20261004u";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004u";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -602,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004t";
+      sc.src = "vendor/qrcode.min.js?v=20261004u";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -779,8 +779,10 @@ function moreView() {
       ${row("export-ics", "calendar", "#2f8f4e", "Exportar al calendario", "", true, !state.data.plants.length)}
     </section>
     <p class="group-foot">${isStandalone ? "" : "Para recibir avisos en el iPhone, instala la app: Compartir → «Añadir a pantalla de inicio». "}Los riegos y abonados se añaden a tu calendario como eventos que se repiten por estación; si cambias algo, vuelve a exportarlo.</p>
+    <div class="group-title">Ayuda</div>
+    <section class="card list-card settings">${row("open-feedback", "notes", "#3b82f6", "Enviar un comentario")}</section>
     ${aiCode() ? `<div class="group-title">Solo para ti</div>
-    <section class="card list-card settings">${row("open-usage", "chart", "#2f8f4e", "Uso de la app")}</section>
+    <section class="card list-card settings">${row("open-usage", "chart", "#2f8f4e", "Uso de la app", feedbackNew ? `<span class="dot"></span>${feedbackNew} ${feedbackNew === 1 ? "comentario nuevo" : "comentarios nuevos"}` : "")}</section>
     <p class="group-foot">Solo aparece en el móvil con tu código de acceso.</p>` : ""}
     <div class="group-title">Datos</div>
     <section class="card list-card settings">
@@ -809,6 +811,86 @@ function upgradesSheet() {
     <div class="sheet-head"><h2>Fichas por actualizar</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>
     ${upgradesCard() || `<p class="muted">Todas tus fichas están al día.</p>`}`, "upgrades");
 }
+// ---------- Comments («Enviar un comentario») and technical errors ----------
+const APP_VERSION = new URL(import.meta.url).searchParams.get("v") ?? "";
+let fb = null; // { type, text, contact, tech, state: "idle" | "sending" | "sent" | "error", error }
+const FB_TYPES = [["idea", "Una idea"], ["bug", "Algo no funciona"], ["other", "Otra cosa"]];
+function fbRead() {
+  if (!fb) return;
+  if ($("fbText")) fb.text = $("fbText").value;
+  if ($("fbContact")) fb.contact = $("fbContact").value;
+  if ($("fbTech")) fb.tech = $("fbTech").checked;
+}
+function feedbackSheet() {
+  const head = `<div class="sheet-head"><h2>Enviar un comentario</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>`;
+  if (!fb) fb = { type: "idea", text: "", contact: "", tech: true, state: "idle" };
+  if (fb.state === "sent") return openSheet(`${head}<section class="card"><b>¡Gracias!</b><p class="muted">Lo leo yo. Si dejaste un contacto, te escribiré si hace falta.</p></section><button class="btn block" data-action="close">Cerrar</button>`, "feedback");
+  openSheet(`${head}
+    <p class="muted small">Una idea, algo que no funcione o lo que quieras contarme. Lo lee una persona.</p>
+    <div class="seg" role="radiogroup" aria-label="Tipo de comentario">${FB_TYPES.map(([v, t]) => `<button type="button" role="radio" aria-checked="${fb.type === v}" data-action="fb-type" data-t="${v}">${t}</button>`).join("")}</div>
+    <textarea id="fbText" maxlength="1000" rows="6" class="big-input" placeholder="Cuéntame…">${esc(fb.text)}</textarea>
+    <input id="fbContact" maxlength="80" class="big-input" placeholder="Tu correo (opcional)" autocomplete="off" inputmode="email" value="${esc(fb.contact)}" />
+    <label class="check-row"><input type="checkbox" id="fbTech" ${fb.tech ? "checked" : ""} /> <span>Incluir información técnica (versión de la app, tipo de pantalla e idioma) para poder reproducir el problema.</span></label>
+    <p class="muted small">No se adjuntan tus plantas, notas ni ubicación. No escribas datos personales que no quieras que lea.</p>
+    ${fb.state === "error" ? `<p class="ai-status warn">${esc(fb.error)}</p>` : ""}
+    <button type="button" class="btn block" data-action="fb-send" ${fb.state === "sending" ? "disabled" : ""}>${fb.state === "sending" ? "Enviando…" : "Enviar"}</button>`, "feedback");
+}
+async function feedbackSend() {
+  fbRead();
+  if (fb.text.trim().length < 4) { fb.state = "error"; fb.error = "Escribe algo más para poder enviarlo."; return feedbackSheet(); }
+  fb.state = "sending";
+  feedbackSheet();
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const tech = fb.tech ? { version: APP_VERSION, mode: standalone ? "instalada" : "navegador", lang: navigator.language, ua: navigator.userAgent.slice(0, 110), screen: `${innerWidth}x${innerHeight}` } : null;
+  try {
+    const res = await fetch(`${API}/feedback`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ type: fb.type, text: fb.text.trim(), contact: fb.contact.trim(), tech }) });
+    if (res.status === 429) throw new Error("limit");
+    if (!res.ok) throw new Error("ai");
+    fb = { type: "idea", text: "", contact: "", tech: true, state: "sent" };
+  } catch (err) {
+    fb.state = "error";
+    fb.error = err.message === "limit" ? "Has enviado varios hoy. Prueba mañana." : "No se ha podido enviar. Prueba otra vez.";
+  }
+  feedbackSheet();
+}
+// Errors the browser reports (message and file:line, a few per session): the Worker groups them for the admin.
+let errorsSent = 0;
+function reportError(msg, at) {
+  if (errorsSent >= 3 || !msg) return;
+  errorsSent += 1;
+  try { fetch(`${API}/error`, { method: "POST", keepalive: true, headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ device: deviceId, garden: usageId?.startsWith("g:") ? usageId : "", version: APP_VERSION, msg: String(msg).slice(0, 160), at: String(at ?? "").slice(0, 120) }) }).catch(() => {}); } catch {}
+}
+window.addEventListener("error", (e) => reportError(e.message, `${String(e.filename ?? "").split("/").pop().split("?")[0]}:${e.lineno}`));
+window.addEventListener("unhandledrejection", (e) => reportError(e.reason?.message ?? e.reason, "promesa"));
+// For the admin: new comments (badge in Ajustes), and the list inside «Uso de la app».
+let feedbackNew = 0;
+let feedbackData = null;
+async function loadFeedback(render_ = true) {
+  if (!aiCode()) return;
+  try {
+    const res = await fetch(`${API}/feedback`, { headers: aiHeaders() });
+    if (!res.ok) return;
+    feedbackData = await res.json();
+    feedbackNew = feedbackData.newCount;
+    if (render_) render();
+    if (sheet.open && sheet.dataset.view === "usage") usageSheet();
+  } catch {}
+}
+const FB_LABEL = { idea: "Idea", bug: "Algo no funciona", other: "Otro" };
+function feedbackAdminCards() {
+  const d = feedbackData;
+  if (!d) return "";
+  const items = d.items.map((f) => `<div class="fb-item ${f.status}">
+      <div class="fb-top"><span class="fb-type ${f.type}">${FB_LABEL[f.type] ?? f.type}</span><small>${esc(f.label || `${f.person.length === 16 ? "Jardín" : "Móvil"} ${f.code}`)}${f.mine ? " · tuyo" : ""} · ${fmtDate(new Date(f.ts).toISOString().slice(0, 10))}${f.src !== "prod" ? ` · ${esc(f.src)}` : ""}</small></div>
+      <p>${esc(f.text).replace(/\n/g, "<br>")}</p>
+      ${f.contact ? `<small>Contacto: ${esc(f.contact)}</small>` : ""}
+      ${f.tech ? `<small>${esc([f.tech.version, f.tech.mode, f.tech.lang, f.tech.screen].filter(Boolean).join(" · "))}</small>` : ""}
+      <div class="fb-acts">${f.status === "new" ? `<button type="button" class="btn small secondary" data-action="fb-status" data-id="${f.id}" data-s="read">Leído</button>` : ""}${f.status !== "done" ? `<button type="button" class="btn small secondary" data-action="fb-status" data-id="${f.id}" data-s="done">Hecho</button>` : `<button type="button" class="btn small secondary" data-action="fb-status" data-id="${f.id}" data-s="new">Reabrir</button>`}</div></div>`).join("");
+  const errs = d.errors.map((e) => `<div class="u-row"><span class="u-garden">${esc(e.msg)}<small>${esc(e.at)} · ${esc(e.versions.join(", ") || "—")}</small></span><b>${e.count}<small>${e.people} ${e.people === 1 ? "persona" : "personas"}</small></b></div>`).join("");
+  return `<section class="card"><div class="sec">Comentarios <span class="meta">${d.newCount ? `${d.newCount} nuevos` : "al día"}</span></div>${items || `<p class="muted small">Todavía no hay comentarios.</p>`}</section>
+    <section class="card"><div class="sec">Errores de la app <span class="meta">14 días</span></div>${errs || `<p class="muted small">Ninguno registrado.</p>`}</section>`;
+}
+
 // «Uso de la app» (needs the access code): real use only, from the Worker's D1 log (/stats2).
 // «Real» = opened from florvia.app (or the old address), not from a device marked as Noza's, and since the
 // clean start date. Tests and your own devices are listed apart and never added to the real numbers.
@@ -819,6 +901,7 @@ async function loadUsage() {
     usage = res.ok ? await res.json() : { error: res.status === 401 ? "code" : "ai" };
   } catch { usage = { error: "network" }; }
   if (sheet.open && sheet.dataset.view === "usage") usageSheet();
+  loadFeedback(false);
 }
 const BUCKET_LABEL = { dev: "desde localhost (desarrollo)", none: "sin origen (scripts, curl)", internal: "de dispositivos marcados como tuyos", old: "de la dirección antigua", prod: "de producción", before: "anteriores a la fecha limpia" };
 function usageSheet() {
@@ -872,6 +955,7 @@ function usageSheet() {
     <section class="card"><div class="sec">Pruebas y dispositivos tuyos</div>
       <p class="muted small">${buckets ? `Fuera de las cifras: ${esc(buckets)}.` : "Nada fuera de las cifras por ahora."}</p>
       <button type="button" class="btn block secondary" data-action="usage-mine" data-on="${usage.me.internal ? "0" : "1"}">${usage.me.internal ? "Este dispositivo está marcado como tuyo · quitar la marca" : "Marcar este dispositivo como mío"}</button></section>
+    ${feedbackAdminCards()}
     <section class="card"><div class="sec">Cómo se cuenta</div>
       <p class="muted small">Una <b>persona</b> es un jardín sincronizado (con clave o Google, aunque tenga varios móviles) o, si no sincroniza, un móvil: si cambia de móvil o reinstala sin sincronizar, cuenta como otra. Las <b>aperturas</b> son veces que se abre la app. Solo se cuenta lo que llega de florvia.app (y de la dirección antigua), no de localhost ni de scripts, y tampoco lo de dispositivos marcados como tuyos.</p></section>
     <p class="group-foot">Recuentos anónimos: sin nombres de plantas, notas, ubicación ni datos personales. Los nombres que pones a las personas solo los ves tú.</p>`, "usage");
@@ -881,7 +965,7 @@ document.addEventListener("focusin", (e) => { if (e.target.classList?.contains("
 document.addEventListener("pointerover", (e) => { const b = e.target.closest?.(".u-bar"); if (b && $("usageTip")) $("usageTip").textContent = b.getAttribute("aria-label"); });
 document.addEventListener("focusin", (e) => { const b = e.target.closest?.(".u-bar"); if (b && $("usageTip")) $("usageTip").textContent = b.getAttribute("aria-label"); });
 
-const SHEET_VIEWS = { ai: aiSheet, upgrades: upgradesSheet, usage: usageSheet, suggest: () => { suggestRead(); suggestSheet(); } };
+const SHEET_VIEWS = { ai: aiSheet, upgrades: upgradesSheet, usage: usageSheet, suggest: () => { suggestRead(); suggestSheet(); }, feedback: () => { fbRead(); feedbackSheet(); } };
 
 // ---------- Care sheet upgrades ----------
 // When an improvement needs new data from the AI, it gets a version and an entry here. Plants
@@ -2372,6 +2456,13 @@ const actions = {
   "wiz-notes": () => { wiz.notesOpen = !wiz.notesOpen; renderWizard(); },
   "edit-plant": (d) => plantForm(d.id),
   "plant-refresh": (d) => refreshPlantAi(d.id),
+  "open-feedback": () => { fb = null; feedbackSheet(); },
+  "fb-type": (d) => { fbRead(); fb.type = d.t; fb.state = "idle"; feedbackSheet(); },
+  "fb-send": () => feedbackSend(),
+  "fb-status": async (d) => {
+    try { await fetch(`${API}/feedback/status`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ id: Number(d.id), status: d.s }) }); } catch {}
+    loadFeedback();
+  },
   "usage-mine": async (d) => {
     const on = d.on === "1";
     try { await fetch(`${API}/internal`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ on }) }); } catch {}
@@ -2856,6 +2947,7 @@ document.addEventListener("visibilitychange", () => {
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 render();
 refreshUsageId();
+loadFeedback();
 // A shared-garden link (#jardin=KEY) opens the join sheet; otherwise bring the synced garden down.
 {
   const hash = new URLSearchParams(location.hash.slice(1));

@@ -29,6 +29,8 @@ p,li{max-width:62ch}table{border-collapse:collapse;width:100%;font-size:15px}td,
 <tr><th>Para qué</th><th>Qué se envía</th><th>A quién</th></tr>
 <tr><td>Rellenar la ficha de una planta (IA)</td><td>Nombre de la planta, la ciudad que has elegido y sus coordenadas (con «Usar mi ubicación», aproximadas, de unos 1 km), y de dónde viene la petición (alta, edición…)</td><td>Nuestro servidor (Cloudflare) y, para generar el texto, Google Gemini; si no está disponible, Cloudflare Workers AI</td></tr>
 <tr><td>«¿Dónde está mejor?» (IA)</td><td>Nombre de la planta, la ciudad, y de cada una de tus zonas: su nombre, el sol, el riego programado y <b>la descripción que hayas escrito</b>. No escribas datos personales en las descripciones</td><td>Nuestro servidor y Google Gemini</td></tr>
+<tr><td>Comentarios (Ajustes → Enviar un comentario)</td><td>Lo que escribas, el correo si lo dejas, y, si lo dejas marcado, la versión de la app, el tipo de pantalla y el idioma, más los identificadores de uso de arriba. Hasta 5 al día</td><td>Nuestro servidor; solo los lee quien administra la app</td></tr>
+<tr><td>Errores técnicos</td><td>El mensaje de error del navegador, el archivo y la línea, la versión de la app y los identificadores de uso. Unos pocos por sesión; se borran a los 90 días</td><td>Nuestro servidor</td></tr>
 <tr><td>«Qué planto aquí» (IA)</td><td>La zona o el sitio (su nombre, el sol, el riego programado y <b>la descripción que hayas escrito</b>), lo que busques, la ciudad y los nombres de las plantas que ya tienes para no repetirlas. No escribas datos personales</td><td>Nuestro servidor y Google Gemini</td></tr>
 <tr><td>Identificar una planta por foto</td><td>La foto (reducida) y la ciudad. No la guardamos</td><td>Nuestro servidor y Google Gemini</td></tr>
 <tr><td>El tiempo</td><td>Tus coordenadas</td><td>Open-Meteo, desde tu móvil</td></tr>
@@ -51,7 +53,7 @@ p,li{max-width:62ch}table{border-collapse:collapse;width:100%;font-size:15px}td,
 <ul><li>Fichas de IA compartidas (por planta y zona de ~100 km, sin datos personales): 180 días.</li><li>Estadísticas de uso: hasta 400 días.</li><li>Contadores de límite diario (con hash de la conexión): 2 días.</li><li>Lo demás: hasta que lo borres o caduque como se indica arriba.</li></ul>
 
 <h2>Cómo borrar tus datos</h2>
-<p>En la app: <b>Ajustes → Borrar mis datos del servidor</b>. Elimina tu jardín sincronizado, el aviso diario y los enlaces que hayas compartido. Tus plantas siguen en tu móvil hasta que borres los datos del navegador. También elimina las estadísticas de uso ligadas a este móvil y a tu jardín, y la app empieza a usar un identificador nuevo. Quien administra la app puede ponerle un nombre a un identificador (por ejemplo, si sabe quién es), pero solo a mano y solo ve esos recuentos; ese nombre también se borra.</p>
+<p>En la app: <b>Ajustes → Borrar mis datos del servidor</b>. Elimina tu jardín sincronizado, el aviso diario y los enlaces que hayas compartido. Tus plantas siguen en tu móvil hasta que borres los datos del navegador. También elimina las estadísticas de uso, los comentarios y los errores ligados a este móvil y a tu jardín, y la app empieza a usar un identificador nuevo. Quien administra la app puede ponerle un nombre a un identificador (por ejemplo, si sabe quién es), pero solo a mano y solo ve esos recuentos; ese nombre también se borra.</p>
 <p>También puedes pedírnoslo por correo: <a href="mailto:hello@florvia.app">hello@florvia.app</a>.</p>
 
 <h2>Servicios que usamos</h2>

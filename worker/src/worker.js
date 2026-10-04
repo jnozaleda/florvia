@@ -544,6 +544,8 @@ async function handleUsageDelete(request, env, headers) {
   if (ids.length) {
     await env.DB.batch([
       env.DB.prepare("DELETE FROM events WHERE device = ? OR garden = ?").bind(who.device || "-", who.garden || "-"),
+      env.DB.prepare("DELETE FROM feedback WHERE device = ? OR garden = ?").bind(who.device || "-", who.garden || "-"),
+      env.DB.prepare("DELETE FROM errors WHERE device = ? OR garden = ?").bind(who.device || "-", who.garden || "-"),
       ...ids.flatMap((id) => [env.DB.prepare("DELETE FROM labels WHERE id = ?").bind(id), env.DB.prepare("DELETE FROM internal WHERE id = ?").bind(id)]),
     ]);
   }
@@ -559,6 +561,82 @@ async function handleUsageLabel(request, env, headers) {
   if (!/^[a-f0-9]{12,16}$/.test(id)) return json({ error: "input" }, 400, headers);
   if (label) await env.DB.prepare("INSERT OR REPLACE INTO labels (id, label) VALUES (?, ?)").bind(id, label).run();
   else await env.DB.prepare("DELETE FROM labels WHERE id = ?").bind(id).run();
+  return json({ ok: true }, 200, headers);
+}
+
+// ---------- Comments (POST /feedback) and technical errors (POST /error) ----------
+// Comments land in D1 and Noza reads them in «Uso de la app». A person can send up to 5 a day (by device or by
+// connection); nothing from the garden is attached, only what they type plus, if they leave it on, the app
+// version, screen mode and language. Errors are the browser's own message and file:line, a few per session.
+const FEEDBACK_TYPES = ["idea", "bug", "other"];
+const clean = (v, n) => String(v ?? "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim().slice(0, n);
+async function handleFeedback(request, env, headers) {
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const text = clean(body.text, 1000);
+  const type = FEEDBACK_TYPES.includes(body.type) ? body.type : "other";
+  if (text.length < 4) return json({ error: "input" }, 400, headers);
+  const who = await usageWho(request);
+  const ip = await hashId(request.headers.get("CF-Connecting-IP") ?? "unknown");
+  const day = new Date().toISOString().slice(0, 10);
+  const used = await env.DB.prepare("SELECT COUNT(*) AS n FROM feedback WHERE day = ? AND (ip = ? OR (device <> '' AND device = ?))").bind(day, ip, who.device).first();
+  if ((used?.n ?? 0) >= 5) return json({ error: "limit" }, 429, headers);
+  const t = body.tech && typeof body.tech === "object" ? body.tech : {};
+  const tech = JSON.stringify({ version: clean(t.version, 20), mode: clean(t.mode, 20), lang: clean(t.lang, 10), ua: clean(t.ua, 120), screen: clean(t.screen, 20) });
+  await env.DB.prepare("INSERT INTO feedback (ts, day, src, type, text, contact, tech, device, garden, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(Date.now(), day, originSrc(request), type, text, clean(body.contact, 80), body.tech ? tech : "", who.device, who.garden, ip).run();
+  return json({ ok: true }, 200, headers);
+}
+async function handleError(request, env, headers, ctx) {
+  if (!env.DB) return json({ ok: true }, 200, headers);
+  let body;
+  try { body = JSON.parse(await request.text()); } catch { return json({ error: "input" }, 400, headers); }
+  const msg = clean(body.msg, 160);
+  if (!msg) return json({ ok: true }, 200, headers);
+  const device = clean(body.device, 64);
+  const garden = /^g:[a-f0-9]{16}$/.test(String(body.garden ?? "")) ? body.garden.slice(2) : "";
+  const dev = device ? await hashId(device) : "";
+  const day = new Date().toISOString().slice(0, 10);
+  if (dev) {
+    const used = await env.DB.prepare("SELECT COUNT(*) AS n FROM errors WHERE day = ? AND device = ?").bind(day, dev).first();
+    if ((used?.n ?? 0) >= 10) return json({ ok: true }, 200, headers);
+  }
+  ctx.waitUntil(env.DB.prepare("INSERT INTO errors (ts, day, src, version, msg, at, device, garden) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(Date.now(), day, originSrc(request), clean(body.version, 20), msg, clean(body.at, 120), dev, garden).run().catch(() => {}));
+  return json({ ok: true }, 200, headers);
+}
+// For Noza (access code): the comments, how many are new, and the errors of the last 14 days grouped by message.
+async function handleFeedbackList(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  const [items, errs, labelsRes, internalRes] = await Promise.all([
+    env.DB.prepare("SELECT id, ts, src, type, text, contact, tech, device, garden, status FROM feedback ORDER BY (status = 'done'), id DESC LIMIT 60").all(),
+    env.DB.prepare("SELECT msg, at, version, src, device, garden, day FROM errors WHERE day >= date('now', '-14 days') ORDER BY id DESC LIMIT 400").all(),
+    env.DB.prepare("SELECT id, label FROM labels").all(), env.DB.prepare("SELECT id FROM internal").all(),
+  ]);
+  const labels = Object.fromEntries((labelsRes.results ?? []).map((l) => [l.id, l.label]));
+  const internal = new Set((internalRes.results ?? []).map((i) => i.id));
+  const personOf = (r) => r.garden || r.device || "";
+  const mapped = (items.results ?? []).map((f) => { const p = personOf(f); return { id: f.id, ts: f.ts, src: f.src, type: f.type, text: f.text, contact: f.contact, tech: f.tech ? JSON.parse(f.tech) : null, status: f.status, person: p, code: p.slice(0, 4).toUpperCase(), label: labels[p] ?? "", mine: internal.has(f.garden) || internal.has(f.device) }; });
+  const groups = {};
+  for (const e of errs.results ?? []) {
+    if (!(e.src === "prod" || e.src === "old") || internal.has(e.garden) || internal.has(e.device)) continue;
+    const g = (groups[`${e.msg}|${e.at}`] ??= { msg: e.msg, at: e.at, count: 0, last: e.day, versions: new Set(), people: new Set() });
+    g.count += 1; if (e.day > g.last) g.last = e.day; g.versions.add(e.version); g.people.add(e.garden || e.device);
+  }
+  const errors = Object.values(groups).sort((a, b) => b.count - a.count).slice(0, 12).map((g) => ({ msg: g.msg, at: g.at, count: g.count, last: g.last, versions: [...g.versions].filter(Boolean).slice(0, 3), people: g.people.size }));
+  return json({ items: mapped, newCount: mapped.filter((f) => f.status === "new").length, errors }, 200, headers);
+}
+async function handleFeedbackStatus(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const status = ["new", "read", "done"].includes(body.status) ? body.status : "";
+  const id = Number(body.id);
+  if (!status || !Number.isInteger(id)) return json({ error: "input" }, 400, headers);
+  await env.DB.prepare("UPDATE feedback SET status = ? WHERE id = ?").bind(status, id).run();
   return json({ ok: true }, 200, headers);
 }
 
@@ -1237,7 +1315,7 @@ export default {
   // 06:00 and 07:00 UTC: whichever is 08:00 in Madrid (summer or winter) sends the daily push.
   async scheduled(event, env, ctx) {
     if (madridNow().hour !== 8) return;
-    if (env.DB) ctx.waitUntil(env.DB.prepare("DELETE FROM events WHERE day < date('now', '-400 days')").run().catch(() => {}));
+    if (env.DB) ctx.waitUntil(env.DB.batch([env.DB.prepare("DELETE FROM events WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM errors WHERE day < date('now', '-90 days')")]).catch(() => {}));
     console.log("daily push sent:", await sendDaily(env));
   },
   async fetch(request, env, ctx) {
@@ -1251,6 +1329,10 @@ export default {
     if (pathname === "/event" && request.method === "POST") return handleEvent(request, env, headers, ctx);
     if (pathname === "/stats") return handleStats(request, env, headers);
     if (pathname === "/stats2") return handleStats2(request, env, headers);
+    if (pathname === "/feedback" && request.method === "POST") return handleFeedback(request, env, headers);
+    if (pathname === "/feedback" && request.method === "GET") return handleFeedbackList(request, env, headers);
+    if (pathname === "/feedback/status" && request.method === "POST") return handleFeedbackStatus(request, env, headers);
+    if (pathname === "/error" && request.method === "POST") return handleError(request, env, headers, ctx);
     if (pathname === "/internal" && request.method === "POST") return handleInternal(request, env, headers);
     if (pathname === "/usage/label" && request.method === "POST") return handleUsageLabel(request, env, headers);
     if (pathname === "/usage/delete" && request.method === "POST") return handleUsageDelete(request, env, headers);
