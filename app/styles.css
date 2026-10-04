@@ -750,5 +750,17 @@ label.link-btn { cursor: pointer; }
 .fb-item small { display: block; color: var(--text-2); font-size: 12px; }
 .fb-top { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
 .fb-type { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--hairline); }
-.fb-type.bug { background: #c93b3033; color: #ff6b5e; } .fb-type.idea { background: #7a56d633; color: #a58bf0; }
+.fb-type.bug { background: #c93b3033; color: #ff6b5e; } .fb-type.question { background: #3b82f633; color: #5aa9e6; } .fb-type.idea { background: #7a56d633; color: #a58bf0; }
 .fb-acts { display: flex; gap: 8px; margin-top: 8px; }
+
+/* Light theme: the verdict, chips and warnings were drawn for dark mode only (dark fills, pale text). */
+@media not (prefers-color-scheme: dark) {
+  .conf.alta, .fit-ic.ok, .vchip.ok, .verdict.good { background: #dff2e3; }
+  .conf.media, .conf.baja, .fit-ic.warn, .vchip.warn, .verdict.mid, .sun-warn { background: #fbebcf; }
+  .fit-ic.no, .vchip.no, .verdict.bad, .sun-warn.no { background: #fbdfdb; }
+  .conf.alta, .fit-ic.ok, .vchip.ok, .verdict-dot.good { color: #1f7a3a; }
+  .conf.media, .conf.baja, .fit-ic.warn, .vchip.warn, .verdict-dot.mid, .sun-warn, .t-light { color: #96590a; }
+  .fit-ic.no, .vchip.no, .verdict-dot.bad, .sun-warn.no { color: #b3261e; }
+  .fb-type.bug { color: #b3261e; } .fb-type.idea { color: #6b46c1; } .fb-type.question { color: #1d5fb8; }
+  .menu-ic.explore { color: #1d5fb8; } .menu-ic.suggest { color: #6b46c1; }
+}

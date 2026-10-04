@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004v";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004w";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004v";
-import { buildICS } from "./calendar.js?v=20261004v";
-import { scrubPlant } from "./clean.js?v=20261004v";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004v";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004w";
+import { buildICS } from "./calendar.js?v=20261004w";
+import { scrubPlant } from "./clean.js?v=20261004w";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004w";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -602,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004v";
+      sc.src = "vendor/qrcode.min.js?v=20261004w";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -877,7 +877,7 @@ async function loadFeedback(render_ = true) {
     if (sheet.open && sheet.dataset.view === "usage") usageSheet();
   } catch {}
 }
-const FB_LABEL = { idea: "Idea", bug: "Algo no funciona", other: "Otro" };
+const FB_LABEL = { idea: "Idea", bug: "Algo no funciona", other: "Otro", question: "Duda (web)" };
 function feedbackAdminCards() {
   const d = feedbackData;
   if (!d) return "";

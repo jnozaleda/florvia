@@ -569,9 +569,9 @@ async function handleUsageLabel(request, env, headers) {
 // Comments land in D1 and Noza reads them in «Uso de la app». A person can send up to 5 a day (by device or by
 // connection); nothing from the garden is attached, only what they type plus, if they leave it on, the app
 // version, screen mode and language. Errors are the browser's own message and file:line, a few per session.
-const FEEDBACK_TYPES = ["idea", "bug", "other"];
+const FEEDBACK_TYPES = ["idea", "bug", "other", "question"]; // «question» comes from the web form and always has an email
 const clean = (v, n) => String(v ?? "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim().slice(0, n);
-const FEEDBACK_TYPE_ES = { idea: "Idea", bug: "Algo no funciona", other: "Otro" };
+const FEEDBACK_TYPE_ES = { idea: "Idea", bug: "Algo no funciona", other: "Otro", question: "Duda" };
 const b64text = (text) => { const bytes = new TextEncoder().encode(text); let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(bin); };
 // New comment → an email to Noza (Cloudflare Email Routing: the destination is the secret NOTIFY_EMAIL, which must be a
 // verified address there) and a push to the devices Noza enabled in «Uso de la app».
@@ -612,9 +612,11 @@ async function handleFeedback(request, env, headers, ctx) {
   if (!env.DB) return json({ error: "db" }, 500, headers);
   let body;
   try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  if (clean(body.website, 50)) return json({ ok: true }, 200, headers); // honeypot: bots fill the hidden field
   const text = clean(body.text, 1000);
   const type = FEEDBACK_TYPES.includes(body.type) ? body.type : "other";
   if (text.length < 4) return json({ error: "input" }, 400, headers);
+  if (type === "question" && !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(clean(body.contact, 80))) return json({ error: "contact" }, 400, headers);
   const who = await usageWho(request);
   const ip = await hashId(request.headers.get("CF-Connecting-IP") ?? "unknown");
   const day = new Date().toISOString().slice(0, 10);
