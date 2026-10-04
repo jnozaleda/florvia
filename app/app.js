@@ -1,13 +1,13 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004h";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004i";
 import {
   CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport,
-} from "./rules.js?v=20261004h";
-import { buildICS } from "./calendar.js?v=20261004h";
-import { scrubPlant } from "./clean.js?v=20261004h";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004h";
+} from "./rules.js?v=20261004i";
+import { buildICS } from "./calendar.js?v=20261004i";
+import { scrubPlant } from "./clean.js?v=20261004i";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004i";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -551,7 +551,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004h";
+      sc.src = "vendor/qrcode.min.js?v=20261004i";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -896,7 +896,7 @@ const UPGRADES = [
 const CARE_VERSION = Math.max(...UPGRADES.map((u) => u.version));
 // What the AI says about light and cold, kept on the plant.
 // What the AI says about the plant itself (shown in Explorar and in the sheet's «Sobre la planta»).
-const INFO_KEYS = ["plantIn", "potAdvice", "windSensitive", "plantMonths", "plantWhen", "matureSize", "matureNote", "bloomMonths", "bloomWhat", "difficulty", "toxic", "toxicNote", "invasive"];
+const INFO_KEYS = ["plantIn", "potAdvice", "waterHow", "windSensitive", "plantMonths", "plantWhen", "matureSize", "matureNote", "bloomMonths", "bloomWhat", "difficulty", "toxic", "toxicNote", "invasive"];
 const infoFields = (care) => Object.fromEntries(INFO_KEYS.filter((k) => care[k] !== undefined).map((k) => [k, care[k]]));
 const DIFFICULTY = { facil: "Cuidado fácil", media: "Cuidado medio", exigente: "Exigente de cuidar" };
 const SIZE_FINAL = { pequena: "pequeña", mediana: "mediana", grande: "grande" };
@@ -1058,6 +1058,7 @@ function aboutCard(p) {
     ${i.matureNote ? row("sprout", `Tamaño adulto ${SIZE_FINAL[i.matureSize] ?? ""}`.trim(), i.matureNote) : ""}
     ${monthStrip(i.bloomMonths, i.bloomWhat || "Flor o fruto")}
     ${i.difficulty ? row("check", DIFFICULTY[i.difficulty], "") : ""}
+    ${i.waterHow ? row("droplet", "Cómo regarla", i.waterHow) : ""}
     ${i.plantIn ? row(i.plantIn === "suelo" ? "ground" : "pot", PLANT_IN[i.plantIn], i.potAdvice) : ""}
     ${i.toxic && i.toxic !== "no" ? row("alert", TOXIC_TEXT[i.toxic], i.toxicNote, "warn") : ""}
     ${i.invasive ? row("alert", "Puede ser invasora", "Evita que se escape del jardín.", "warn") : ""}
@@ -1775,6 +1776,7 @@ function exploreSheet() {
     <section class="card">${report.rows.map((r) => row(ICON[r.kind], r.title, r.text, r.level)).join("")}</section>
     <section class="card"><div class="sec">Dónde ponerla</div>
       ${report.zones.length ? report.zones.map((z) => row(LV[z.level], z.zone, z.text, z.level)).join("") : `<p class="muted small">Aún no tienes zonas. Cuando añadas plantas y marques el sol de cada zona (Ajustes), te diré dónde encaja.</p>`}
+      ${care.waterHow ? row("droplet", "Cómo regarla", care.waterHow) : ""}
       ${care.plantIn ? row(care.plantIn === "suelo" ? "ground" : "pot", PLANT_IN[care.plantIn], care.potAdvice) : ""}
       ${care.windSensitive ? row("wind", "Mejor al abrigo del viento", "El viento fuerte la daña.", "warn") : ""}</section>
     <section class="card"><div class="sec">Cuándo y cómo será</div>

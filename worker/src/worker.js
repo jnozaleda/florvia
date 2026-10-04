@@ -36,6 +36,7 @@ const CARE_SCHEMA = {
     climateNote: { type: "string", description: "Una frase corta (menos de 140 caracteres) sobre cómo le va en ese lugar: heladas, calor, qué protección necesita" },
     plantIn: { type: "string", enum: ["maceta", "suelo", "ambos"], description: "Dónde rinde mejor en exterior: maceta, suelo o ambos valen" },
     potAdvice: { type: "string", description: "Una frase corta (menos de 120 caracteres) sobre la maceta y el sustrato (tamaño, drenaje) o sobre el suelo; vacío si nada especial" },
+    waterHow: { type: "string", description: "Cómo regarla bien: método y cantidad aproximada, en una o dos frases cortas (menos de 160 caracteres). Por ejemplo «Riega por encima hasta que drene, unos 500 ml en maceta mediana; deja secar el primer dedo del sustrato» o «Mejor por el plato, 10 minutos, y retira el agua sobrante»; adapta método y cantidad a esta planta, a su tamaño y a si está en maceta o en suelo" },
     windSensitive: { type: "boolean", description: "true si el viento fuerte la daña y necesita abrigo" },
     plantMonths: { type: "array", items: { type: "integer", minimum: 1, maximum: 12 }, description: "Meses (1-12) en que mejor comprarla y plantarla en ese clima" },
     plantWhen: { type: "string", description: "Frase corta (menos de 100 caracteres) sobre cuándo comprarla y plantarla en ese clima y por qué" },
@@ -60,7 +61,7 @@ const CARE_SCHEMA = {
       },
     },
   },
-  required: ["isPlant", "alternatives", "commonName", "species", ...SEASONS.flatMap((k) => [`water_${k}`, `feed_${k}`, `feedtype_${k}`, `tip_${k}`]), "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "climateFit", "climateNote", "plantIn", "potAdvice", "windSensitive", "plantMonths", "plantWhen", "matureSize", "matureNote", "bloomMonths", "bloomWhat", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "confidence"],
+  required: ["isPlant", "alternatives", "commonName", "species", ...SEASONS.flatMap((k) => [`water_${k}`, `feed_${k}`, `feedtype_${k}`, `tip_${k}`]), "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "climateFit", "climateNote", "plantIn", "potAdvice", "waterHow", "windSensitive", "plantMonths", "plantWhen", "matureSize", "matureNote", "bloomMonths", "bloomWhat", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "confidence"],
   additionalProperties: false,
 };
 
@@ -284,6 +285,7 @@ function sanitize(c) {
     // About the plant (Explorar and the sheet's «Sobre la planta»).
     plantIn: ["maceta", "suelo", "ambos"].includes(c.plantIn) ? c.plantIn : "ambos",
     potAdvice: clipSentences(str(c.potAdvice, 300), 140),
+    waterHow: clipSentences(str(c.waterHow, 300), 180),
     windSensitive: c.windSensitive === true || c.windSensitive === "true",
     plantMonths: monthList(c.plantMonths),
     plantWhen: clipSentences(str(c.plantWhen, 250), 120),
@@ -368,7 +370,7 @@ async function handleCare(request, env, headers, ctx) {
   const kind = ["explore", "edit", "upgrade"].includes(body.src) ? `care_${body.src}` : "care";
 
   // Same plant, same climate cell (~100 km) → same answer, whatever the month.
-  const cacheKey = `care:v14:${normName(name)}:${Math.round(lat)}:${Math.round(lon)}`;
+  const cacheKey = `care:v15:${normName(name)}:${Math.round(lat)}:${Math.round(lon)}`;
   const cached = await env.CACHE.get(cacheKey, "json");
   if (cached) { recordAi(env, ctx, "cached", 0, request, kind); return json({ ...withLegacy(cached, body.month, lat), cached: true }, 200, headers); }
 
@@ -815,7 +817,7 @@ const SUN = ["sun", "partial", "shade"];
 function vInfo(i) {
   if (!i || typeof i !== "object") return undefined;
   return {
-    plantIn: vEnum(i.plantIn, ["maceta", "suelo", "ambos"], "ambos"), potAdvice: vStr(i.potAdvice, 160), windSensitive: i.windSensitive === true,
+    plantIn: vEnum(i.plantIn, ["maceta", "suelo", "ambos"], "ambos"), potAdvice: vStr(i.potAdvice, 160), waterHow: vStr(i.waterHow, 200), windSensitive: i.windSensitive === true,
     plantMonths: vMonths(i.plantMonths), plantWhen: vStr(i.plantWhen, 140), matureSize: vEnum(i.matureSize, ["pequena", "mediana", "grande"], "mediana"), matureNote: vStr(i.matureNote, 120),
     bloomMonths: vMonths(i.bloomMonths), bloomWhat: vStr(i.bloomWhat, 80), difficulty: vEnum(i.difficulty, ["facil", "media", "exigente"], "media"),
     toxic: vEnum(i.toxic, ["no", "mascotas", "personas", "ambos"], "no"), toxicNote: vStr(i.toxicNote, 160), invasive: i.invasive === true,
