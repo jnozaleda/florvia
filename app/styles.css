@@ -769,3 +769,13 @@ label.link-btn { cursor: pointer; }
 .pm-plan { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-top: 0.5px solid var(--hairline); }
 .pm-plan:first-of-type { border-top: 0; }
 .pm-plan b { display: block; } .pm-plan span { display: block; font-size: 14px; color: var(--text-2); } .pm-plan small { display: block; font-size: 12px; color: var(--accent); font-weight: 600; }
+
+/* «¿Qué le pasa?»: one card per probable cause (title + how likely, why, how to check, what to do) */
+.dg-summary { margin: 12px 0; font-size: 16px; line-height: 1.45; }
+.dg-cause { padding-bottom: 16px; }
+.dg-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 17px; line-height: 1.25; }
+.dg-title .conf { margin-left: 0; }
+.dg-why { margin: 6px 0 0; color: var(--text-2); font-size: 14px; line-height: 1.45; }
+.dg-label { margin: 14px 0 3px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.dg-label.first { margin-top: 0; }
+.dg-text { margin: 0; font-size: 15px; line-height: 1.45; }

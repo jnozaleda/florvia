@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005g";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005h";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005g";
-import { buildICS } from "./calendar.js?v=20261005g";
-import { scrubPlant } from "./clean.js?v=20261005g";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005g";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005h";
+import { buildICS } from "./calendar.js?v=20261005h";
+import { scrubPlant } from "./clean.js?v=20261005h";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005h";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -602,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005g";
+      sc.src = "vendor/qrcode.min.js?v=20261005h";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1501,13 +1501,13 @@ function diagSheet() {
     const [uc, ut] = URG[r.urgency] ?? URG.media;
     return openSheet(`${head}
       <p class="ai-status ${uc}">${esc(ut)}</p>
-      ${r.summary ? `<p>${esc(r.summary)}</p>` : ""}
+      ${r.summary ? `<p class="dg-summary">${esc(r.summary)}</p>` : ""}
       ${r.photo === "dudosa" ? `<p class="muted small">La foto no se ve con claridad${r.photoSeen ? ` (parece ${esc(r.photoSeen)})` : ""}: el diagnóstico se apoya sobre todo en lo que has marcado.</p>` : ""}
-      ${r.causes.map((c) => `<section class="card"><b>${esc(c.title)} <span class="ai-mark">✦</span> <span class="conf ${c.likelihood}">${LV[c.likelihood]}</span></b>
-        <p class="muted small">${esc(c.why)}</p>
-        ${c.check ? `<div class="sec start">Cómo comprobarlo</div><p class="small">${esc(c.check)}</p>` : ""}
-        <div class="sec start">Qué hacer</div><p class="small">${esc(c.action)}</p></section>`).join("")}
-      ${r.watch ? `<section class="card"><div class="sec start">Vigila</div><p class="small">${esc(r.watch)}</p></section>` : ""}
+      ${r.causes.map((c) => `<section class="card dg-cause"><div class="dg-title"><b>${esc(c.title)} <span class="ai-mark">✦</span></b><span class="conf ${c.likelihood}">${LV[c.likelihood]}</span></div>
+        <p class="dg-why">${esc(c.why)}</p>
+        ${c.check ? `<div class="dg-label">Cómo comprobarlo</div><p class="dg-text">${esc(c.check)}</p>` : ""}
+        <div class="dg-label">Qué hacer</div><p class="dg-text">${esc(c.action)}</p></section>`).join("")}
+      ${r.watch ? `<section class="card dg-cause"><div class="dg-label first">Vigila</div><p class="dg-text">${esc(r.watch)}</p></section>` : ""}
       ${r.needMore ? `<p class="muted small">Para afinar más: ${esc(r.needMore)}</p>` : ""}
       <p class="muted small">Es una estimación de la IA, no una garantía. Si la planta empeora o no ves mejoría, pide consejo en un vivero.</p>
       <button type="button" class="btn block" data-action="dg-save" ${dg.saved ? "disabled" : ""}>${dg.saved ? "Anotado en el historial" : "Anotar en el historial"}</button>
