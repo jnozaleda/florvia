@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005b";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005c";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005b";
-import { buildICS } from "./calendar.js?v=20261005b";
-import { scrubPlant } from "./clean.js?v=20261005b";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005b";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005c";
+import { buildICS } from "./calendar.js?v=20261005c";
+import { scrubPlant } from "./clean.js?v=20261005c";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005c";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -602,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005b";
+      sc.src = "vendor/qrcode.min.js?v=20261005c";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -978,6 +978,40 @@ function refsCard() {
   if (!refs.length) return `<section class="card"><div class="sec">Procedencia (blog)</div><p class="muted small">Aún nadie ha entrado desde una página del blog.</p></section>`;
   return `<section class="card"><div class="sec">Procedencia (blog)</div>${refs.map((r) => `<div class="u-row"><span>${esc(REF_LABEL(r.ref))}</span><b>${r.people}<small>${r.planted} ${r.planted === 1 ? "añadió una planta" : "añadieron una planta"}</small></b></div>`).join("")}</section>`;
 }
+const WEB_SRC = { direct: "Directo (sin origen)", google: "Google", search: "Otros buscadores", social: "Redes sociales", ai: "Asistentes de IA", other: "Otras webs" };
+const WEB_BOTS = [["search", "Buscadores (Googlebot, Bingbot…)"], ["ai", "Robots de IA (GPTBot, ClaudeBot…)"], ["preview", "Previsualizaciones de enlaces (WhatsApp…)"], ["bot", "Otros robots"]];
+const WEB_PAGE = (path) => path === "/" ? "Inicio (landing)" : path === "/es/plantas/" ? "Fichas de plantas (índice)" : path === "/es/guias/" ? "Guías (índice)" : REF_LABEL(path.replace(/^\/es\/(plantas|guias)\/([^/]+)\/$/, (_, t, s) => `${t === "plantas" ? "planta" : "guia"}-${s}`));
+function webCard() {
+  const w = usageWeb;
+  if (!w) return "";
+  if (w.error) return `<section class="card"><div class="sec">Visitas a la web</div><p class="muted small">${w.error === "missing" ? "Todavía no hay datos: falta publicar el Worker con las tablas de visitas." : w.error === "code" ? "El código guardado no es válido para ver las visitas." : "No se han podido cargar las visitas."}</p></section>`;
+  const last = (n, key = "person") => w.days.slice(-n).reduce((a, d) => a + d[key], 0);
+  const max = Math.max(4, ...w.days.map((d) => d.person));
+  const bars = w.days.map((d) => {
+    const label = `${fmtDate(d.date, { weekday: "short", day: "numeric", month: "short" })} · ${d.person} ${d.person === 1 ? "visita" : "visitas"} de personas`;
+    return `<span class="u-bar ${d.person ? "" : "zero"}" style="height:${Math.max(3, (d.person / max) * 100)}%" tabindex="0" title="${esc(label)}" aria-label="${esc(label)}"></span>`;
+  }).join("");
+  const row = (icon, label, n, small = "") => `<div class="u-row">${ICONS[icon]}<span>${label}</span><b>${n}${small ? `<small>${small}</small>` : ""}</b></div>`;
+  const refs = usage?.refs ?? [];
+  const fromBlog = refs.reduce((a, r) => a + r.people, 0), planted = refs.reduce((a, r) => a + r.planted, 0);
+  const robots = w.totals.search + w.totals.ai + w.totals.preview + w.totals.bot;
+  const crawled = w.crawled.search || w.crawled.ai ? `Han visitado ${w.crawled.search} ${w.crawled.search === 1 ? "página" : "páginas"} los buscadores y ${w.crawled.ai} los robots de IA.` : "Ningún buscador ni robot de IA ha visitado todavía el blog.";
+  return `<section class="card"><div class="sec">Visitas a la web <span class="meta">landing y blog · 30 días</span></div>
+    <div class="u-tiles"><div><span>Hoy</span><b>${last(1)}</b></div><div><span>7 días</span><b>${last(7)}</b></div><div><span>30 días</span><b>${last(30)}</b></div></div>
+    <div class="u-chart" role="img" aria-label="Visitas de personas por día en los últimos 30 días">${bars}</div>
+    <div class="u-axis"><span>${fmtDate(w.days[0].date)}</span><span>hoy</span></div>
+    <div class="u-tip" aria-live="polite"></div>
+    ${w.pages.length ? `<div class="sec" style="margin-top:14px">Páginas más leídas</div>${w.pages.map((p) => row("notes", esc(WEB_PAGE(p.path)), p.n)).join("")}` : `<p class="muted small">Aún no hay visitas de personas.</p>`}
+    ${w.sources.length ? `<div class="sec" style="margin-top:14px">De dónde llegan</div>${w.sources.map((s) => row("search", WEB_SRC[s.src] ?? s.src, s.n)).join("")}` : ""}
+    <div class="sec" style="margin-top:14px">Recorrido</div>
+    ${row("sprout", "Visitas de personas", last(30))}
+    ${row("check", "Han abierto la app desde el blog", fromBlog, "desde que se mide")}
+    ${row("plus", "Y han añadido una planta", planted)}
+    <div class="sec" style="margin-top:14px">Robots <span class="meta">${robots} en 30 días · no cuentan como personas</span></div>
+    ${WEB_BOTS.map(([k, label]) => row("database", label, w.totals[k])).join("")}
+    <p class="muted small">${crawled}</p>
+    <p class="muted small">Una <b>visita</b> es una persona en un día: si lee tres guías, cuenta una vez por cada página y una sola vez en el total. Sin cookies. Quien use un bloqueador de anuncios o «no rastrear» no aparece. Los robots se separan por cómo se identifican y solo se ven los que ejecutan JavaScript (Googlebot sí; muchos otros no): uno que se haga pasar por navegador cuenta como persona.</p></section>`;
+}
 function intentCard() {
   const i = usage?.intent;
   if (!i) return "";
@@ -990,10 +1024,12 @@ function intentCard() {
 // «Real» = opened from florvia.app (or the old address), not from a device marked as Noza's, and since the
 // clean start date. Tests and your own devices are listed apart and never added to the real numbers.
 let usage = null; // null = loading · { error } · the /stats2 report
+let usageWeb = null; // the /stats/web report (visits to the landing and the blog) · { error }
 async function loadUsage() {
   try {
-    const res = await fetch(`${API}/stats2?days=30`, { headers: aiHeaders() });
+    const [res, webRes] = await Promise.all([fetch(`${API}/stats2?days=30`, { headers: aiHeaders() }), fetch(`${API}/stats/web?days=30`, { headers: aiHeaders() }).catch(() => null)]);
     usage = res.ok ? await res.json() : { error: res.status === 401 ? "code" : "ai" };
+    usageWeb = webRes?.ok ? await webRes.json() : { error: webRes?.status === 404 ? "missing" : "ai" };
   } catch { usage = { error: "network" }; }
   if (sheet.open && sheet.dataset.view === "usage") usageSheet();
   loadFeedback(false);
@@ -1051,6 +1087,7 @@ function usageSheet() {
       <p class="muted small">${buckets ? `Fuera de las cifras: ${esc(buckets)}.` : "Nada fuera de las cifras por ahora."}</p>
       <button type="button" class="btn block secondary" data-action="usage-mine" data-on="${usage.me.internal ? "0" : "1"}">${usage.me.internal ? "Este dispositivo está marcado como tuyo · quitar la marca" : "Marcar este dispositivo como mío"}</button></section>
     ${tokensCard()}
+    ${webCard()}
     ${refsCard()}
     ${intentCard()}
     ${feedbackAdminCards()}
@@ -1064,8 +1101,8 @@ function usageSheet() {
 }
 // Tap or hover a bar to read its day.
 document.addEventListener("focusin", (e) => { if (e.target.classList?.contains("select-on-focus")) e.target.select(); });
-document.addEventListener("pointerover", (e) => { const b = e.target.closest?.(".u-bar"); if (b && $("usageTip")) $("usageTip").textContent = b.getAttribute("aria-label"); });
-document.addEventListener("focusin", (e) => { const b = e.target.closest?.(".u-bar"); if (b && $("usageTip")) $("usageTip").textContent = b.getAttribute("aria-label"); });
+document.addEventListener("pointerover", (e) => { const b = e.target.closest?.(".u-bar"); const tip = b?.closest(".card")?.querySelector(".u-tip"); if (tip) tip.textContent = b.getAttribute("aria-label"); });
+document.addEventListener("focusin", (e) => { const b = e.target.closest?.(".u-bar"); const tip = b?.closest(".card")?.querySelector(".u-tip"); if (tip) tip.textContent = b.getAttribute("aria-label"); });
 
 const SHEET_VIEWS = { ai: aiSheet, upgrades: upgradesSheet, usage: usageSheet, suggest: () => { suggestRead(); suggestSheet(); }, feedback: () => { fbRead(); feedbackSheet(); }, premium: () => premiumSheet(premiumUi.reason, true) };
 

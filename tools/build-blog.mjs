@@ -132,13 +132,13 @@ details{border-bottom:1px solid #dfe5da;padding:2px 0}summary{cursor:pointer;fon
 .hub{display:grid;gap:12px;padding:0;list-style:none;margin:20px 0 40px}.hub a{display:block;padding:18px 20px;background:#fff;border:1px solid #e2e8de;border-radius:16px;text-decoration:none;color:var(--ink)}.hub b{display:block;font-size:19px}.hub span{color:var(--mut);font-size:15.5px}
 footer{background:var(--deep2);color:#b9d1b6;margin-top:60px;padding:30px 0;font-size:15px}footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}footer a{color:#d6e6d3}`;
 const head = ({ title, description, path, extra = "" }) => `<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="es"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://api.florvia.app; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><meta name="description" content="${esc(description)}"><link rel="canonical" href="${SITE}${path}">
 <meta name="theme-color" content="#0f4628"><link rel="icon" href="/app/favicon.png" type="image/png"><link rel="apple-touch-icon" href="/app/icon-180.png">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:type" content="article"><meta property="og:url" content="${SITE}${path}"><meta property="og:image" content="${SITE}/app/og.png">
 ${extra}<style>${CSS}</style></head><body>
 <div class="top"><div class="wrap"><div class="nav"><a class="brand" href="/"><img src="/app/icon-rounded.png" width="34" height="34" alt="">Florvia</a><nav><a href="/es/plantas/">Plantas</a><a href="/es/guias/">Guías</a><a class="btn cream small" href="/app/">Abrir</a></nav></div></div></div>`;
-const foot = `<footer><div class="wrap"><span>© Florvia</span><span><a href="/">Inicio</a> · <a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer></body></html>`;
+const foot = `<footer><div class="wrap"><span>© Florvia</span><span><a href="/">Inicio</a> · <a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer><script src="/track.js" defer></script></body></html>`;
 const ld = (obj) => `<script type="application/ld+json">${JSON.stringify(obj)}</script>\n`;
 
 // ---- build
