@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS errors (
 CREATE INDEX IF NOT EXISTS idx_errors_day ON errors(day);
 
 -- Plans (phase 1 of the paywall). `garden` is the garden hash derived from the garden key (X-Key); plan = premium | lifetime.
--- Founders are not stored: anyone first seen before meta.paywall_start is a founder (computed from events).
+-- The free trial is not stored: it is 30 days from the later of a person's first event and meta.paywall_start (computed from events).
 CREATE TABLE IF NOT EXISTS entitlements (
   garden TEXT PRIMARY KEY, plan TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'manual',
   since INTEGER NOT NULL, until INTEGER, note TEXT NOT NULL DEFAULT ''

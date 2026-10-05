@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005p";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005q";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005p";
-import { buildICS } from "./calendar.js?v=20261005p";
-import { scrubPlant } from "./clean.js?v=20261005p";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005p";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005q";
+import { buildICS } from "./calendar.js?v=20261005q";
+import { scrubPlant } from "./clean.js?v=20261005q";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005q";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005p";
+      sc.src = "vendor/qrcode.min.js?v=20261005q";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -855,7 +855,8 @@ async function loadMe() {
   } catch {}
 }
 const plantLimitHit = () => Boolean(me && me.enforced && !me.premium && me.limits?.plants && state.data.plants.length >= me.limits.plants);
-const planLabel = () => (!me ? "" : me.plan === "founder" ? "Fundador/a" : me.premium ? "Premium" : me.enforced ? "Gratis" : "Próximamente");
+const trialDaysLeft = () => (me?.plan === "trial" && me.trialEnds ? Math.max(0, daysBetween(localToday(), me.trialEnds)) : 0);
+const planLabel = () => (!me ? "" : me.plan === "trial" ? `Prueba gratuita · ${trialDaysLeft()} ${trialDaysLeft() === 1 ? "día" : "días"}` : me.premium ? "Premium" : me.enforced ? "Gratis" : "Próximamente");
 function premiumSheet(reason = "", keep = false) {
   const head = `<div class="sheet-head"><h2>Florvia Premium</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>`;
   if (!keep) { premiumUi = { reason, sent: "", email: premiumUi.email, error: "", thanks: false }; track("paywall_view"); }
@@ -869,10 +870,10 @@ function premiumSheet(reason = "", keep = false) {
     identify: `Has usado tus ${me.limits?.identify ?? 5} identificaciones por foto de este mes.`,
     diagnose: `Has usado tus ${me.limits?.diagnose ?? 5} diagnósticos de este mes.`,
   };
-  if (me.premium) {
+  if (me.premium && me.plan !== "trial") {
     return openSheet(`${head}
-      <section class="card"><b>Tienes Premium${me.plan === "founder" ? " · fundador/a" : me.plan === "lifetime" ? " · de por vida" : ""}</b>
-        <p class="muted">${me.plan === "founder" ? "Usas Florvia desde antes del lanzamiento, así que Premium es gratis para ti. Gracias por ser de las primeras personas." : "Gracias por apoyar Florvia."}</p></section>
+      <section class="card"><b>Tienes Premium${me.plan === "lifetime" ? " · de por vida" : ""}</b>
+        <p class="muted">Gracias por apoyar Florvia.</p></section>
       <section class="card"><div class="sec">Este mes</div>${row("Qué planto aquí", `${used.suggest ?? 0} de ${L.suggest}`)}${row("Identificar por foto", `${used.identify ?? 0} de ${L.identify}`)}${row("¿Qué le pasa?", `${used.diagnose ?? 0} de ${L.diagnose}`)}${L.plants ? "" : row("Plantas", "ilimitadas")}</section>
       <p class="muted small">Las consultas guardadas en memoria no cuentan. El contador se reinicia el día 1.</p>
       ${me.paid ? `<section class="card"><div class="sec">Tu suscripción</div><p class="muted small">${me.paid.plan === "lifetime" ? "Pago único «de por vida»." : me.paid.until ? `Cancelada: sigue activa hasta el ${fmtDate(new Date(me.paid.until).toISOString().slice(0, 10))}.` : "Activa."}</p>
@@ -887,12 +888,20 @@ function premiumSheet(reason = "", keep = false) {
   const sent = premiumUi.sent;
   const plan = (key, name, price, extra = "", best = false) => `<div class="pm-plan ${best ? "best" : ""}"><div><b>${name}</b><span>${price}</span>${extra ? `<small>${extra}</small>` : ""}</div>
     <button type="button" class="btn small ${best ? "" : "secondary"}" data-action="${me.payments ? "premium-buy" : "premium-intent"}" data-c="${key}" ${sent ? "disabled" : ""}>${me.payments ? "Elegir" : "Quiero esto"}</button></div>`;
+  const F = me.freeLimits ?? L;
+  const trial = me.plan === "trial";
+  const trialOver = !me.premium && me.trialEnds && me.trialEnds < localToday();
+  const mailto = `mailto:hello@florvia.app?subject=${encodeURIComponent("Código de uso gratuito de Florvia")}&body=${encodeURIComponent("Hola, me gustaría pedir un código de uso gratuito de Florvia.\n\nMe llamo: \nMotivo: \n")}`;
   openSheet(`${head}
+    ${trial ? `<section class="card"><b>Tienes Premium gratis · ${trialDaysLeft()} ${trialDaysLeft() === 1 ? "día" : "días"}</b>
+      <p class="muted small">Todo Florvia sin límites hasta el ${fmtDate(me.trialEnds)}. Después pasas al plan gratuito, salvo que elijas un plan.</p>
+      ${row("Qué planto aquí este mes", `${me.used?.suggest ?? 0}`)}${row("Identificaciones este mes", `${me.used?.identify ?? 0}`)}${row("Diagnósticos este mes", `${me.used?.diagnose ?? 0}`)}</section>` : ""}
+    ${trialOver ? `<section class="card"><b>Tu mes de Premium gratis terminó</b><p class="muted small">Ahora tienes el plan gratuito. Si quieres seguir con Premium, elige un plan o <a href="${mailto}">escríbenos a hello@florvia.app</a> y pídenos un código de uso gratuito.</p></section>` : ""}
     ${premiumUi.reason && me.enforced ? `<p class="ai-status warn">${esc(REASON[premiumUi.reason] ?? "")}</p>` : ""}
     ${premiumUi.thanks ? `<p class="ai-status ok">¡Gracias! Estamos activando tu plan: puede tardar unos segundos.</p>` : ""}
-    <section class="card"><div class="sec">${me.enforced ? "Gratis" : "Cómo será"}</div>
-      <p class="muted small">${me.enforced ? "" : `A partir del ${fmtDate(me.start)} habrá un plan gratuito y un plan Premium. Hasta entonces todo es gratis, y quien ya usa Florvia antes de esa fecha es fundador/a: tiene Premium gratis.`}</p>
-      ${row("Plantas", `${L.plants} (Premium: ilimitadas)`)}${row("Qué planto aquí", `${L.suggest} al mes (Premium: ${PLAN_PREMIUM.suggest})`)}${row("Identificar por foto", `${L.identify} al mes (Premium: ${PLAN_PREMIUM.identify})`)}${row("¿Qué le pasa?", `${L.diagnose} al mes (Premium: ${PLAN_PREMIUM.diagnose})`)}
+    <section class="card"><div class="sec">${trial ? "Después de la prueba" : me.enforced ? "Gratis" : "Cómo será"}</div>
+      <p class="muted small">${me.enforced || trial ? "" : `A partir del ${fmtDate(me.start)} habrá un plan gratuito y un plan Premium. Todas las personas tienen un mes de Premium gratis al empezar.`}</p>
+      ${row("Plantas", `${F.plants} (Premium: ilimitadas)`)}${row("Qué planto aquí", `${F.suggest} al mes (Premium: ${PLAN_PREMIUM.suggest})`)}${row("Identificar por foto", `${F.identify} al mes (Premium: ${PLAN_PREMIUM.identify})`)}${row("¿Qué le pasa?", `${F.diagnose} al mes (Premium: ${PLAN_PREMIUM.diagnose})`)}
       <p class="muted small">Siempre gratis: ficha de cada planta, Explorar, «¿Dónde está mejor?», compartir, sincronizar y el aviso diario.</p></section>
     <section class="card"><div class="sec">Premium</div>
       ${plan("yearly", "Anual", PRICES.yearly, "La mejor opción", true)}${plan("monthly", "Mensual", PRICES.monthly)}${plan("lifetime", "De por vida", PRICES.lifetime, me.lifetimeLeft ? `Solo para las primeras personas · quedan ${me.lifetimeLeft}` : "Agotado")}
@@ -900,7 +909,8 @@ function premiumSheet(reason = "", keep = false) {
       <input id="pmEmail" type="email" class="big-input" inputmode="email" autocomplete="off" maxlength="80" placeholder="nombre@correo.com" value="${esc(premiumUi.email)}" />
       ${sent ? `<p class="ai-status ok">¡Apuntado! Todavía no se puede pagar: te avisamos en cuanto esté abierto.</p>` : ""}
       ${premiumUi.error ? `<p class="ai-status warn">${esc(premiumUi.error)}</p>` : ""}
-      <p class="muted small">Los pagos aún no están abiertos. Al pulsar solo apuntamos tu interés.</p></section>`, "premium");
+      <p class="muted small">${me.payments ? "" : "Los pagos aún no están abiertos. Al pulsar solo apuntamos tu interés."}</p></section>
+    <p class="muted small">¿Probando Florvia o eres de amigos y familia? <a href="${mailto}">Escríbenos a hello@florvia.app</a> y pídenos un código de uso gratuito.</p>`, "premium");
 }
 const PLAN_PREMIUM = { suggest: 30, identify: 30, diagnose: 30 };
 // Polar checkout / customer portal: the Worker makes the session, the person pays on Polar's page and comes back to ?premium=ok.

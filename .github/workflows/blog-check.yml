@@ -55,6 +55,10 @@ jobs:
         if: always()
         shell: bash
         run: node tools/test-polar.mjs 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
+      - name: Probar los planes y el mes gratis (/me)
+        if: always()
+        shell: bash
+        run: node tools/test-plans.mjs 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
       - name: Avisar por correo
         if: failure() && env.CI_ALERT_TOKEN != ''
         shell: bash

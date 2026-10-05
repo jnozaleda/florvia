@@ -840,11 +840,14 @@ async function handleFeedbackStatus(request, env, headers) {
 }
 
 // ---------- Plans and limits (paywall phase 1) ----------
-// A person is free, premium, lifetime or founder. Founders are everyone first seen before meta.paywall_start (they keep
-// Premium for free); devices Noza marked as theirs are premium too. Until the start date nothing is limited.
+// A person is free, trial, premium or lifetime. Everyone gets a free month of Premium (trial): it runs 30 days from the later of
+// their first use and meta.paywall_start; after that they are free unless they pay (entitlements) or are marked as Noza's.
+// Until the start date nothing is limited.
 // The plan comes from the garden key (X-Key): without it (a phone that isn't synced) the person is free, counted by device.
 // Plants live on the phone, so the plant limit is applied by the app; the AI limits below are applied here.
 const PAYWALL_START_DEFAULT = "2026-10-19";
+const TRIAL_DAYS = 30;
+const addDaysIso = (iso, n) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 const PLAN_LIMITS = {
   free: { plants: 8, suggest: 5, identify: 5, diagnose: 5 },
   premium: { plants: 0, suggest: 30, identify: 30, diagnose: 30, total: 300 }, // 0 = unlimited
@@ -862,6 +865,7 @@ async function planOf(env, request) {
   const ids = [device, garden].filter(Boolean);
   let plan = "free";
   let source = "";
+  let trialEnds = "";
   if (env.DB && ids.length) {
     const internal = await env.DB.prepare(`SELECT 1 AS x FROM internal WHERE id IN (${ids.map(() => "?").join(",")})`).bind(...ids).first();
     if (internal) { plan = "premium"; source = "internal"; }
@@ -871,10 +875,12 @@ async function planOf(env, request) {
     }
     if (plan === "free") {
       const first = await env.DB.prepare("SELECT MIN(day) AS d FROM events WHERE (garden <> '' AND garden = ?) OR (device <> '' AND device = ?)").bind(garden || "-", device || "-").first();
-      if ((first?.d ?? today) < start) { plan = "founder"; source = "founder"; }
+      const firstDay = first?.d ?? today;
+      trialEnds = addDaysIso(firstDay > start ? firstDay : start, TRIAL_DAYS);
+      if (today <= trialEnds) { plan = "trial"; source = "trial"; }
     }
   }
-  return { plan, source, live, start, garden, device, premium: plan !== "free", limits: plan === "free" ? PLAN_LIMITS.free : PLAN_LIMITS.premium };
+  return { plan, source, live, start, garden, device, trialEnds, premium: plan !== "free", limits: plan === "free" ? PLAN_LIMITS.free : PLAN_LIMITS.premium };
 }
 const monthStart = () => `${new Date().toISOString().slice(0, 7)}-01`;
 async function monthlyUse(env, p, names) {
@@ -906,6 +912,7 @@ async function handleMe(request, env, headers) {
     plan: p.plan, source: p.source, premium: p.premium, enforced: p.live, start: p.start,
     limits: p.limits, used: { suggest, identify, diagnose }, synced: Boolean(p.garden), lifetimeLeft,
     payments: await paymentsOpen(env, p), sandbox: env.POLAR_ENV !== "production",
+    trialEnds: p.plan === "trial" ? p.trialEnds : (p.trialEnds || null), freeLimits: PLAN_LIMITS.free,
     paid: paid ? { plan: paid.plan, source: paid.source, until: paid.until } : null,
   }, 200, headers);
 }
