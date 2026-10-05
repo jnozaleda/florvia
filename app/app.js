@@ -841,12 +841,13 @@ function premiumSheet(reason = "", keep = false) {
     plants: `Con el plan gratuito puedes tener ${me.limits?.plants ?? 8} plantas.`,
     suggest: `Has usado tus ${me.limits?.suggest ?? 5} búsquedas de «Qué planto aquí» de este mes.`,
     identify: `Has usado tus ${me.limits?.identify ?? 5} identificaciones por foto de este mes.`,
+    diagnose: `Has usado tus ${me.limits?.diagnose ?? 5} diagnósticos de este mes.`,
   };
   if (me.premium) {
     return openSheet(`${head}
       <section class="card"><b>Tienes Premium${me.plan === "founder" ? " · fundador/a" : me.plan === "lifetime" ? " · de por vida" : ""}</b>
         <p class="muted">${me.plan === "founder" ? "Usas Florvia desde antes del lanzamiento, así que Premium es gratis para ti. Gracias por ser de las primeras personas." : "Gracias por apoyar Florvia."}</p></section>
-      <section class="card"><div class="sec">Este mes</div>${row("Qué planto aquí", `${used.suggest ?? 0} de ${L.suggest}`)}${row("Identificar por foto", `${used.identify ?? 0} de ${L.identify}`)}${L.plants ? "" : row("Plantas", "ilimitadas")}</section>
+      <section class="card"><div class="sec">Este mes</div>${row("Qué planto aquí", `${used.suggest ?? 0} de ${L.suggest}`)}${row("Identificar por foto", `${used.identify ?? 0} de ${L.identify}`)}${row("¿Qué le pasa?", `${used.diagnose ?? 0} de ${L.diagnose}`)}${L.plants ? "" : row("Plantas", "ilimitadas")}</section>
       <p class="muted small">Las consultas guardadas en memoria no cuentan. El contador se reinicia el día 1.</p>`, "premium");
   }
   const sent = premiumUi.sent;
@@ -856,7 +857,7 @@ function premiumSheet(reason = "", keep = false) {
     ${premiumUi.reason && me.enforced ? `<p class="ai-status warn">${esc(REASON[premiumUi.reason] ?? "")}</p>` : ""}
     <section class="card"><div class="sec">${me.enforced ? "Gratis" : "Cómo será"}</div>
       <p class="muted small">${me.enforced ? "" : `A partir del ${fmtDate(me.start)} habrá un plan gratuito y un plan Premium. Hasta entonces todo es gratis, y quien ya usa Florvia antes de esa fecha es fundador/a: tiene Premium gratis.`}</p>
-      ${row("Plantas", `${L.plants} (Premium: ilimitadas)`)}${row("Qué planto aquí", `${L.suggest} al mes (Premium: ${PLAN_PREMIUM.suggest})`)}${row("Identificar por foto", `${L.identify} al mes (Premium: ${PLAN_PREMIUM.identify})`)}
+      ${row("Plantas", `${L.plants} (Premium: ilimitadas)`)}${row("Qué planto aquí", `${L.suggest} al mes (Premium: ${PLAN_PREMIUM.suggest})`)}${row("Identificar por foto", `${L.identify} al mes (Premium: ${PLAN_PREMIUM.identify})`)}${row("¿Qué le pasa?", `${L.diagnose} al mes (Premium: ${PLAN_PREMIUM.diagnose})`)}
       <p class="muted small">Siempre gratis: ficha de cada planta, Explorar, «¿Dónde está mejor?», compartir, sincronizar y el aviso diario.</p></section>
     <section class="card"><div class="sec">Premium</div>
       ${plan("yearly", "Anual", PRICES.yearly, "La mejor opción", true)}${plan("monthly", "Mensual", PRICES.monthly)}${plan("lifetime", "De por vida", PRICES.lifetime, me.lifetimeLeft ? `Solo para las primeras personas · quedan ${me.lifetimeLeft}` : "Agotado")}
@@ -866,7 +867,7 @@ function premiumSheet(reason = "", keep = false) {
       ${premiumUi.error ? `<p class="ai-status warn">${esc(premiumUi.error)}</p>` : ""}
       <p class="muted small">Los pagos aún no están abiertos. Al pulsar solo apuntamos tu interés.</p></section>`, "premium");
 }
-const PLAN_PREMIUM = { suggest: 30, identify: 30 };
+const PLAN_PREMIUM = { suggest: 30, identify: 30, diagnose: 30 };
 async function premiumIntent(choice) {
   if ($("pmEmail")) premiumUi.email = $("pmEmail").value.trim();
   premiumUi.error = "";
@@ -960,7 +961,7 @@ function feedbackAdminCards() {
     <section class="card"><div class="sec">Errores de la app <span class="meta">14 días</span></div>${errs || `<p class="muted small">Ninguno registrado.</p>`}</section>`;
 }
 
-const KIND_LABEL = { care: "Ficha (alta)", care_explore: "Explorar", care_edit: "Editar con IA", care_upgrade: "Actualizar fichas", calendar: "Calendario del año", place: "¿Dónde está mejor?", suggest: "Qué planto aquí", identify: "Identificar por foto" };
+const KIND_LABEL = { care: "Ficha (alta)", care_explore: "Explorar", care_edit: "Editar con IA", care_upgrade: "Actualizar fichas", calendar: "Calendario del año", place: "¿Dónde está mejor?", suggest: "Qué planto aquí", identify: "Identificar por foto", diagnose: "¿Qué le pasa?" };
 // Real tokens per kind of AI call (from the provider's own count), to know what costs what.
 function tokensCard() {
   const k = usage?.aiKinds ?? {};
@@ -1105,7 +1106,7 @@ document.addEventListener("focusin", (e) => { if (e.target.classList?.contains("
 document.addEventListener("pointerover", (e) => { const b = e.target.closest?.(".u-bar"); const tip = b?.closest(".card")?.querySelector(".u-tip"); if (tip) tip.textContent = b.getAttribute("aria-label"); });
 document.addEventListener("focusin", (e) => { const b = e.target.closest?.(".u-bar"); const tip = b?.closest(".card")?.querySelector(".u-tip"); if (tip) tip.textContent = b.getAttribute("aria-label"); });
 
-const SHEET_VIEWS = { ai: aiSheet, upgrades: upgradesSheet, usage: usageSheet, suggest: () => { suggestRead(); suggestSheet(); }, feedback: () => { fbRead(); feedbackSheet(); }, premium: () => premiumSheet(premiumUi.reason, true) };
+const SHEET_VIEWS = { ai: aiSheet, upgrades: upgradesSheet, usage: usageSheet, suggest: () => { suggestRead(); suggestSheet(); }, feedback: () => { fbRead(); feedbackSheet(); }, premium: () => premiumSheet(premiumUi.reason, true), diag: () => { diagRead(); diagSheet(); } };
 
 // ---------- Care sheet upgrades ----------
 // When an improvement needs new data from the AI, it gets a version and an entry here. Plants
@@ -1414,6 +1415,7 @@ function plantSheet(id) {
     <section class="card"><div class="sec">Registrar</div><div class="acts">
       ${Object.entries(CARE).filter(([type]) => type !== "task").map(([type, c]) => `<button type="button" class="act" data-action="log" data-type="${type}" data-id="${p.id}" data-reopen="1">${ICONS[LOG_ICON[type]]}${c.done}</button>`).join("")}
     </div></section>
+    ${diagCard(p)}
     ${aboutCard(p)}
     ${p.notes ? `<section class="card"><div class="sec start">Notas${aiMark(isAiValue(p, "notes"))}</div><p class="muted notes-text">${esc(p.notes).replace(/\n/g, "<br>")}</p></section>` : ""}
     ${yearCalendarCard(p, today)}
@@ -1425,6 +1427,102 @@ function plantSheet(id) {
     ${provenance}
     `);
   sheet.dataset.plant = id;
+}
+
+// «¿Qué le pasa?»: diagnosis of one plant (Worker /diagnose). Symptoms + a note + optionally a photo, plus what the app
+// knows of the plant (watering rhythm, last watering and feeding, zone). Counts against the monthly «diagnose» limit.
+const DIAG_SYMPTOMS = [["amarillas", "Hojas amarillas"], ["marrones", "Puntas o hojas marrones"], ["mustia", "Hojas caídas o mustias"], ["manchas", "Manchas en las hojas"], ["bichos", "Bichos o plagas"], ["moho", "Moho o polvillo blanco"], ["enrolladas", "Hojas enrolladas"], ["sin_crecer", "No crece"], ["tallo_blando", "Tallo blando o con mal olor"], ["caen", "Se le caen hojas o flores"], ["sin_flor", "No florece"]];
+let diag = null; // { id, symptoms: [], note, photo, state: "idle" | "loading" | "done" | "error", res, error, saved }
+function diagCard(p) {
+  return `<section class="card"><div class="sec">¿Qué le pasa?</div>
+    <p class="muted small">Cuéntale a la IA qué ves (y, si quieres, con una foto) y te propone las causas más probables y qué hacer.</p>
+    <button type="button" class="btn block secondary" style="margin-top:12px" data-action="diag-open" data-id="${p.id}" ${aiOff() ? "disabled" : ""}>✦ Diagnosticar</button>
+    ${aiOff() ? `<p class="muted small">La IA está apagada en este móvil (Ajustes → Asistente IA).</p>` : ""}</section>`;
+}
+function diagRead() {
+  if (!diag) return;
+  if ($("dgNote")) diag.note = $("dgNote").value;
+}
+function diagSheet() {
+  const dg = diag;
+  const p = dg && plantById(dg.id);
+  if (!p) return closeSheet();
+  const head = `<div class="sheet-head"><h2>¿Qué le pasa?</h2><button class="btn small secondary" data-action="open-plant" data-id="${p.id}">Volver</button></div>`;
+  if (dg.state === "loading") return openSheet(`${head}<div class="ai-step"><span class="spinner" aria-hidden="true"></span>Mirando qué puede ser: unos segundos…</div>`, "diag");
+  if (dg.state === "done") {
+    const r = dg.res;
+    const LV = { alta: "Muy probable", media: "Probable", baja: "Posible" };
+    const URG = { alta: ["warn", "Conviene actuar ya"], media: ["", "Conviene actuar esta semana"], baja: ["ok", "No es urgente"] };
+    if (!r.isPlant || !r.causes.length) {
+      return openSheet(`${head}<section class="card"><b>${r.isPlant ? "No he podido sacar una causa clara" : "No parece que la foto muestre una planta"}</b>
+        <p class="muted small">${esc(r.needMore || r.summary || "Prueba con otra foto, más cerca del problema y con luz natural.")}</p></section>
+        <button type="button" class="btn block secondary" data-action="dg-back">Volver a intentarlo</button>`, "diag");
+    }
+    const [uc, ut] = URG[r.urgency] ?? URG.media;
+    return openSheet(`${head}
+      <p class="ai-status ${uc}">${esc(ut)}</p>
+      ${r.summary ? `<p>${esc(r.summary)}</p>` : ""}
+      ${r.causes.map((c) => `<section class="card"><b>${esc(c.title)} <span class="ai-mark">✦</span> <span class="conf ${c.likelihood}">${LV[c.likelihood]}</span></b>
+        <p class="muted small">${esc(c.why)}</p>
+        ${c.check ? `<div class="sec start">Cómo comprobarlo</div><p class="small">${esc(c.check)}</p>` : ""}
+        <div class="sec start">Qué hacer</div><p class="small">${esc(c.action)}</p></section>`).join("")}
+      ${r.watch ? `<section class="card"><div class="sec start">Vigila</div><p class="small">${esc(r.watch)}</p></section>` : ""}
+      ${r.needMore ? `<p class="muted small">Para afinar más: ${esc(r.needMore)}</p>` : ""}
+      <p class="muted small">Es una estimación de la IA, no una garantía. Si la planta empeora o no ves mejoría, pide consejo en un vivero.</p>
+      <button type="button" class="btn block" data-action="dg-save" ${dg.saved ? "disabled" : ""}>${dg.saved ? "Anotado en el historial" : "Anotar en el historial"}</button>
+      <button type="button" class="btn block secondary" data-action="dg-back" style="margin-top:8px">Hacer otra consulta</button>`, "diag");
+  }
+  const left = me?.limits?.diagnose ? Math.max(0, me.limits.diagnose - (me.used?.diagnose ?? 0)) : null;
+  openSheet(`${head}
+    <p class="muted small">${esc(plantLabel(p))}: marca lo que ves. Cuantos más detalles, mejor. La IA tiene en cuenta su riego, su zona y la época.</p>
+    <div class="group-title">Síntomas</div>
+    <div class="chips">${DIAG_SYMPTOMS.map(([k, t]) => `<button type="button" class="chip ${dg.symptoms.includes(k) ? "on" : ""}" data-action="dg-sym" data-k="${k}" aria-pressed="${dg.symptoms.includes(k)}">${t}</button>`).join("")}</div>
+    <textarea id="dgNote" maxlength="300" rows="3" class="big-input" placeholder="Algo más: desde cuándo, qué has cambiado, dónde está la mancha…">${esc(dg.note)}</textarea>
+    <div class="group-title">Foto <span class="muted">(opcional, ayuda mucho)</span></div>
+    ${dg.photo ? `<img class="hero-photo" src="${esc(dg.photo)}" alt="" style="max-height:220px;object-fit:cover" />
+      <div class="row"><label class="link-btn">Cambiar foto<input type="file" id="dgPhotoInput" accept="image/*" hidden /></label><button type="button" class="link-btn" data-action="dg-nophoto">Quitar</button></div>`
+      : `<label class="card id-cta">${ICONS.camera}<div><b>Añadir una foto</b><span class="muted small">Del problema, de cerca y con luz natural.</span></div><input type="file" id="dgPhotoInput" accept="image/*" hidden /></label>`}
+    <p class="muted small">No escribas datos personales: el texto y la foto se envían a la IA.</p>
+    ${dg.state === "error" ? `<p class="ai-status warn">${esc(dg.error)}</p>` : ""}
+    <button type="button" class="btn block" data-action="dg-go" ${aiOff() ? "disabled" : ""}>✦ Diagnosticar</button>
+    ${left !== null ? `<p class="muted small">${me?.premium || !me?.enforced ? "" : `Te quedan ${left} de ${me.limits.diagnose} este mes en el plan gratuito.`}</p>` : ""}`, "diag");
+}
+async function diagGo() {
+  diagRead();
+  const dg = diag;
+  if (!dg) return;
+  if (!dg.symptoms.length && !dg.note.trim() && !dg.photo) { dg.state = "error"; dg.error = "Marca algún síntoma, escribe qué ves o añade una foto."; return diagSheet(); }
+  const p = plantById(dg.id);
+  if (!p) return;
+  dg.state = "loading";
+  diagSheet();
+  try {
+    if (aiOff()) throw new Error("off");
+    if (aiOpen === false && !aiCode()) throw new Error("code");
+    const today = localToday();
+    const since = (type) => { const d = state.data.log.filter((e) => e.plantId === p.id && e.type === type).map((e) => e.date).sort().pop(); return d ? Math.max(0, daysBetween(d, today)) : -1; };
+    const season = seasonOf(today, here().lat);
+    const plant = { name: p.name, species: p.species ?? "", zone: p.zone ?? "", pot: typeof p.inPot === "boolean" ? p.inPot : null, sun: zoneSun()[p.zone] ?? p.sun ?? "", waterEvery: intervalFor(p, "water", season) ?? 0, lastWatered: since("water"), lastFed: since("feed"), minTemp: p.minTemp ?? null, frostSensitive: Boolean(p.frostSensitive) };
+    let res;
+    try {
+      res = await fetch(`${API}/diagnose`, { method: "POST", signal: AbortSignal.timeout(55000), headers: aiHeaders(), body: JSON.stringify({ plant, symptoms: dg.symptoms, note: dg.note.trim(), image: dg.photo ? dg.photo.split(",")[1] : undefined, place: here().name }) });
+    } catch (err) { throw new Error(err?.name === "TimeoutError" ? "timeout" : "network"); }
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 402) { loadMe(); throw new Error("paywall"); }
+    if (!res.ok) throw new Error(body.error in AI_ERRORS ? body.error : "ai");
+    if (diag !== dg) return;
+    dg.res = body;
+    dg.state = "done";
+    track("plant_diagnose");
+    loadMe();
+    diagSheet();
+  } catch (err) {
+    if (diag !== dg) return;
+    if (err.message === "paywall") { dg.state = "idle"; diagSheet(); return premiumSheet("diagnose"); }
+    dg.state = "error";
+    dg.error = aiErrorText(err.message);
+    diagSheet();
+  }
 }
 
 // «Qué planto aquí»: the AI proposes plants for one of the user's zones or for a site they describe
@@ -2644,6 +2742,18 @@ const actions = {
     loadUsage();
   },
   "plant-place": (d) => askPlantPlace(d.id),
+  "diag-open": (d) => { diag = { id: d.id, symptoms: [], note: "", photo: null, state: "idle", saved: false }; if (!me) loadMe(); diagSheet(); },
+  "dg-sym": (d) => { diagRead(); diag.symptoms = diag.symptoms.includes(d.k) ? diag.symptoms.filter((x) => x !== d.k) : [...diag.symptoms, d.k]; diagSheet(); },
+  "dg-nophoto": () => { diagRead(); diag.photo = null; diagSheet(); },
+  "dg-go": () => diagGo(),
+  "dg-back": () => { diag.state = "idle"; diag.res = null; diag.saved = false; diagSheet(); },
+  "dg-save": () => {
+    const r = diag?.res;
+    if (!r?.causes?.length || diag.saved) return;
+    addLog(diag.id, "note", `Diagnóstico IA: ${r.causes[0].title}${r.causes[0].action ? ` — ${r.causes[0].action}` : ""}`.slice(0, 280));
+    diag.saved = true;
+    diagSheet();
+  },
   "suggest-open": (d) => suggestOpen(d.zone),
   "sg-zone": (d) => { suggestRead(); suggest.zone = d.other ? null : d.zone; suggest.state = "idle"; suggestSheet(); },
   "sg-sun": (d) => { suggestRead(); suggest.siteSun = suggest.siteSun === d.sun ? "" : d.sun; suggestSheet(); },
@@ -2988,6 +3098,13 @@ document.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     e.target.value = "";
     return exploreFromFile(file);
+  }
+  if (e.target.id === "dgPhotoInput" && e.target.files[0] && diag) {
+    const file = e.target.files[0];
+    e.target.value = "";
+    diagRead();
+    diag.photo = await shrinkPhoto(file, 900).catch(() => null) ?? diag.photo;
+    return diagSheet();
   }
   if (e.target.id === "idPhotoInput" && e.target.files[0] && wiz) {
     const file = e.target.files[0];
