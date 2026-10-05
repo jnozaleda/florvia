@@ -1,5 +1,5 @@
 ---
-title: Por qué las hojas se ponen amarillas: causas y solución | Florvia
+title: Hojas amarillas: causas y solución | Florvia
 h1: Por qué las hojas de una planta se ponen amarillas
 description: Las causas más comunes de las hojas amarillas (exceso de riego, falta de luz, nutrientes, frío) y cómo solucionarlas.
 updated: 2026-10-05
