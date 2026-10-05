@@ -38,6 +38,8 @@ export function checkPages(pages) {
     if (m.title && !/ \| Florvia$/.test(m.title)) err("«title» debe terminar en « | Florvia»");
     for (const k of ["updated", "published"]) if (m[k] && !DATE.test(m[k])) err(`«${k}» debe tener el formato AAAA-MM-DD`);
     if (DATE.test(m.updated ?? "") && DATE.test(m.published ?? "") && m.updated < m.published) err("«updated» es anterior a «published»");
+    if (m.featured && !/^[1-9]\d?$/.test(m.featured)) err("«featured» debe ser un número entero (1, 2, 3…): el orden en «Aprende» de la landing");
+    if (m.featured && pages.some((q) => q !== p && q.meta.featured === m.featured)) err(`«featured: ${m.featured}» ya lo usa otro post`);
     if (m.ctaHash && !/^(explorar|none)$/.test(m.ctaHash)) err("«ctaHash» solo admite «explorar» o «none»");
     if (p.type === "plantas" && !m.plant) warn("una ficha de planta debería llevar «plant» para que el botón abra la app con esa planta");
     if (!m.ctaFinalTitle || !m.ctaFinalText) warn("faltan «ctaFinalTitle» / «ctaFinalText»: el cierre repetirá el texto del CTA del medio");

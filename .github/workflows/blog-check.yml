@@ -6,9 +6,9 @@ name: Comprobar el blog
 on:
   push:
     branches: [main]
-    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", "worker/**", "app/rules.js", "app/weather.js", ".github/workflows/blog-check.yml"]
+    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", "index.html", "worker/**", "app/rules.js", "app/weather.js", ".github/workflows/blog-check.yml"]
   pull_request:
-    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", "worker/**", "app/rules.js", "app/weather.js", ".github/workflows/blog-check.yml"]
+    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", "index.html", "worker/**", "app/rules.js", "app/weather.js", ".github/workflows/blog-check.yml"]
 
 jobs:
   check:
@@ -25,10 +25,10 @@ jobs:
         run: |
           {
             node tools/build-blog.mjs
-            if [ -n "$(git status --porcelain -- es sitemap.xml app/pages.json)" ]; then
+            if [ -n "$(git status --porcelain -- es sitemap.xml app/pages.json index.html)" ]; then
               echo
-              echo "El HTML generado no está al día con los posts. Ejecuta «node tools/build-blog.mjs» y sube los cambios de es/, sitemap.xml y app/pages.json:"
-              git status --short -- es sitemap.xml app/pages.json
+              echo "El HTML generado no está al día con los posts. Ejecuta «node tools/build-blog.mjs» y sube los cambios de es/, sitemap.xml, app/pages.json e index.html:"
+              git status --short -- es sitemap.xml app/pages.json index.html
               exit 1
             fi
           } 2>&1 | tee blog-check.log

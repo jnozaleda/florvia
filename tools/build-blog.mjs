@@ -187,6 +187,14 @@ ${foot}`;
   mkdirSync(join(ROOT, "es", type), { recursive: true });
   writeFileSync(join(ROOT, "es", type, "index.html"), html);
 }
+// «Aprende» de la landing: las guías con «featured: N» (de menor a mayor) entre las marcas aprende:start/end de index.html.
+const featured = pages.filter((p) => p.meta.featured).sort((a, b) => Number(a.meta.featured) - Number(b.meta.featured));
+const cards = featured.map((p) => `<a href="${p.path}"><b>${esc(p.meta.h1)}</b><span>${esc(p.meta.description)}</span><em>${p.type === "plantas" ? "Ver la ficha" : "Leer la guía"} →</em></a>`).join("\n");
+const landing = readFileSync(join(ROOT, "index.html"), "utf8");
+const marks = /(<!-- aprende:start[^>]*-->\n)[\s\S]*?(\n<!-- aprende:end -->)/;
+if (!marks.test(landing)) { console.log("index.html no tiene las marcas <!-- aprende:start --> / <!-- aprende:end -->"); process.exit(1); }
+const nextLanding = landing.replace(marks, (_, a, b) => a + cards + b);
+if (nextLanding !== landing) writeFileSync(join(ROOT, "index.html"), nextLanding);
 const urls = ["/", "/privacidad/", "/es/plantas/", "/es/guias/", ...pages.map((p) => p.path)];
 writeFileSync(join(ROOT, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${SITE}${u}</loc>${byKey[u.replace(/^\/es\/|\/$/g, "")] ? "" : ""}</url>`).join("\n")}\n</urlset>\n`);
 // Títulos legibles para «Uso de la app» (Procedencia y Páginas más leídas): ref de ?ref= y ruta → h1 de la página.

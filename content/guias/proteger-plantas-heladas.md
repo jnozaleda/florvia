@@ -4,6 +4,7 @@ h1: Cómo proteger tus plantas de las heladas
 description: Cuándo y cómo proteger tus plantas de una helada: tela antiheladas, mover macetas, riego, acolchado y qué hacer después.
 updated: 2026-10-05
 published: 2026-10-05
+featured: 3
 ctaHash: none
 ctaTitle: ¿Quieres que te avisen antes de una helada?
 ctaText: Florvia mira el tiempo de tu zona y te avisa cuando se acerca el frío que puede dañar tus plantas.

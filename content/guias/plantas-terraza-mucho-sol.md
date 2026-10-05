@@ -4,6 +4,7 @@ h1: Plantas para una terraza con mucho sol
 description: Ocho plantas que aguantan el sol de una terraza, con su riego, resistencia al frío y dificultad, para elegir bien.
 updated: 2026-10-05
 published: 2026-10-05
+featured: 4
 ctaHash: explorar
 ctaTitle: ¿Quieres saber cuáles encajan en tu terraza?
 ctaText: Dile a Florvia cuánto sol recibe y dónde vives y podrás comparar plantas antes de comprarlas.

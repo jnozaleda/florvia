@@ -4,6 +4,7 @@ h1: Plantas fáciles de cuidar
 description: Ocho plantas fáciles de cuidar para exterior e interior, con su luz, riego y dificultad, para empezar sin complicaciones.
 updated: 2026-10-05
 published: 2026-10-05
+featured: 2
 ctaHash: explorar
 ctaTitle: ¿Quieres saber cuáles te conviene?
 ctaText: Dile a Florvia cuánta luz tienes y dónde vives, y compara plantas antes de comprarlas.

@@ -4,6 +4,7 @@ h1: Por qué las hojas de una planta se ponen amarillas
 description: Las causas más comunes de las hojas amarillas (exceso de riego, falta de luz, nutrientes, frío) y cómo solucionarlas.
 updated: 2026-10-05
 published: 2026-10-05
+featured: 1
 ctaHash: explorar
 ctaTitle: ¿No sabes cuánto debe regarse cada planta?
 ctaText: Añade tus plantas a Florvia y te diremos cuándo regarlas y abonarlas según su especie, la estación y el tiempo.

@@ -40,6 +40,10 @@ related:
 ---
 ```
 
+Campos opcionales:
+
+- `featured: N` (número entero, único): el post sale en el bloque «Aprende a cuidar tus plantas» de la landing, ordenado de menor a mayor. La tarjeta usa `h1` y `description`. Normalmente se destacan 4 guías; para quitar una de la landing, borra la línea. La landing se regenera sola con `node tools/build-blog.mjs`; no edites a mano lo que hay entre `<!-- aprende:start -->` y `<!-- aprende:end -->` en `index.html`.
+
 | Campo | ¿Obligatorio? | Qué poner |
 |---|---|---|
 | `title` | Sí | Lo que sale en la pestaña del navegador y en Google. Termina siempre en ` \| Florvia`. Intenta que mida **60 caracteres o menos**, para que Google no lo corte |
@@ -170,7 +174,7 @@ Para comprobar sin generar: `node tools/build-blog.mjs --check`.
 
 La misma comprobación se ejecuta sola en GitHub (`.github/workflows/blog-check.yml`) cuando se sube algo de `content/`, `tools/` o `es/`. Además de las reglas, comprueba que el HTML generado coincide con los posts: si cambias un `.md` y olvidas ejecutar el script, falla. Si falla, se manda un correo de aviso. Si cambias una regla de esta guía, cambia también `tools/check-blog.mjs`.
 
-Genera o actualiza `es/plantas/<slug>/index.html`, `es/guias/<slug>/index.html`, los dos índices (`es/plantas/index.html`, `es/guias/index.html`) y `sitemap.xml`. Hay que subir al repositorio (commit) **tanto el `.md` como el HTML generado y el sitemap**. La web se publica desde GitHub Pages, que sirve los archivos tal cual, sin generarlos.
+Genera o actualiza `es/plantas/<slug>/index.html`, `es/guias/<slug>/index.html`, los dos índices (`es/plantas/index.html`, `es/guias/index.html`), `sitemap.xml`, `app/pages.json` (títulos que usa «Uso de la app») y el bloque «Aprende» de `index.html`. Hay que subir al repositorio (commit) **tanto el `.md` como todo lo generado**. La web se publica desde GitHub Pages, que sirve los archivos tal cual, sin generarlos.
 
 Para verlo en local:
 
