@@ -1,4 +1,4 @@
-# Comprueba los posts del blog (reglas de content/GUIA.md), que el HTML generado esté al día que el contador de visitas del Worker (/hit) siga funcionando y que el diagnóstico (/diagnose) no diagnostique fotos de otra planta.
+# Comprueba los posts del blog (reglas de content/GUIA.md), que el HTML generado esté al día, que la app y el Worker no tengan errores de sintaxis, que el contador de visitas del Worker (/hit) siga funcionando y que el diagnóstico (/diagnose) no diagnostique fotos de otra planta.
 # Si falla, pide al Worker (POST /ci-alert) que mande un correo. Necesita el secreto de GitHub CI_ALERT_TOKEN
 # (el mismo valor que el secreto CI_ALERT_TOKEN del Worker). Sin él, la comprobación funciona igual pero no manda correo.
 name: Comprobar el blog
@@ -6,9 +6,9 @@ name: Comprobar el blog
 on:
   push:
     branches: [main]
-    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", "index.html", "worker/**", "app/rules.js", "app/weather.js", ".github/workflows/blog-check.yml"]
+    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", "index.html", "worker/**", "app/**", ".github/workflows/blog-check.yml"]
   pull_request:
-    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", "index.html", "worker/**", "app/rules.js", "app/weather.js", ".github/workflows/blog-check.yml"]
+    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", "index.html", "worker/**", "app/**", ".github/workflows/blog-check.yml"]
 
 jobs:
   check:
@@ -32,6 +32,17 @@ jobs:
               exit 1
             fi
           } 2>&1 | tee blog-check.log
+      - name: Comprobar que la app y el Worker no tienen errores de sintaxis
+        if: always()
+        shell: bash
+        run: |
+          {
+            status=0
+            for f in app/*.js worker/src/*.js tools/*.mjs; do
+              node --check "$f" || { echo "Error de sintaxis en $f"; status=1; }
+            done
+            exit $status
+          } 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
       - name: Probar el contador de visitas del Worker (/hit)
         if: always()
         shell: bash
