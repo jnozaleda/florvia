@@ -829,10 +829,10 @@ label.link-btn { cursor: pointer; }
 .ai-pill-btn:disabled { opacity: 0.5; }
 .ai-pill-btn:active { background: var(--ai-soft); }
 .ai-strip .ai-status { margin: 0; }
-.chev { width: 26px; height: 26px; border-radius: 50%; background: var(--track); display: inline-grid; place-items: center; color: var(--text-2); flex: none; margin-left: 8px; transition: transform 0.15s; }
-.chev .icon { width: 15px; height: 15px; transform: rotate(90deg); }
+.pf .chev, .pf-count .chev { width: 26px; height: 26px; border-radius: 50%; background: var(--track); display: inline-grid; place-items: center; color: var(--text-2); flex: none; margin-left: 8px; transition: transform 0.15s; }
+.pf .chev .icon, .pf-count .chev .icon { width: 15px; height: 15px; transform: rotate(90deg); }
 .pf[open] > summary .chev .icon { transform: rotate(-90deg); }
-.chev.plus .icon { transform: none; }
+.pf .chev.plus .icon { transform: none; }
 .pf .more { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 600; color: var(--accent); }
 .pf[open] .more { display: none; }
 /* Inside the plant sheet's folds the rows must read one step below the fold's own title (15px / 600). */
