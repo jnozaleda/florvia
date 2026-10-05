@@ -1,4 +1,4 @@
-# Comprueba los posts del blog (reglas de content/GUIA.md) y que el HTML generado esté al día.
+# Comprueba los posts del blog (reglas de content/GUIA.md), que el HTML generado esté al día y que el contador de visitas del Worker (/hit) siga funcionando.
 # Si falla, pide al Worker (POST /ci-alert) que mande un correo. Necesita el secreto de GitHub CI_ALERT_TOKEN
 # (el mismo valor que el secreto CI_ALERT_TOKEN del Worker). Sin él, la comprobación funciona igual pero no manda correo.
 name: Comprobar el blog
@@ -6,9 +6,9 @@ name: Comprobar el blog
 on:
   push:
     branches: [main]
-    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", ".github/workflows/blog-check.yml"]
+    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", "worker/**", "app/rules.js", "app/weather.js", ".github/workflows/blog-check.yml"]
   pull_request:
-    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", ".github/workflows/blog-check.yml"]
+    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", "worker/**", "app/rules.js", "app/weather.js", ".github/workflows/blog-check.yml"]
 
 jobs:
   check:
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
       - name: Comprobar los posts y que el HTML esté al día
         shell: bash
         run: |
@@ -32,6 +32,10 @@ jobs:
               exit 1
             fi
           } 2>&1 | tee blog-check.log
+      - name: Probar el contador de visitas del Worker (/hit)
+        if: always()
+        shell: bash
+        run: node tools/test-hit.mjs 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
       - name: Avisar por correo
         if: failure() && env.CI_ALERT_TOKEN != ''
         shell: bash
