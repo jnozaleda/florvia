@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005h";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005i";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005h";
-import { buildICS } from "./calendar.js?v=20261005h";
-import { scrubPlant } from "./clean.js?v=20261005h";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005h";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005i";
+import { buildICS } from "./calendar.js?v=20261005i";
+import { scrubPlant } from "./clean.js?v=20261005i";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005i";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -602,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005h";
+      sc.src = "vendor/qrcode.min.js?v=20261005i";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1488,7 +1488,7 @@ function diagSheet() {
     if (r.photo === "otra_planta" || r.photo === "no_es_planta") {
       const other = r.photo === "otra_planta";
       return openSheet(`${head}<section class="card"><b>${other ? `La foto no parece ser de «${esc(plantLabel(p))}»` : "No parece que la foto muestre una planta"}</b>
-        <p class="muted small">${other && r.photoSeen ? `Parece ${esc(r.photoSeen)}. ` : ""}Para no darte un consejo equivocado, no he hecho el diagnóstico, y esta consulta no gasta uno de tus diagnósticos del mes. ${other ? "Si es otra planta, abre su ficha y diagnostícala desde allí." : ""}</p></section>
+        <p class="muted small">${other && r.photoSeen ? `Parece <b>${esc(r.photoSeen)}</b>. ` : ""}Para no darte un consejo equivocado, no he hecho el diagnóstico, y esta consulta no gasta uno de tus diagnósticos del mes. ${other ? "Si es otra planta, abre su ficha y diagnostícala desde allí." : ""}</p></section>
         <button type="button" class="btn block secondary" data-action="dg-back">Probar con otra foto</button>
         <button type="button" class="btn block secondary" style="margin-top:8px" data-action="dg-dropphoto">Quitar la foto y describir el problema</button>
         <p class="muted small">Quitar la foto no llama a la IA. Cuando pulses Diagnosticar, ese diagnóstico sí gastará uno de tus diagnósticos del mes.</p>`, "diag");
