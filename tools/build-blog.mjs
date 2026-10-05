@@ -134,7 +134,7 @@ footer{background:var(--deep2);color:#b9d1b6;margin-top:60px;padding:30px 0;font
 const head = ({ title, description, path, extra = "" }) => `<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://api.florvia.app; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><meta name="description" content="${esc(description)}"><link rel="canonical" href="${SITE}${path}">
-<meta name="theme-color" content="#0f4628"><link rel="icon" href="/app/favicon.png" type="image/png"><link rel="apple-touch-icon" href="/app/icon-180.png">
+<meta name="theme-color" content="#0f4628"><link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/app/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/app/favicon-48.png" type="image/png" sizes="48x48"><link rel="apple-touch-icon" href="/app/icon-180.png">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:type" content="article"><meta property="og:url" content="${SITE}${path}"><meta property="og:image" content="${SITE}/app/og.png">
 ${extra}<style>${CSS}</style></head><body>
 <div class="top"><div class="wrap"><div class="nav"><a class="brand" href="/"><img src="/app/icon-rounded.png" width="34" height="34" alt="">Florvia</a><nav><a href="/es/plantas/">Plantas</a><a href="/es/guias/">Guías</a><a class="btn cream small" href="/app/">Abrir</a></nav></div></div></div>`;
