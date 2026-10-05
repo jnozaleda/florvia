@@ -89,3 +89,8 @@ CREATE TABLE IF NOT EXISTS pv_seen (day TEXT NOT NULL, h TEXT NOT NULL, path TEX
 CREATE TABLE IF NOT EXISTS pv_seen_day (day TEXT NOT NULL, h TEXT NOT NULL, PRIMARY KEY (day, h));
 CREATE TABLE IF NOT EXISTS pv_page (day TEXT NOT NULL, path TEXT NOT NULL, src TEXT NOT NULL, kind TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, path, src, kind));
 CREATE TABLE IF NOT EXISTS pv_site (day TEXT NOT NULL, kind TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind));
+
+-- What people ask for, anonymous: only counts per day, kind and normalised name (a plant, a symptom, a preference). No device, no garden.
+-- kind: care (ficha al añadir), explore, identify (species recognised from a photo), added (plant added to the garden), diagnose (plant), symptom,
+-- place («¿Dónde está mejor?», plant), suggest_pref and suggest_pick («Qué planto aquí»). internal = 1 when it came from a device marked as Noza's.
+CREATE TABLE IF NOT EXISTS topics (day TEXT NOT NULL, kind TEXT NOT NULL, key TEXT NOT NULL, src TEXT NOT NULL, internal INTEGER NOT NULL DEFAULT 0, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, key, src, internal));

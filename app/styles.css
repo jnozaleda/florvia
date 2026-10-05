@@ -840,3 +840,8 @@ label.link-btn { cursor: pointer; }
 .pf-body .fit-row span { font-size: 13px; }
 .pf-body .mstrip-label { font-size: 14px; }
 .pf-body .mstrip-row small { font-size: 13px; }
+
+.pf-plain { border-top: 0.5px solid var(--hairline); }
+.pf-plain summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; padding: 9px 0; font-size: 14px; font-weight: 600; }
+.pf-plain summary::-webkit-details-marker { display: none; }
+.pf-plain[open] > summary { padding-bottom: 4px; }

@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005n";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005o";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005n";
-import { buildICS } from "./calendar.js?v=20261005n";
-import { scrubPlant } from "./clean.js?v=20261005n";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005n";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005o";
+import { buildICS } from "./calendar.js?v=20261005o";
+import { scrubPlant } from "./clean.js?v=20261005o";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005o";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005n";
+      sc.src = "vendor/qrcode.min.js?v=20261005o";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1019,6 +1019,24 @@ function feedbackAdminCards() {
 
 const KIND_LABEL = { care: "Ficha (alta)", care_explore: "Explorar", care_edit: "Editar con IA", care_upgrade: "Actualizar fichas", calendar: "Calendario del año", place: "¿Dónde está mejor?", suggest: "Qué planto aquí", identify: "Identificar por foto", diagnose: "¿Qué le pasa?" };
 // Real tokens per kind of AI call (from the provider's own count), to know what costs what.
+// «Qué se pide»: the plants, symptoms and preferences people asked for in the last 30 days (anonymous counts from /stats2).
+let topicsMine = false;
+const TOPIC_LABEL = { care: "Fichas pedidas al añadir", explore: "Explorar", identify: "Identificadas por foto", added: "Añadidas al jardín", diagnose: "Diagnósticos: planta", symptom: "Diagnósticos: síntomas", place: "«¿Dónde está mejor?»", suggest_pref: "«Qué planto aquí»: preferencias", suggest_pick: "«Qué planto aquí»: sugeridas" };
+function topicName(kind, key) {
+  if (kind === "symptom") return DIAG_SYMPTOMS.find(([k]) => k === key)?.[1] ?? key;
+  if (kind === "suggest_pref") return SG_PREFS.find(([k]) => k === key)?.[1] ?? key;
+  return key.replace(/^./, (c) => c.toUpperCase());
+}
+function topicsCard() {
+  const t = usage?.topics;
+  if (!t) return "";
+  const set = topicsMine ? t.mine : t.real;
+  const kinds = Object.keys(TOPIC_LABEL).filter((k) => set[k]?.length);
+  const toggle = `<button type="button" class="btn small secondary" data-action="topics-mine" aria-pressed="${topicsMine}">${topicsMine ? "Ver el uso real" : "Ver mis pruebas"}</button>`;
+  return `<section class="card"><div class="sec">Qué se pide <span class="meta">30 días · ${topicsMine ? "mis dispositivos" : "uso real"}</span></div>
+    ${kinds.length ? kinds.map((k) => `<details class="pf-plain"><summary>${TOPIC_LABEL[k]} <span class="meta">${set[k].reduce((a, [, n]) => a + n, 0)}</span></summary>${set[k].map(([key, n]) => `<div class="u-row"><span>${esc(topicName(k, key))}</span><b>${n}</b></div>`).join("")}</details>`).join("") : `<p class="muted small">${topicsMine ? "Todavía no hay datos de tus dispositivos." : "Todavía no hay datos de uso real. Se cuenta desde que se activó esta tarjeta."}</p>`}
+    <div style="margin-top:10px">${toggle}</div></section>`;
+}
 function tokensCard() {
   const k = usage?.aiKinds ?? {};
   const rows = Object.entries(k).sort((a, b) => b[1].tin + b[1].tout - (a[1].tin + a[1].tout));
@@ -1146,6 +1164,7 @@ function usageSheet() {
       <button type="button" class="btn block secondary" data-action="usage-mine" data-on="${usage.me.internal ? "0" : "1"}">${usage.me.internal ? "Este dispositivo está marcado como tuyo · quitar la marca" : "Marcar este dispositivo como mío"}</button></section>
     ${tokensCard()}
     ${webCard()}
+    ${topicsCard()}
     ${refsCard()}
     ${intentCard()}
     ${feedbackAdminCards()}
@@ -2691,7 +2710,7 @@ async function wizLookup() {
 
 function wizSave() {
   if (wiz.ai === "loading") return;
-  track(wiz.ai === "done" ? "plant_add_ai" : "plant_add_manual");
+  track(`${wiz.ai === "done" ? "plant_add_ai" : "plant_add_manual"}|${String(wiz.name ?? "").slice(0, 60).replace(/\|/g, " ")}`);
   const zone = wiz.zone.trim();
   const plant = {
     id: uid(), created: localToday(), name: wiz.name, nick: ($("wizNick")?.value ?? wiz.nick ?? "").trim(), species: wiz.species, zone, refPhoto: wiz.refPhoto ?? undefined,
@@ -2828,6 +2847,7 @@ const actions = {
     loadUsage();
   },
   "plant-place": (d) => askPlantPlace(d.id),
+  "topics-mine": () => { topicsMine = !topicsMine; usageSheet(); },
   "pf-photo": () => { plantUi.big = !plantUi.big; plantSheet(plantUi.id); },
   "pf-month": () => { plantUi.monthAll = !plantUi.monthAll; plantSheet(plantUi.id); },
   "diag-open": (d) => { diag = { id: d.id, symptoms: [], note: "", photo: null, state: "idle", saved: false }; if (!me) loadMe(); diagSheet(); },

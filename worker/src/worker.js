@@ -378,7 +378,7 @@ async function handleCare(request, env, headers, ctx) {
   // Same plant, same climate cell (~100 km) → same answer, whatever the month.
   const cacheKey = `care:v16:${normName(name)}:${Math.round(lat)}:${Math.round(lon)}`;
   const cached = await env.CACHE.get(cacheKey, "json");
-  if (cached) { recordAi(env, ctx, "cached", 0, request, kind); return json({ ...withLegacy(cached, body.month, lat), cached: true }, 200, headers); }
+  if (cached) { recordAi(env, ctx, "cached", 0, request, kind); recordTopics(env, ctx, request, kind === "care_explore" ? "explore" : kind === "care" ? "care" : "", name); return json({ ...withLegacy(cached, body.month, lat), cached: true }, 200, headers); }
 
   const blocked = await paywallCheck(env, request, "total");
   if (blocked) return json(blocked, 402, headers);
@@ -399,6 +399,7 @@ async function handleCare(request, env, headers, ctx) {
   recordAi(env, ctx, "call", Date.now() - t0, request, kind, aiUsage);
   if (!care.isPlant) { recordAi(env, ctx, "not_plant"); return json({ error: "not_plant" }, 422, headers); }
   if (care.confidence !== "baja") await env.CACHE.put(cacheKey, JSON.stringify(care), { expirationTtl: CACHE_TTL });
+  recordTopics(env, ctx, request, kind === "care_explore" ? "explore" : kind === "care" ? "care" : "", name);
   return json(withLegacy(care, body.month, lat), 200, headers);
 }
 
@@ -454,6 +455,22 @@ const recordAi = (env, ctx, what, ms = 0, request = null, kind = "", usage = nul
   const name = { cached: `${kind}_hit`, error: "error", limit: "limit", call: kind, not_plant: "not_plant" }[what];
   if (name) ctx.waitUntil(logUsage(env, request, [{ kind: "ai", name, ms, tin: usage?.tin ?? 0, tout: usage?.tout ?? 0 }]).catch((err) => console.error("usage log", err?.message)));
 };
+// «What is asked for»: anonymous counts of plants, symptoms and preferences (table topics). Called with ctx so it never slows an answer.
+const TOPIC_KINDS = ["care", "explore", "identify", "added", "diagnose", "symptom", "place", "suggest_pref", "suggest_pick"];
+function recordTopics(env, ctx, request, kind, keys) {
+  if (!env.DB || !request || !TOPIC_KINDS.includes(kind)) return;
+  const list = [...new Set((Array.isArray(keys) ? keys : [keys]).map((k) => normName(String(k ?? "")).slice(0, 60)).filter(Boolean))].slice(0, 12);
+  if (!list.length) return;
+  ctx.waitUntil((async () => {
+    const who = await usageWho(request);
+    const garden = who.garden || (await keyGarden(request));
+    const ids = [who.device, garden].filter(Boolean);
+    const internal = ids.length && (await env.DB.prepare(`SELECT 1 AS x FROM internal WHERE id IN (${ids.map(() => "?").join(",")}) LIMIT 1`).bind(...ids).first()) ? 1 : 0;
+    const day = new Date().toISOString().slice(0, 10);
+    const src = originSrc(request);
+    await env.DB.batch(list.map((key) => env.DB.prepare("INSERT INTO topics (day, kind, key, src, internal, n) VALUES (?, ?, ?, ?, ?, 1) ON CONFLICT (day, kind, key, src, internal) DO UPDATE SET n = n + 1").bind(day, kind, key, src, internal)));
+  })().catch((err) => console.error("topics", err?.message)));
+}
 // The garden hash proven by the garden key (X-Key), the same hash the app derives for X-Usage. The key itself is never stored.
 async function keyGarden(request) {
   const key = request.headers.get("X-Key") ?? "";
@@ -464,8 +481,12 @@ async function handleEvent(request, env, headers, ctx) {
   let body;
   try { body = JSON.parse(await request.text()); } catch { return json({ error: "input" }, 400, headers); }
   const device = String(body.device ?? "").slice(0, 64);
-  const events = (Array.isArray(body.events) ? body.events : []).slice(0, 50).filter((e) => EVENTS.includes(e));
+  // An event may carry what it was about after a bar («plant_add_ai|limonero»): only for plants added to the garden.
+  const rawEvents = (Array.isArray(body.events) ? body.events : []).slice(0, 50).map((e) => String(e).split("|"));
+  const events = rawEvents.map(([e]) => e).filter((e) => EVENTS.includes(e));
   if (!device || !events.length) return json({ ok: true }, 200, headers);
+  const added = rawEvents.filter(([e, name]) => (e === "plant_add_ai" || e === "plant_add_manual") && name).map(([, name]) => name);
+  if (added.length) recordTopics(env, ctx, request, "added", added);
   const garden = /^g:[a-f0-9]{16}$/.test(String(body.garden ?? "")) ? body.garden.slice(2) : "";
   const ref = /^[a-z0-9-]{1,60}$/.test(String(body.ref ?? "")) ? body.ref : "";
   if (ref && env.DB) ctx.waitUntil((async () => env.DB.prepare("INSERT OR IGNORE INTO referrals (device, ref, day, src) VALUES (?, ?, ?, ?)").bind(await hashId(device), ref, new Date().toISOString().slice(0, 10), originSrc(request)).run())().catch(() => {}));
@@ -570,6 +591,11 @@ async function handleStats2(request, env, headers) {
   const [rowsRes, labelsRes, metaRes] = await Promise.all([
     env.DB.prepare(USAGE_SQL).all(), env.DB.prepare("SELECT id, label FROM labels").all(), env.DB.prepare("SELECT v FROM meta WHERE k = 'clean_start'").first(),
   ]);
+  // What was asked for in the period (table topics): top names per kind, from real use and from Noza's own devices apart.
+  const topicRows = (await env.DB.prepare("SELECT kind, key, internal, SUM(n) AS n FROM topics WHERE day >= ? AND src IN ('prod', 'old') GROUP BY kind, key, internal").bind(dayList[0]).all().catch(() => ({ results: [] }))).results ?? [];
+  const topics = { real: {}, mine: {} };
+  for (const r of topicRows) ((r.internal ? topics.mine : topics.real)[r.kind] ??= []).push([r.key, r.n]);
+  for (const set of [topics.real, topics.mine]) for (const k of Object.keys(set)) set[k] = set[k].sort((a, b) => b[1] - a[1]).slice(0, 10);
   const rows = rowsRes.results ?? [];
   const labels = Object.fromEntries((labelsRes.results ?? []).map((l) => [l.id, l.label]));
   const cleanStart = metaRes?.v ?? today;
@@ -621,6 +647,7 @@ async function handleStats2(request, env, headers) {
     days: dayList.map((d) => ({ ...days[d], people: days[d].people.size })),
     people: list,
     tests: { events: tests.events, ai: tests.ai, byBucket: tests.byBucket, people: tests.people.size },
+    topics,
   }, 200, headers);
 }
 async function handleInternal(request, env, headers) {
@@ -1029,6 +1056,7 @@ async function handlePlace(request, env, headers, ctx) {
     every: vInt(z?.every, 0, 60, 0), mins: vInt(z?.mins, 0, 600, 0), desc: String(z?.desc ?? "").trim().slice(0, 300),
   })).filter((z) => z.name);
   if (!name || !Number.isFinite(lat) || !zones.length) return json({ error: "input" }, 400, headers);
+  recordTopics(env, ctx, request, "place", name);
   const n = body.needs && typeof body.needs === "object" ? body.needs : {};
   const needs = {
     sunNeed: SUN.includes(n.sunNeed) ? n.sunNeed : "", sunSensitive: n.sunSensitive === true,
@@ -1143,10 +1171,11 @@ async function handleSuggest(request, env, headers, ctx) {
   const prefs = [...new Set((Array.isArray(body.prefs) ? body.prefs : []).filter((p) => p in PREFS))].sort();
   const note = String(body.note ?? "").trim().slice(0, 120);
   const owned = [...new Set((Array.isArray(body.owned) ? body.owned : []).map((x) => String(x ?? "").trim().slice(0, 60)).filter(Boolean))].slice(0, 40).sort();
+  recordTopics(env, ctx, request, "suggest_pref", prefs);
   const input = { site, prefs, note, owned, place: String(body.place ?? "").slice(0, 60), lat: Math.round(lat) };
   const cacheKey = `suggest:v1:${(await sha(JSON.stringify(input))).slice(0, 40)}`;
   const cached = await env.CACHE.get(cacheKey, "json");
-  if (cached) { recordAi(env, ctx, "cached", 0, request, "suggest"); return json({ ...cached, cached: true }, 200, headers); }
+  if (cached) { recordAi(env, ctx, "cached", 0, request, "suggest"); recordTopics(env, ctx, request, "suggest_pick", (cached.picks ?? []).map((x) => x.commonName)); return json({ ...cached, cached: true }, 200, headers); }
   const blocked = await paywallCheck(env, request, "suggest");
   if (blocked) return json(blocked, 402, headers);
   if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, "suggest"); return json({ error: "limit" }, 429, headers); }
@@ -1164,6 +1193,7 @@ async function handleSuggest(request, env, headers, ctx) {
   }
   recordAi(env, ctx, "call", Date.now() - t0, request, "suggest", aiUsage);
   if (res.picks.length) await env.CACHE.put(cacheKey, JSON.stringify(res), { expirationTtl: CACHE_TTL });
+  recordTopics(env, ctx, request, "suggest_pick", res.picks.map((x) => x.commonName));
   return json(res, 200, headers);
 }
 
@@ -1472,6 +1502,7 @@ async function handleIdentify(request, env, headers, ctx) {
       })).filter((c) => c.commonName && c.species);
       recordAi(env, ctx, "call", Date.now() - t0, request, "identify", { tin: Number(out?.usageMetadata?.promptTokenCount) || 0, tout: (Number(out?.usageMetadata?.candidatesTokenCount) || 0) + (Number(out?.usageMetadata?.thoughtsTokenCount) || 0) });
       console.log("identify ok", spec, Date.now() - t0, "ms");
+      if (candidates.length && parsed.isPlant !== false) recordTopics(env, ctx, request, "identify", candidates[0].commonName);
       return json({ isPlant: parsed.isPlant !== false && candidates.length > 0, candidates }, 200, headers);
     } catch (err) {
       console.error("identify failed", spec, err?.message);
@@ -1539,6 +1570,8 @@ async function handleDiagnose(request, env, headers, ctx) {
   };
   if (!plant.name) return json({ error: "input" }, 400, headers);
   const place = clip(body.place, 60) || "España";
+  recordTopics(env, ctx, request, "diagnose", plant.name);
+  recordTopics(env, ctx, request, "symptom", symptoms);
   const blocked = await paywallCheck(env, request, "diagnose");
   if (blocked) return json(blocked, 402, headers);
   if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, "diagnose"); return json({ error: "limit" }, 429, headers); }
@@ -1704,7 +1737,7 @@ export default {
   // 06:00 and 07:00 UTC: whichever is 08:00 in Madrid (summer or winter) sends the daily push.
   async scheduled(event, env, ctx) {
     if (madridNow().hour !== 8) return;
-    if (env.DB) ctx.waitUntil(env.DB.batch([env.DB.prepare("DELETE FROM events WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM errors WHERE day < date('now', '-90 days')"), env.DB.prepare("DELETE FROM pv_seen WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_seen_day WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_page WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM pv_site WHERE day < date('now', '-400 days')")]).catch(() => {}));
+    if (env.DB) ctx.waitUntil(env.DB.batch([env.DB.prepare("DELETE FROM events WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM errors WHERE day < date('now', '-90 days')"), env.DB.prepare("DELETE FROM pv_seen WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_seen_day WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_page WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM pv_site WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM topics WHERE day < date('now', '-400 days')")]).catch(() => {}));
     console.log("daily push sent:", await sendDaily(env));
   },
   async fetch(request, env, ctx) {
