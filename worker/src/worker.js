@@ -901,10 +901,120 @@ async function handleMe(request, env, headers) {
   const p = await planOf(env, request);
   const [suggest, identify, diagnose] = await Promise.all([monthlyUse(env, p, ["suggest"]), monthlyUse(env, p, ["identify"]), monthlyUse(env, p, ["diagnose"])]);
   const lifetimeLeft = Math.max(0, 25 - ((await env.DB.prepare("SELECT COUNT(*) AS n FROM entitlements WHERE plan = 'lifetime'").first())?.n ?? 0));
+  const paid = p.garden ? await env.DB.prepare("SELECT plan, source, until FROM entitlements WHERE garden = ?").bind(p.garden).first() : null;
   return json({
     plan: p.plan, source: p.source, premium: p.premium, enforced: p.live, start: p.start,
     limits: p.limits, used: { suggest, identify, diagnose }, synced: Boolean(p.garden), lifetimeLeft,
+    payments: await paymentsOpen(env, p), sandbox: env.POLAR_ENV !== "production",
+    paid: paid ? { plan: paid.plan, source: paid.source, until: paid.until } : null,
   }, 200, headers);
+}
+
+// ---------- Payments with Polar (Merchant of Record) ----------
+// A garden (the hash proven by X-Key) is the customer: Polar's external_customer_id = the garden hash, so a plan follows the garden to all
+// its phones. Checkout and portal sessions are created here with the access token (secret POLAR_ACCESS_TOKEN); the plan itself changes only
+// when Polar's signed webhook says so (secret POLAR_WEBHOOK_SECRET). POLAR_ENV = "sandbox" | "production" picks the API host.
+const polarApi = (env) => (env.POLAR_ENV === "production" ? "https://api.polar.sh/v1" : "https://sandbox-api.polar.sh/v1");
+const polarProducts = (env) => ({ monthly: env.POLAR_PRODUCT_MONTHLY, yearly: env.POLAR_PRODUCT_YEARLY, lifetime: env.POLAR_PRODUCT_LIFETIME });
+const polarPlanOfProduct = (env, id) => Object.entries(polarProducts(env)).find(([, v]) => v && v === id)?.[0] ?? "";
+async function polarCall(env, path, body) {
+  const res = await fetch(`${polarApi(env)}${path}`, { method: "POST", headers: { Authorization: `Bearer ${(env.POLAR_ACCESS_TOKEN ?? "").trim()}`, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) });
+  if (!res.ok) throw new Error(`polar ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  return res.json();
+}
+// Real payments are open to everyone only in production; while in sandbox only devices marked as Noza's see the buttons.
+async function paymentsOpen(env, p) {
+  if (!env.POLAR_ACCESS_TOKEN || !env.POLAR_PRODUCT_MONTHLY) return false;
+  return env.POLAR_ENV === "production" || p.source.startsWith("internal");
+}
+async function lifetimeLeft(env) {
+  return Math.max(0, 25 - ((await env.DB.prepare("SELECT COUNT(*) AS n FROM entitlements WHERE plan = 'lifetime'").first())?.n ?? 0));
+}
+async function handlePolarCheckout(request, env, headers) {
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const choice = ["monthly", "yearly", "lifetime"].includes(body.choice) ? body.choice : "";
+  if (!choice) return json({ error: "input" }, 400, headers);
+  const p = await planOf(env, request);
+  if (!(await paymentsOpen(env, p))) return json({ error: "closed" }, 403, headers);
+  if (!p.garden) return json({ error: "sync" }, 400, headers); // the plan is tied to the synced garden
+  if (choice === "lifetime" && !(await lifetimeLeft(env))) return json({ error: "soldout" }, 409, headers);
+  const productId = polarProducts(env)[choice];
+  if (!productId) return json({ error: "closed" }, 403, headers);
+  const email = /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(clean(body.email, 80)) ? clean(body.email, 80) : undefined;
+  try {
+    const out = await polarCall(env, "/checkouts/", {
+      products: [productId], external_customer_id: p.garden, customer_email: email,
+      success_url: "https://florvia.app/app/?premium=ok", return_url: "https://florvia.app/app/",
+      metadata: { garden: p.garden, choice },
+    });
+    return json({ url: out.url }, 200, headers);
+  } catch (err) {
+    console.error("polar checkout", err?.message);
+    return json({ error: "ai" }, 502, headers);
+  }
+}
+async function handlePolarPortal(request, env, headers) {
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  const garden = await keyGarden(request);
+  if (!garden) return json({ error: "sync" }, 400, headers);
+  const e = await env.DB.prepare("SELECT source FROM entitlements WHERE garden = ?").bind(garden).first();
+  if (!e || e.source !== "polar") return json({ error: "none" }, 404, headers);
+  try {
+    const out = await polarCall(env, "/customer-sessions/", { external_customer_id: garden, return_url: "https://florvia.app/app/" });
+    return json({ url: out.customer_portal_url }, 200, headers);
+  } catch (err) {
+    console.error("polar portal", err?.message);
+    return json({ error: "ai" }, 502, headers);
+  }
+}
+// Standard Webhooks: signature = base64(HMAC-SHA256(key, `${id}.${timestamp}.${body}`)), header «v1,<sig> v1,<sig>». The secret may be
+// «whsec_<base64>» (key = the decoded part) or an older plain string (key = its bytes): both are tried.
+async function verifyPolarWebhook(request, raw, secret) {
+  const id = request.headers.get("webhook-id") ?? "", ts = request.headers.get("webhook-timestamp") ?? "", sigs = request.headers.get("webhook-signature") ?? "";
+  if (!id || !ts || !sigs || !secret || Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false;
+  const keys = [];
+  try { keys.push(Uint8Array.from(atob(secret.replace(/^whsec_/, "")), (c) => c.charCodeAt(0))); } catch { /* not base64 */ }
+  keys.push(new TextEncoder().encode(secret));
+  const given = sigs.split(" ").map((x) => x.split(",")[1]).filter(Boolean);
+  for (const k of keys) {
+    const key = await crypto.subtle.importKey("raw", k, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const mac = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${id}.${ts}.${raw}`)))));
+    if (given.some((g) => g.length === mac.length && [...g].reduce((a, ch, i) => a | (ch.charCodeAt(0) ^ mac.charCodeAt(i)), 0) === 0)) return true;
+  }
+  return false;
+}
+async function handlePolarWebhook(request, env, headers) {
+  const raw = await request.text();
+  if (!(await verifyPolarWebhook(request, raw, (env.POLAR_WEBHOOK_SECRET ?? "").trim()))) return json({ error: "signature" }, 401, headers);
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  let ev;
+  try { ev = JSON.parse(raw); } catch { return json({ error: "input" }, 400, headers); }
+  const type = String(ev.type ?? "");
+  const d = ev.data ?? {};
+  const garden = String(d.customer?.external_id ?? d.external_customer_id ?? d.metadata?.garden ?? d.checkout?.metadata?.garden ?? "");
+  const productId = d.product_id ?? d.product?.id ?? d.subscription?.product_id ?? "";
+  const kind = polarPlanOfProduct(env, productId);
+  const now = Date.now();
+  console.log("polar webhook", type, { garden: garden ? "yes" : "no", kind: kind || "unknown", status: d.status ?? "" });
+  if (!/^[a-f0-9]{16}$/.test(garden) || !kind) return json({ ok: true, ignored: true }, 200, headers); // not ours or unknown product
+  const grant = (plan, until) => env.DB.prepare("INSERT INTO entitlements (garden, plan, source, since, until, note) VALUES (?, ?, 'polar', ?, ?, ?) ON CONFLICT (garden) DO UPDATE SET plan = excluded.plan, source = 'polar', until = excluded.until, note = excluded.note WHERE entitlements.plan <> 'lifetime' OR excluded.plan = 'lifetime'").bind(garden, plan, now, until, `${kind} · ${type}`).run();
+  // A lifetime plan is never taken away by a subscription event, only by its own refund.
+  const revoke = () => env.DB.prepare("DELETE FROM entitlements WHERE garden = ? AND source = 'polar' AND (plan <> 'lifetime' OR ?)").bind(garden, kind === "lifetime" ? 1 : 0).run();
+  const endsAt = Date.parse(d.ends_at ?? d.current_period_end ?? "") || null;
+  if (kind === "lifetime") {
+    if (type === "order.paid") await grant("lifetime", null);
+    else if (type === "order.refunded" || type === "refund.created") await revoke();
+  } else if (type === "subscription.active" || type === "subscription.created" || type === "subscription.uncanceled" || (type === "order.paid" && d.status !== "refunded")) {
+    if (d.status === undefined || ["active", "trialing", "paid"].includes(d.status)) await grant("premium", null);
+  } else if (type === "subscription.canceled") {
+    // Cancelled: keeps Premium until the end of the paid period (or ends now if Polar says it already ended).
+    if (endsAt && endsAt > now) await grant("premium", endsAt); else await revoke();
+  } else if (type === "subscription.revoked" || type === "order.refunded") {
+    await revoke();
+  }
+  return json({ ok: true }, 200, headers);
 }
 // «Quiero Premium»: records interest (no payments yet) and tells Noza by email and push.
 async function handlePremiumIntent(request, env, headers, ctx) {
@@ -1757,6 +1867,9 @@ export default {
     if (pathname === "/push/admin" && request.method === "POST") return handleAdminPush(request, env, headers);
     if (pathname === "/me" && request.method === "GET") return handleMe(request, env, headers);
     if (pathname === "/premium/intent" && request.method === "POST") return handlePremiumIntent(request, env, headers, ctx);
+    if (pathname === "/polar/checkout" && request.method === "POST") return handlePolarCheckout(request, env, headers);
+    if (pathname === "/polar/portal" && request.method === "POST") return handlePolarPortal(request, env, headers);
+    if (pathname === "/polar/webhook" && request.method === "POST") return handlePolarWebhook(request, env, headers);
     if (pathname === "/feedback" && request.method === "GET") return handleFeedbackList(request, env, headers);
     if (pathname === "/feedback/status" && request.method === "POST") return handleFeedbackStatus(request, env, headers);
     if (pathname === "/error" && request.method === "POST") return handleError(request, env, headers, ctx);

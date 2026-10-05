@@ -45,6 +45,11 @@ IP_DAILY_LIMIT = "50"
 REQUIRE_CODE = "off"
 # Google OAuth client id («Continuar con Google»); public by design. Empty = the endpoint refuses everything.
 GOOGLE_CLIENT_ID = "234825738422-hsj10ho80vvuoosfn6rr7njjkbt751c6.apps.googleusercontent.com"
+# Polar (payments). POLAR_ENV = "sandbox" while testing; "production" opens real payments to everyone. Product ids are public.
+POLAR_ENV = "sandbox"
+POLAR_PRODUCT_MONTHLY = "442032b5-8ac0-4000-a3fb-0a5c790a82db"
+POLAR_PRODUCT_YEARLY = "bdcc3cbe-07af-4289-be2c-0e5afb591f6e"
+POLAR_PRODUCT_LIFETIME = "ec982dab-15eb-4107-bdf7-34b86edb4a58"
 # THINKING = "on" turns on the model's reasoning; in tests it was slower and no better.
 
 # Secret, set once with `npx wrangler secret put ACCESS_CODE` (local dev: .dev.vars).

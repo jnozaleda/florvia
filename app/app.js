@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005o";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005p";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005o";
-import { buildICS } from "./calendar.js?v=20261005o";
-import { scrubPlant } from "./clean.js?v=20261005o";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005o";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005p";
+import { buildICS } from "./calendar.js?v=20261005p";
+import { scrubPlant } from "./clean.js?v=20261005p";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005p";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005o";
+      sc.src = "vendor/qrcode.min.js?v=20261005p";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -858,7 +858,7 @@ const plantLimitHit = () => Boolean(me && me.enforced && !me.premium && me.limit
 const planLabel = () => (!me ? "" : me.plan === "founder" ? "Fundador/a" : me.premium ? "Premium" : me.enforced ? "Gratis" : "Próximamente");
 function premiumSheet(reason = "", keep = false) {
   const head = `<div class="sheet-head"><h2>Florvia Premium</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>`;
-  if (!keep) { premiumUi = { reason, sent: "", email: premiumUi.email, error: "" }; track("paywall_view"); }
+  if (!keep) { premiumUi = { reason, sent: "", email: premiumUi.email, error: "", thanks: false }; track("paywall_view"); }
   if (!me) { loadMe(); return openSheet(`${head}<div class="ai-step"><span class="spinner" aria-hidden="true"></span>Cargando…</div>`, "premium"); }
   const L = me.limits;
   const used = me.used ?? {};
@@ -874,13 +874,22 @@ function premiumSheet(reason = "", keep = false) {
       <section class="card"><b>Tienes Premium${me.plan === "founder" ? " · fundador/a" : me.plan === "lifetime" ? " · de por vida" : ""}</b>
         <p class="muted">${me.plan === "founder" ? "Usas Florvia desde antes del lanzamiento, así que Premium es gratis para ti. Gracias por ser de las primeras personas." : "Gracias por apoyar Florvia."}</p></section>
       <section class="card"><div class="sec">Este mes</div>${row("Qué planto aquí", `${used.suggest ?? 0} de ${L.suggest}`)}${row("Identificar por foto", `${used.identify ?? 0} de ${L.identify}`)}${row("¿Qué le pasa?", `${used.diagnose ?? 0} de ${L.diagnose}`)}${L.plants ? "" : row("Plantas", "ilimitadas")}</section>
-      <p class="muted small">Las consultas guardadas en memoria no cuentan. El contador se reinicia el día 1.</p>`, "premium");
+      <p class="muted small">Las consultas guardadas en memoria no cuentan. El contador se reinicia el día 1.</p>
+      ${me.paid ? `<section class="card"><div class="sec">Tu suscripción</div><p class="muted small">${me.paid.plan === "lifetime" ? "Pago único «de por vida»." : me.paid.until ? `Cancelada: sigue activa hasta el ${fmtDate(new Date(me.paid.until).toISOString().slice(0, 10))}.` : "Activa."}</p>
+        <button type="button" class="btn block secondary" data-action="premium-portal">Ver recibos${me.paid.plan === "lifetime" ? "" : " o cancelar"}</button>${premiumUi.error ? `<p class="ai-status warn">${esc(premiumUi.error)}</p>` : ""}</section>` : ""}
+      ${me.payments && String(me.source).startsWith("internal") ? `<section class="card"><div class="sec">Probar el pago${me.sandbox ? " (modo de prueba)" : ""}</div>
+        <p class="muted small">Solo lo ves en tus dispositivos. Tarjeta de prueba de Polar: 4242 4242 4242 4242, cualquier fecha futura y cualquier CVC.</p>
+        <button type="button" class="btn block secondary" data-action="premium-buy" data-c="monthly">Mensual · ${PRICES.monthly}</button>
+        <button type="button" class="btn block secondary" style="margin-top:8px" data-action="premium-buy" data-c="yearly">Anual · ${PRICES.yearly}</button>
+        <button type="button" class="btn block secondary" style="margin-top:8px" data-action="premium-buy" data-c="lifetime">De por vida · ${PRICES.lifetime}</button>
+        ${premiumUi.error ? `<p class="ai-status warn">${esc(premiumUi.error)}</p>` : ""}</section>` : ""}`, "premium");
   }
   const sent = premiumUi.sent;
   const plan = (key, name, price, extra = "", best = false) => `<div class="pm-plan ${best ? "best" : ""}"><div><b>${name}</b><span>${price}</span>${extra ? `<small>${extra}</small>` : ""}</div>
-    <button type="button" class="btn small ${best ? "" : "secondary"}" data-action="premium-intent" data-c="${key}" ${sent ? "disabled" : ""}>Quiero esto</button></div>`;
+    <button type="button" class="btn small ${best ? "" : "secondary"}" data-action="${me.payments ? "premium-buy" : "premium-intent"}" data-c="${key}" ${sent ? "disabled" : ""}>${me.payments ? "Elegir" : "Quiero esto"}</button></div>`;
   openSheet(`${head}
     ${premiumUi.reason && me.enforced ? `<p class="ai-status warn">${esc(REASON[premiumUi.reason] ?? "")}</p>` : ""}
+    ${premiumUi.thanks ? `<p class="ai-status ok">¡Gracias! Estamos activando tu plan: puede tardar unos segundos.</p>` : ""}
     <section class="card"><div class="sec">${me.enforced ? "Gratis" : "Cómo será"}</div>
       <p class="muted small">${me.enforced ? "" : `A partir del ${fmtDate(me.start)} habrá un plan gratuito y un plan Premium. Hasta entonces todo es gratis, y quien ya usa Florvia antes de esa fecha es fundador/a: tiene Premium gratis.`}</p>
       ${row("Plantas", `${L.plants} (Premium: ilimitadas)`)}${row("Qué planto aquí", `${L.suggest} al mes (Premium: ${PLAN_PREMIUM.suggest})`)}${row("Identificar por foto", `${L.identify} al mes (Premium: ${PLAN_PREMIUM.identify})`)}${row("¿Qué le pasa?", `${L.diagnose} al mes (Premium: ${PLAN_PREMIUM.diagnose})`)}
@@ -894,6 +903,21 @@ function premiumSheet(reason = "", keep = false) {
       <p class="muted small">Los pagos aún no están abiertos. Al pulsar solo apuntamos tu interés.</p></section>`, "premium");
 }
 const PLAN_PREMIUM = { suggest: 30, identify: 30, diagnose: 30 };
+// Polar checkout / customer portal: the Worker makes the session, the person pays on Polar's page and comes back to ?premium=ok.
+const PAY_ERRORS = { sync: "Para pagar, activa antes la sincronización (Ajustes → Sincronizar): tu plan te sigue así a todos tus móviles.", soldout: "Las plazas «de por vida» se han agotado. Elige otro plan.", closed: "Los pagos aún no están abiertos.", none: "No hay ninguna suscripción que gestionar." };
+async function polarGo(path, body) {
+  premiumUi.error = "";
+  try {
+    const res = await fetch(`${API}${path}`, { method: "POST", headers: aiHeaders(), body: JSON.stringify(body) });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || !out.url) throw new Error(out.error in PAY_ERRORS ? out.error : "x");
+    location.href = out.url;
+    return;
+  } catch (err) { premiumUi.error = PAY_ERRORS[err.message] ?? "No se ha podido abrir el pago. Prueba otra vez."; }
+  premiumSheet(premiumUi.reason, true);
+}
+const premiumBuy = (choice) => { if ($("pmEmail")) premiumUi.email = $("pmEmail").value.trim(); return polarGo("/polar/checkout", { choice, email: premiumUi.email }); };
+const premiumPortal = () => polarGo("/polar/portal", {});
 async function premiumIntent(choice) {
   if ($("pmEmail")) premiumUi.email = $("pmEmail").value.trim();
   premiumUi.error = "";
@@ -2808,6 +2832,8 @@ const actions = {
   "plant-refresh": (d) => refreshPlantAi(d.id),
   "open-premium": () => premiumSheet(""),
   "premium-intent": (d) => premiumIntent(d.c),
+  "premium-buy": (d) => premiumBuy(d.c),
+  "premium-portal": () => premiumPortal(),
   "open-feedback": () => { fb = null; feedbackSheet(); },
   "admin-push": async (d) => {
     const on = d.on === "1";
@@ -3379,6 +3405,13 @@ loadFeedback();
     if (linked === syncKey()) pullNow();
     else joinSheet(linked);
   } else pullNow();
+}
+// Back from the payment page (success_url ?premium=ok): the plan changes when Polar's webhook arrives, so look again a few times.
+if (new URLSearchParams(location.search).get("premium") === "ok") {
+  history.replaceState(null, "", location.pathname + location.hash);
+  premiumUi.thanks = true;
+  setTimeout(() => { loadMe(); premiumSheet("", true); }, 800);
+  [4000, 9000, 18000].forEach((ms) => setTimeout(loadMe, ms));
 }
 loadWeather();
 // One «open» per half hour at most, so switching apps back and forth doesn't inflate it.

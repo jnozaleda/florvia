@@ -1,4 +1,4 @@
-# Comprueba los posts del blog (reglas de content/GUIA.md), que el HTML generado esté al día, que la app y el Worker no tengan errores de sintaxis, que el contador de visitas del Worker (/hit) siga funcionando y que el diagnóstico (/diagnose) no diagnostique fotos de otra planta.
+# Comprueba los posts del blog (reglas de content/GUIA.md), que el HTML generado esté al día, que la app y el Worker no tengan errores de sintaxis, que el contador de visitas del Worker (/hit) siga funcionando y que el diagnóstico (/diagnose) no diagnostique fotos de otra planta y que el webhook de pagos de Polar valide la firma y cambie bien los planes.
 # Si falla, pide al Worker (POST /ci-alert) que mande un correo. Necesita el secreto de GitHub CI_ALERT_TOKEN
 # (el mismo valor que el secreto CI_ALERT_TOKEN del Worker). Sin él, la comprobación funciona igual pero no manda correo.
 name: Comprobar el blog
@@ -51,6 +51,10 @@ jobs:
         if: always()
         shell: bash
         run: node tools/test-diagnose.mjs 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
+      - name: Probar los pagos con Polar (webhook y planes)
+        if: always()
+        shell: bash
+        run: node tools/test-polar.mjs 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
       - name: Avisar por correo
         if: failure() && env.CI_ALERT_TOKEN != ''
         shell: bash
