@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005k";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005l";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005k";
-import { buildICS } from "./calendar.js?v=20261005k";
-import { scrubPlant } from "./clean.js?v=20261005k";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005k";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005l";
+import { buildICS } from "./calendar.js?v=20261005l";
+import { scrubPlant } from "./clean.js?v=20261005l";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005l";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005k";
+      sc.src = "vendor/qrcode.min.js?v=20261005l";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1465,15 +1465,15 @@ function plantSheet(id) {
   const LOG_ICON = { water: "droplet", feed: "flask", prune: "scissors", treat: "bug", note: "notes", task: "check" };
   if (plantUi.id !== id) plantUi = { id, open: new Set(["month"]), monthAll: false, big: false, flash: null };
   const open = (k) => plantUi.open.has(k);
-  const fold = (k, title, preview, body) => `<details class="pf" data-k="${k}" ${open(k) ? "open" : ""}><summary><span class="pf-t"><span>${title}</span><span class="chev">›</span></span>${preview ? `<span class="pf-prev">${preview}</span>` : ""}</summary><div class="pf-body">${body}</div></details>`;
+  const fold = (k, title, preview, body) => `<details class="pf" data-k="${k}" ${open(k) ? "open" : ""}><summary><span class="pf-t"><span>${title}</span><span class="chev">${ICONS.chevron}</span></span>${preview ? `<span class="pf-prev">${preview}</span>` : ""}</summary><div class="pf-body">${body}</div></details>`;
   const month = plantMonthParts(p, today);
   const cal = yearCalendarParts(p, today);
   const about = aboutCard(p, true);
   const aboutPrev = p.info?.matureNote ? `${SIZE_FINAL[p.info.matureSize] ? `Tamaño adulto ${SIZE_FINAL[p.info.matureSize]}. ` : ""}${p.info.matureNote}` : (p.info?.difficulty ? DIFFICULTY[p.info.difficulty] : "");
   const lastLog = log[0];
   const notesBlock = p.notes
-    ? fold("notes", `Notas${aiMark(isAiValue(p, "notes"))}`, `<span class="clamp2">${esc(p.notes)}</span>`, `<p class="muted notes-text">${esc(p.notes).replace(/\n/g, "<br>")}</p>`)
-    : `<button type="button" class="pf-add" data-action="edit-plant" data-id="${p.id}"><span class="pf-t"><span>Notas</span><span class="chev">+</span></span><span class="pf-prev">Añadir una nota</span></button>`;
+    ? fold("notes", `Notas${aiMark(isAiValue(p, "notes"))}`, `<span class="clamp2">${esc(p.notes)}</span>${p.notes.length > 100 ? `<span class="more">Ver más</span>` : ""}`, `<p class="muted notes-text">${esc(p.notes).replace(/\n/g, "<br>")}</p>`)
+    : `<button type="button" class="pf-add" data-action="edit-plant" data-id="${p.id}"><span class="pf-t"><span>Notas</span><span class="chev plus">${ICONS.plus ?? "+"}</span></span><span class="pf-prev">Añadir una nota</span></button>`;
   const photoSrc = p.photo || p.refPhoto?.url || "";
   openSheet(`
     <div class="sheet-head"><h2>${esc(plantLabel(p))}</h2><div class="row"><button class="btn small secondary icon-btn" data-action="plant-share" data-id="${p.id}" aria-label="Compartir esta planta" title="Compartir">${ICONS.share}</button><button class="btn small secondary icon-btn" data-action="dup-plant" data-id="${p.id}" aria-label="Duplicar planta" title="Duplicar">${ICONS.copy}</button><button class="btn small secondary" data-action="edit-plant" data-id="${p.id}">Editar</button><button class="btn small secondary" data-action="close">Cerrar</button></div></div>
@@ -1493,11 +1493,11 @@ function plantSheet(id) {
         return `<button type="button" class="act ${doneToday ? "done-today" : ""} ${flash ? "flash" : ""}" data-action="log" data-type="${type}" data-id="${p.id}" data-reopen="1">${doneToday ? ICONS.check : ICONS[LOG_ICON[type]]}${c.done}</button>`;
       }).join("")}
     </div></section>
-    ${month ? `<details class="pf month" data-k="month" ${open("month") ? "open" : ""}><summary><span class="pf-t"><span>Este mes · ${month.name}${p.yearTasks?.length ? ` <span class="ai-mark">✦</span>` : ""}</span><span class="pf-count">${month.count}<span class="chev">›</span></span></span></summary><div class="pf-body ${plantUi.monthAll ? "all" : ""}">${month.rows.slice(0, plantUi.monthAll ? 99 : 2).join("")}${month.rows.length > 2 ? `<button type="button" class="link-btn" data-action="pf-month">${plantUi.monthAll ? "Ver menos" : `Ver las ${month.rows.length - 2} restantes`}</button>` : ""}</div></details>` : month === null && calendarPending.has(p.id) ? `<section class="card"><div class="sec">Este mes</div><div class="ai-step"><span class="spinner" aria-hidden="true"></span>Preparando el calendario del año…</div></section>` : ""}
+    ${month ? `<details class="pf month" data-k="month" ${open("month") ? "open" : ""}><summary><span class="pf-t"><span>Este mes · ${month.name}${p.yearTasks?.length ? ` <span class="ai-mark">✦</span>` : ""}</span><span class="pf-count">${month.count}<span class="chev">${ICONS.chevron}</span></span></span></summary><div class="pf-body ${plantUi.monthAll ? "all" : ""}">${month.rows.slice(0, plantUi.monthAll ? 99 : 2).join("")}${month.rows.length > 2 ? `<button type="button" class="link-btn" data-action="pf-month">${plantUi.monthAll ? "Ver menos" : `Ver las ${month.rows.length - 2} restantes`}</button>` : ""}</div></details>` : month === null && calendarPending.has(p.id) ? `<section class="card"><div class="sec">Este mes</div><div class="ai-step"><span class="spinner" aria-hidden="true"></span>Preparando el calendario del año…</div></section>` : ""}
     <div class="pf-group">
       ${placeAdviceFold(p, fold)}
       ${cal ? fold("cal", `Calendario del año${p.yearTasks?.length ? ` <span class="ai-mark">✦</span>` : ""}`, `<span class="mini-year">${[...Array(12).keys()].map((i) => `<i class="${cal.months.has(i + 1) ? "on" : ""} ${i + 1 === cal.now ? "now" : ""}"></i>`).join("")}</span>${cal.line ? `<span class="pf-line">${esc(cal.line)}</span>` : ""}`, cal.html) : ""}
-      ${about ? fold("about", "Sobre la planta", aboutPrev ? `<span class="clamp2">${esc(aboutPrev)}</span>` : "", about) : ""}
+      ${about ? fold("about", "Sobre la planta", aboutPrev ? `<span class="clamp2">${esc(aboutPrev)}</span>${aboutPrev.length > 100 ? `<span class="more">Ver más</span>` : ""}` : "", about) : ""}
       ${notesBlock}
       ${fold("log", "Historial", lastLog ? `<span class="pf-line">${log.length} · ${esc(CARE[lastLog.type]?.done ?? lastLog.type)} ${esc(relPast(lastLog.date, today))}</span>` : `<span class="pf-line">Sin registros todavía</span>`, log.length ? `<ul class="log">${log.map((e) => `
       <li><span class="log-ico ${e.type}">${ICONS[LOG_ICON[e.type]] ?? ""}</span><span class="log-what">${esc(CARE[e.type]?.done ?? e.type)}${e.note ? ` — ${esc(e.note)}` : ""}</span><span class="d">${fmtDate(e.date)}</span>
@@ -1519,8 +1519,8 @@ function aiStrip(p) {
   const ref = plantRefresh?.id === p.id && (plantRefresh.running || Date.now() - plantRefresh.at < 15000) ? plantRefresh : null;
   const status = [place, ref].filter((x) => x?.text).map((x) => `<p class="ai-status ${x.running ? "" : x.ok ? "ok" : "warn"}">${x.running ? `<span class="spinner" aria-hidden="true"></span> ` : ""}${esc(x.text)}</p>`).join("");
   return `<section class="card ai-strip">
-    <button type="button" class="dg-main" data-action="diag-open" data-id="${p.id}" ${off ? "disabled" : ""}><span class="ai-mark">✦</span> ¿Qué le pasa?</button>
-    <div class="ai-links">${allZones().length ? `<button type="button" class="link-btn" data-action="plant-place" data-id="${p.id}" ${place?.running || off ? "disabled" : ""}>¿Dónde está mejor?</button>` : ""}<button type="button" class="link-btn" data-action="plant-refresh" data-id="${p.id}" ${ref?.running || off ? "disabled" : ""}>Actualizar con la IA</button></div>
+    <button type="button" class="dg-main" data-action="diag-open" data-id="${p.id}" ${off ? "disabled" : ""}><span aria-hidden="true">✦</span> ¿Qué le pasa?</button>
+    <div class="ai-pills">${allZones().length ? `<button type="button" class="ai-pill-btn" data-action="plant-place" data-id="${p.id}" ${place?.running || off ? "disabled" : ""}>${ICONS.pin}Dónde está mejor</button>` : ""}<button type="button" class="ai-pill-btn" data-action="plant-refresh" data-id="${p.id}" ${ref?.running || off ? "disabled" : ""}>${ICONS.refresh}Actualizar ficha</button></div>
     ${status}${off ? `<p class="muted small">La IA está apagada en este móvil (Ajustes → Asistente IA).</p>` : ""}</section>`;
 }
 // «¿Dónde está mejor?» result as a fold (only once it has been asked).
