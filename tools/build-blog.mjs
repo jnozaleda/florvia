@@ -1,5 +1,5 @@
 // Builds the evergreen pages (content/**/*.md → es/<tipo>/<slug>/index.html), the two hubs and sitemap.xml.
-// No dependencies: `node tools/build-blog.mjs`. Content rules: see the SEO guide (answer first, contextual CTA, FAQs that help).
+// No dependencies: `node tools/build-blog.mjs`. Rules for writing posts: content/GUIA.md
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
