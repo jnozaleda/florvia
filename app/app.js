@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005e";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005g";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005e";
-import { buildICS } from "./calendar.js?v=20261005e";
-import { scrubPlant } from "./clean.js?v=20261005e";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005e";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005g";
+import { buildICS } from "./calendar.js?v=20261005g";
+import { scrubPlant } from "./clean.js?v=20261005g";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005g";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -602,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005e";
+      sc.src = "vendor/qrcode.min.js?v=20261005g";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -792,6 +792,7 @@ function moreView() {
       ${row("import-json", "upload", "#6e6e73", "Importar copia")}
     </section>
     <p class="group-foot">Tus plantas se guardan solo en este móvil. Exporta una copia de vez en cuando.${usageCode ? ` Código de uso: <b>${usageCode}</b>.` : ""}</p>
+    ${versionRow(row)}
     <input type="file" id="importFile" accept="application/json" hidden />`;
 }
 
@@ -882,6 +883,36 @@ async function premiumIntent(choice) {
 
 // ---------- Comments («Enviar un comentario») and technical errors ----------
 const APP_VERSION = new URL(import.meta.url).searchParams.get("v") ?? "";
+// Version shown in Ajustes: the ?v=AAAAMMDDx stamp of the app files (README, «Publicar una versión»). «Buscar actualización» compares
+// the newest stamp loaded on this page with the one in the index.html the server has right now.
+const versionsIn = (text) => [...String(text).matchAll(/[?&]v=(\d{8}[a-z]?)/g)].map((m) => m[1]);
+const newestVersion = (list) => [...list].sort().pop() ?? "";
+const RUNNING_VERSION = newestVersion([APP_VERSION, ...[...document.querySelectorAll("link[href], script[src]")].flatMap((el) => versionsIn(el.getAttribute("href") ?? el.getAttribute("src") ?? ""))]);
+const versionLabel = (v) => (/^\d{8}/.test(v) ? `${fmtDate(`${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}`, { day: "numeric", month: "short", year: "numeric" })}${v[8] ? ` · ${v[8]}` : ""}` : "");
+let updateCheck = { state: "idle", latest: "" }; // state: idle | checking | ok | new | error
+async function checkUpdate() {
+  updateCheck = { state: "checking", latest: "" };
+  render();
+  try {
+    const res = await fetch(`index.html?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("http");
+    const latest = newestVersion(versionsIn(await res.text()));
+    if (!latest) throw new Error("no version");
+    updateCheck = { state: latest > RUNNING_VERSION ? "new" : "ok", latest };
+  } catch { updateCheck = { state: "error", latest: "" }; }
+  render();
+}
+function versionRow(row) {
+  const u = updateCheck.state;
+  const value = u === "checking" ? "Buscando…" : u === "ok" ? `<span class="ok">${ICONS.circleCheck}Al día</span>` : u === "new" ? `<span class="dot"></span>Actualizar` : u === "error" ? "No se pudo comprobar" : versionLabel(RUNNING_VERSION) || "Sin versión";
+  const foot = u === "ok" ? `Tienes la última versión publicada (${esc(versionLabel(RUNNING_VERSION))}).`
+    : u === "new" ? `Hay una versión más nueva (${esc(versionLabel(updateCheck.latest))}). Pulsa la fila para cargarla: tus plantas no se tocan.`
+    : u === "error" ? "No hay conexión o el servidor no responde. Prueba más tarde."
+    : "Es la fecha de la última actualización de la app que tienes cargada. Toca para comprobar si hay una más nueva: la app se actualiza sola al abrirla, y esto sirve sobre todo si la tienes abierta desde hace días.";
+  return `<div class="group-title">Versión</div>
+    <section class="card list-card settings">${row("check-update", "refresh", "#6e6e73", "Versión de la app", value, true, u === "checking")}</section>
+    <p class="group-foot">${foot}</p>`;
+}
 let fb = null; // { type, text, contact, tech, state: "idle" | "sending" | "sent" | "error", error }
 const FB_TYPES = [["idea", "Una idea"], ["bug", "Algo no funciona"], ["other", "Otra cosa"]];
 function fbRead() {
@@ -2757,6 +2788,7 @@ const actions = {
   "diag-open": (d) => { diag = { id: d.id, symptoms: [], note: "", photo: null, state: "idle", saved: false }; if (!me) loadMe(); diagSheet(); },
   "dg-sym": (d) => { diagRead(); diag.symptoms = diag.symptoms.includes(d.k) ? diag.symptoms.filter((x) => x !== d.k) : [...diag.symptoms, d.k]; diagSheet(); },
   "dg-nophoto": () => { diagRead(); diag.photo = null; diagSheet(); },
+  "check-update": () => { if (updateCheck.state === "new") location.reload(); else checkUpdate(); },
   "dg-go": () => diagGo(),
   "dg-back": () => { diag.state = "idle"; diag.res = null; diag.saved = false; diagSheet(); },
   "dg-dropphoto": () => { diag.photo = null; diag.state = "idle"; diag.res = null; diag.saved = false; diagSheet(); setTimeout(() => $("dgNote")?.focus(), 60); },

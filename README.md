@@ -27,6 +27,8 @@ Abre http://localhost:8767/app/ (o la configuración `mijardin` del panel de pre
 
 ## Publicar una versión
 
+El sello `?v=` también es la **versión que se ve en Ajustes → Versión de la app** (fecha de la última actualización y letra del día). El botón de esa fila descarga el `index.html` actual del servidor, compara su sello más reciente con el cargado en el móvil y avisa si hay uno nuevo (y lo recarga). No hay nada más que mantener: si se publica un cambio sin subir el sello, ese cambio tampoco llegaría a los navegadores que ya tienen la app, ni se vería como versión nueva.
+
 Los archivos llevan `?v=AAAAMMDDx` (en `index.html`, en los `import` de `app.js` y en `calendar.js`). Al publicar cambios en `app/`, sube ese número en todos a la vez: así el navegador no mezcla un archivo nuevo con otro viejo de su caché.
 
 ## Mejoras que necesitan datos nuevos de la IA
