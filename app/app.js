@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005i";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005j";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005i";
-import { buildICS } from "./calendar.js?v=20261005i";
-import { scrubPlant } from "./clean.js?v=20261005i";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005i";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005j";
+import { buildICS } from "./calendar.js?v=20261005j";
+import { scrubPlant } from "./clean.js?v=20261005j";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005j";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -269,14 +269,27 @@ function plantMonthCard(p, today) {
   }
   if (!items.length && !checks.length) return "";
   const month = fmtDate(today, { month: "long" });
-  return `<section class="card"><div class="sec">Este mes · ${month}${p.yearTasks?.length ? ` <span class="ai-mark">✦</span>` : ""}</div>
-    ${items.map((x) => `<div class="yt-row right ${x.done ? "done" : ""}">
+  return `<section class="card"><div class="sec">Este mes · ${month}${p.yearTasks?.length ? ` <span class="ai-mark">✦</span>` : ""}</div>${monthRows(p, items, checks).join("")}</section>`;
+}
+// The rows of «Este mes» for one plant: its year tasks and the weather checks that touch it.
+function monthRows(p, items, checks) {
+  return [
+    ...items.map((x) => `<div class="yt-row right ${x.done ? "done" : ""}">
       <span class="yt-kind ${x.task.type}">${ICONS[YEAR_TYPE[x.task.type]?.[0] ?? "check"]}</span>
       <div class="body"><b>${esc(x.task.title)}</b><div class="yt-how">${esc(x.task.how)}</div>${x.done ? "" : `<div class="yt-meta">${windowLabel(x.window)}${skipBtn(x, true)}</div>`}</div>
       <button type="button" class="yt-box" data-action="task-toggle" data-id="${p.id}" data-i="${x.i}" data-reopen="1" aria-pressed="${x.done}" aria-label="${x.done ? "Desmarcar" : "Marcar como hecha"}: ${esc(x.task.title)}">${ICONS.check}</button>
-    </div>`).join("")}
-    ${checks.map((c) => `<div class="yt-row right"><span class="yt-kind weather">${ICONS[WX_ICON[c.kind]]}</span><div class="body"><b>${esc(c.title)}</b><div class="yt-how">${esc(c.text)}</div><div class="yt-meta"><span class="yt-when wx">${ICONS.cloud}Por el tiempo</span></div></div></div>`).join("")}
-  </section>`;
+    </div>`),
+    ...checks.map((c) => `<div class="yt-row right"><span class="yt-kind weather">${ICONS[WX_ICON[c.kind]]}</span><div class="body"><b>${esc(c.title)}</b><div class="yt-how">${c.plantIds.length > 3 ? `Pasa en ${c.plantIds.length} plantas de tu jardín.` : esc(c.text)}</div><div class="yt-meta"><span class="yt-when wx">${ICONS.cloud}Por el tiempo</span></div></div></div>`),
+  ];
+}
+// For the plant sheet: { name, count, rows } or "" when there is nothing this month.
+function plantMonthParts(p, today) {
+  const items = monthTasks([p], state.data.log, today);
+  const checks = weatherChecks(state.data.plants, state.weather, today, zoneSun()).filter((c) => c.plantIds.includes(p.id));
+  if (calendarPending.has(p.id) || (!items.length && !checks.length)) return null;
+  const rows = monthRows(p, items, checks);
+  const pending = items.filter((x) => !x.done).length + checks.length;
+  return { name: fmtDate(today, { month: "long" }), rows, count: pending ? `${pending} ${pending === 1 ? "pendiente" : "pendientes"}` : "Todo hecho" };
 }
 
 function yearCalendarCard(p, today) {
@@ -294,6 +307,18 @@ function yearCalendarCard(p, today) {
     ${rows.map(([icon, label, cls, months]) => `<span class="yr">${ICONS[icon]}${label}</span>` +
       [...Array(12).keys()].map((i) => `<span class="yc ${months.includes(i + 1) ? `on ${cls}` : ""} ${i + 1 === now ? "now" : ""}"></span>`).join("")).join("")}
     </div>${removedLink(p)}</section>`;
+}
+// For the plant sheet's fold: the grid, which months have any task, and a one-line summary of this month.
+function yearCalendarParts(p, today) {
+  const html = yearCalendarCard(p, today).replace(/^<section class="card"><div class="sec">[\s\S]*?<\/div>/, "").replace(/<\/section>$/, "");
+  if (!html.trim()) return null;
+  const months = new Set();
+  const feedMonths = p.seasons ? [...Array(12).keys()].map((i) => i + 1).filter((m) => intervalFor(p, "feed", seasonOf(`2026-${String(m).padStart(2, "0")}-15`, here().lat))) : [];
+  feedMonths.forEach((m) => months.add(m));
+  for (const t of (p.yearTasks ?? []).filter((t) => !t.off)) t.months.forEach((m) => months.add(m));
+  const titles = monthTasks([p], state.data.log, today).filter((x) => !x.done).map((x) => x.task.title);
+  const line = titles.length ? `Este mes: ${titles.slice(0, 2).join(", ")}${titles.length > 2 ? "…" : ""}` : "";
+  return { html, months, now: Number(today.slice(5, 7)), line };
 }
 const ALERT_ICON = { "🥶": "snow", "🔥": "flame", "💨": "wind" };
 // "mañana", "el martes"
@@ -602,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005i";
+      sc.src = "vendor/qrcode.min.js?v=20261005j";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1367,19 +1392,22 @@ sheet.addEventListener("touchend", () => {
 sheet.addEventListener("cancel", (e) => { if (!confirmDiscard()) e.preventDefault(); }); // Esc / back gesture
 
 // «Sobre la planta»: size, flowering, difficulty, where it does best and safety (plants added since Explorar).
-function aboutCard(p) {
+let plantUi = { id: null, open: new Set(["month"]), monthAll: false, big: false }; // what is unfolded in the plant sheet (kept across redraws)
+document.addEventListener("toggle", (e) => { const d = e.target; if (d?.classList?.contains("pf") && d.dataset.k) d.open ? plantUi.open.add(d.dataset.k) : plantUi.open.delete(d.dataset.k); }, true);
+// «hoy», «ayer», «hace 3 días»
+const relPast = (iso, today) => { const n = daysBetween(iso, today); return n <= 0 ? "hoy" : n === 1 ? "ayer" : `hace ${n} días`; };
+function aboutCard(p, bare = false) {
   const i = p.info;
   if (!i) return "";
   const row = (icon, title, text, level = "info") => `<div class="fit-row"><span class="fit-ic ${level}">${ICONS[icon]}</span><div><b>${esc(title)}</b>${text ? `<span>${esc(text)}</span>` : ""}</div></div>`;
-  return `<section class="card"><div class="sec">Sobre la planta</div>
-    ${i.matureNote ? row("sprout", `Tamaño adulto ${SIZE_FINAL[i.matureSize] ?? ""}`.trim(), i.matureNote) : ""}
+  const inner = `${i.matureNote ? row("sprout", `Tamaño adulto ${SIZE_FINAL[i.matureSize] ?? ""}`.trim(), i.matureNote) : ""}
     ${monthStrip(i.bloomMonths, "Floración", i.bloomWhat)}
     ${i.difficulty ? row("check", DIFFICULTY[i.difficulty], "") : ""}
     ${i.waterHow ? row("droplet", "Cómo regarla", i.waterHow) : ""}
     ${i.plantIn ? row(i.plantIn === "suelo" ? "ground" : "pot", PLANT_IN[i.plantIn], i.potAdvice) : ""}
     ${i.toxic && i.toxic !== "no" ? row("alert", TOXIC_TEXT[i.toxic], i.toxicNote, "warn") : ""}
-    ${i.invasive ? row("alert", "Puede ser invasora", "Evita que se escape del jardín.", "warn") : ""}
-  </section>`;
+    ${i.invasive ? row("alert", "Puede ser invasora", "Evita que se escape del jardín.", "warn") : ""}`;
+  return bare ? inner : `<section class="card"><div class="sec">Sobre la planta</div>${inner}</section>`;
 }
 
 function plantSheet(id) {
@@ -1435,26 +1463,42 @@ function plantSheet(id) {
   ].filter(Boolean);
   const sunWarn = sunAdvice(p, zoneSun());
   const LOG_ICON = { water: "droplet", feed: "flask", prune: "scissors", treat: "bug", note: "notes", task: "check" };
+  if (plantUi.id !== id) plantUi = { id, open: new Set(["month"]), monthAll: false, big: false };
+  const open = (k) => plantUi.open.has(k);
+  const fold = (k, title, preview, body) => `<details class="pf" data-k="${k}" ${open(k) ? "open" : ""}><summary><span class="pf-t"><span>${title}</span><span class="chev">›</span></span>${preview ? `<span class="pf-prev">${preview}</span>` : ""}</summary><div class="pf-body">${body}</div></details>`;
+  const month = plantMonthParts(p, today);
+  const cal = yearCalendarParts(p, today);
+  const about = aboutCard(p, true);
+  const aboutPrev = p.info?.matureNote ? `${SIZE_FINAL[p.info.matureSize] ? `Tamaño adulto ${SIZE_FINAL[p.info.matureSize]}. ` : ""}${p.info.matureNote}` : (p.info?.difficulty ? DIFFICULTY[p.info.difficulty] : "");
+  const lastLog = log[0];
+  const notesBlock = p.notes
+    ? fold("notes", `Notas${aiMark(isAiValue(p, "notes"))}`, `<span class="clamp2">${esc(p.notes)}</span>`, `<p class="muted notes-text">${esc(p.notes).replace(/\n/g, "<br>")}</p>`)
+    : `<button type="button" class="pf-add" data-action="edit-plant" data-id="${p.id}"><span class="pf-t"><span>Notas</span><span class="chev">+</span></span><span class="pf-prev">Añadir una nota</span></button>`;
+  const photoSrc = p.photo || p.refPhoto?.url || "";
   openSheet(`
     <div class="sheet-head"><h2>${esc(plantLabel(p))}</h2><div class="row"><button class="btn small secondary icon-btn" data-action="plant-share" data-id="${p.id}" aria-label="Compartir esta planta" title="Compartir">${ICONS.share}</button><button class="btn small secondary icon-btn" data-action="dup-plant" data-id="${p.id}" aria-label="Duplicar planta" title="Duplicar">${ICONS.copy}</button><button class="btn small secondary" data-action="edit-plant" data-id="${p.id}">Editar</button><button class="btn small secondary" data-action="close">Cerrar</button></div></div>
-    ${p.photo ? `<img class="hero-photo" src="${esc(p.photo)}" alt="" />` : p.refPhoto ? `<figure class="ref-photo"><img class="hero-photo" src="${esc(p.refPhoto.url)}" alt="" /><figcaption>Foto de referencia · ${esc(p.refPhoto.credit)}</figcaption></figure>` : ""}
-    ${p.species || p.zone || p.nick ? `<p class="muted">${p.nick ? `${esc(p.name)} · ` : ""}${p.species ? `<em>${esc(p.species)}</em>${aiMark(isAiValue(p, "species"))}` : ""}${p.species && p.zone ? " · " : ""}${esc(p.zone)}</p>` : ""}
-    <div class="traits">${traits.map(([icon, label]) => `<span class="trait">${ICONS[icon]}${label}</span>`).join("")}</div>
+    <div class="p-top">
+      <button type="button" class="p-thumb" data-action="pf-photo" aria-label="${plantUi.big ? "Reducir la foto" : "Ver la foto grande"}">${photoSrc ? `<img src="${esc(photoSrc)}" alt="" />` : ICONS.sprout}</button>
+      <div class="p-meta">${p.species || p.zone || p.nick ? `<p class="muted">${p.nick ? `${esc(p.name)} · ` : ""}${p.species ? `<em>${esc(p.species)}</em>${aiMark(isAiValue(p, "species"))}` : ""}${p.species && p.zone ? " · " : ""}${esc(p.zone)}</p>` : `<p class="muted">&nbsp;</p>`}
+        <div class="traits">${traits.map(([icon, label]) => `<span class="trait">${ICONS[icon]}${label}</span>`).join("")}</div></div>
+    </div>
+    ${plantUi.big && photoSrc ? (p.photo ? `<img class="hero-photo" src="${esc(p.photo)}" alt="" />` : `<figure class="ref-photo"><img class="hero-photo" src="${esc(p.refPhoto.url)}" alt="" /><figcaption>Foto de referencia · ${esc(p.refPhoto.credit)}</figcaption></figure>`) : ""}
     ${sunWarn ? `<p class="sun-warn ${sunWarn.level}">${ICONS.sun}${esc(sunWarn.text)}</p>` : ""}
+    ${aiStrip(p)}
     ${nexts.length ? `<section class="card next-care"><div class="sec">${p.seasons ? `Ahora · ${SEASON_LABEL[season].toLowerCase()}` : "Ahora"}</div>${nexts.join("")}${p.tips?.[season] ? `<div class="n-tip">${ICONS[SEASON_ICON[season]]}<span>${esc(p.tips[season])} <span class="ai-mark">✦</span></span></div>` : ""}${nextLine}</section>` : ""}
-    ${plantMonthCard(p, today)}
-    <section class="card"><div class="sec">Registrar</div><div class="acts">
+    <section class="card reg"><div class="acts">
       ${Object.entries(CARE).filter(([type]) => type !== "task").map(([type, c]) => `<button type="button" class="act" data-action="log" data-type="${type}" data-id="${p.id}" data-reopen="1">${ICONS[LOG_ICON[type]]}${c.done}</button>`).join("")}
     </div></section>
-    ${diagCard(p)}
-    ${aboutCard(p)}
-    ${p.notes ? `<section class="card"><div class="sec start">Notas${aiMark(isAiValue(p, "notes"))}</div><p class="muted notes-text">${esc(p.notes).replace(/\n/g, "<br>")}</p></section>` : ""}
-    ${yearCalendarCard(p, today)}
-    <section class="card"><div class="sec">Historial</div>${log.length ? `<ul class="log">${log.map((e) => `
+    ${month ? `<details class="pf month" data-k="month" ${open("month") ? "open" : ""}><summary><span class="pf-t"><span>Este mes · ${month.name}${p.yearTasks?.length ? ` <span class="ai-mark">✦</span>` : ""}</span><span class="pf-count">${month.count}<span class="chev">›</span></span></span></summary><div class="pf-body ${plantUi.monthAll ? "all" : ""}">${month.rows.slice(0, plantUi.monthAll ? 99 : 2).join("")}${month.rows.length > 2 ? `<button type="button" class="link-btn" data-action="pf-month">${plantUi.monthAll ? "Ver menos" : `Ver las ${month.rows.length - 2} restantes`}</button>` : ""}</div></details>` : month === null && calendarPending.has(p.id) ? `<section class="card"><div class="sec">Este mes</div><div class="ai-step"><span class="spinner" aria-hidden="true"></span>Preparando el calendario del año…</div></section>` : ""}
+    <div class="pf-group">
+      ${placeAdviceFold(p, fold)}
+      ${cal ? fold("cal", `Calendario del año${p.yearTasks?.length ? ` <span class="ai-mark">✦</span>` : ""}`, `<span class="mini-year">${[...Array(12).keys()].map((i) => `<i class="${cal.months.has(i + 1) ? "on" : ""} ${i + 1 === cal.now ? "now" : ""}"></i>`).join("")}</span>${cal.line ? `<span class="pf-line">${esc(cal.line)}</span>` : ""}`, cal.html) : ""}
+      ${about ? fold("about", "Sobre la planta", aboutPrev ? `<span class="clamp2">${esc(aboutPrev)}</span>` : "", about) : ""}
+      ${notesBlock}
+      ${fold("log", "Historial", lastLog ? `<span class="pf-line">${log.length} · ${esc(CARE[lastLog.type]?.done ?? lastLog.type)} ${esc(relPast(lastLog.date, today))}</span>` : `<span class="pf-line">Sin registros todavía</span>`, log.length ? `<ul class="log">${log.map((e) => `
       <li><span class="log-ico ${e.type}">${ICONS[LOG_ICON[e.type]] ?? ""}</span><span class="log-what">${esc(CARE[e.type]?.done ?? e.type)}${e.note ? ` — ${esc(e.note)}` : ""}</span><span class="d">${fmtDate(e.date)}</span>
-      <button class="x" data-action="del-log" data-log="${e.id}" data-id="${p.id}" aria-label="Borrar">${ICONS.x}</button></li>`).join("")}</ul>` : `<p class="muted">Sin registros todavía.</p>`}</section>
-    ${placeSection(p)}
-    ${refreshSection(p)}
+      <button class="x" data-action="del-log" data-log="${e.id}" data-id="${p.id}" aria-label="Borrar">${ICONS.x}</button></li>`).join("")}</ul>` : `<p class="muted">Sin registros todavía.</p>`)}
+    </div>
     ${provenance}
     `);
   sheet.dataset.plant = id;
@@ -1464,11 +1508,25 @@ function plantSheet(id) {
 // knows of the plant (watering rhythm, last watering and feeding, zone). Counts against the monthly «diagnose» limit.
 const DIAG_SYMPTOMS = [["amarillas", "Hojas amarillas"], ["marrones", "Puntas o hojas marrones"], ["mustia", "Hojas caídas o mustias"], ["manchas", "Manchas en las hojas"], ["bichos", "Bichos o plagas"], ["moho", "Moho o polvillo blanco"], ["enrolladas", "Hojas enrolladas"], ["sin_crecer", "No crece"], ["tallo_blando", "Tallo blando o con mal olor"], ["caen", "Se le caen hojas o flores"], ["sin_flor", "No florece"]];
 let diag = null; // { id, symptoms: [], note, photo, state: "idle" | "loading" | "done" | "error", res, error, saved }
-function diagCard(p) {
-  return `<section class="card"><div class="sec">¿Qué le pasa?</div>
-    <p class="muted small">Cuéntale a la IA qué ves (y, si quieres, con una foto) y te propone las causas más probables y qué hacer.</p>
-    <button type="button" class="btn block secondary" style="margin-top:12px" data-action="diag-open" data-id="${p.id}" ${aiOff() ? "disabled" : ""}>✦ Diagnosticar</button>
-    ${aiOff() ? `<p class="muted small">La IA está apagada en este móvil (Ajustes → Asistente IA).</p>` : ""}</section>`;
+// The AI tools of a plant in one strip: «¿Qué le pasa?» on top, the other two as links, and their status lines.
+function aiStrip(p) {
+  const off = aiOff();
+  const place = plantPlace?.id === p.id && (plantPlace.running || (!plantPlace.ok && Date.now() - plantPlace.at < 15000)) ? plantPlace : null;
+  const ref = plantRefresh?.id === p.id && (plantRefresh.running || Date.now() - plantRefresh.at < 15000) ? plantRefresh : null;
+  const status = [place, ref].filter((x) => x?.text).map((x) => `<p class="ai-status ${x.running ? "" : x.ok ? "ok" : "warn"}">${x.running ? `<span class="spinner" aria-hidden="true"></span> ` : ""}${esc(x.text)}</p>`).join("");
+  return `<section class="card ai-strip">
+    <button type="button" class="dg-main" data-action="diag-open" data-id="${p.id}" ${off ? "disabled" : ""}><span class="ai-mark">✦</span> ¿Qué le pasa?</button>
+    <div class="ai-links">${allZones().length ? `<button type="button" class="link-btn" data-action="plant-place" data-id="${p.id}" ${place?.running || off ? "disabled" : ""}>¿Dónde está mejor?</button>` : ""}<button type="button" class="link-btn" data-action="plant-refresh" data-id="${p.id}" ${ref?.running || off ? "disabled" : ""}>Actualizar con la IA</button></div>
+    ${status}${off ? `<p class="muted small">La IA está apagada en este móvil (Ajustes → Asistente IA).</p>` : ""}</section>`;
+}
+// «¿Dónde está mejor?» result as a fold (only once it has been asked).
+function placeAdviceFold(p, fold) {
+  const a = p.placeAdvice;
+  if (!a?.zones?.length) return "";
+  const stale = (a.zone ?? "") !== (p.zone || "");
+  const prev = a.best && a.best !== (p.zone || "") ? `Mejor en ${esc(a.best)}` : "Donde está le va bien";
+  return fold("place", "¿Dónde está mejor?", `<span class="pf-line">${prev}${stale ? " · ha cambiado de zona" : ""}</span>`,
+    `<p class="muted small">Valorado el ${fmtDate(a.at)}${stale ? ` para «${esc(a.zone || "sin zona")}»: ha cambiado de zona, vuelve a valorar` : ""}.</p>${placeAdviceHtml(a, p.zone || "")}${placeNudge()}`);
 }
 function diagRead() {
   if (!diag) return;
@@ -1701,17 +1759,6 @@ async function askExplorePlace() {
   if (explore === e && $("sheet").open) exploreSheet();
 }
 let plantPlace = null; // { id, running, ok, at, text }
-function placeSection(p) {
-  if (!allZones().length) return "";
-  const busy = plantPlace?.id === p.id && (plantPlace.running || (!plantPlace.ok && Date.now() - plantPlace.at < 15000)) ? plantPlace : null;
-  const a = p.placeAdvice;
-  const stale = a && (a.zone ?? "") !== (p.zone || "");
-  return `<section class="card"><div class="sec">¿Dónde está mejor?</div>
-    ${a ? `<p class="muted small">Valorado el ${fmtDate(a.at)}${stale ? ` para «${esc(a.zone || "sin zona")}»: ha cambiado de zona, vuelve a valorar` : ""}.</p>${placeAdviceHtml(a, p.zone || "")}` : `<p class="muted small">La IA compara esta planta con tus zonas (sol, riego y lo que hayas escrito de cada una) y te dice dónde está mejor, también según la estación.</p>`}
-    ${busy ? `<p class="ai-status ${busy.running ? "" : "warn"}">${busy.running ? `<span class="spinner" aria-hidden="true"></span> ` : ""}${esc(busy.text)}</p>` : ""}
-    ${placeNudge()}
-    <button type="button" class="btn block secondary" style="margin-top:12px" data-action="plant-place" data-id="${p.id}" ${busy?.running || aiOff() ? "disabled" : ""}>✦ ${a ? "Volver a valorar" : "¿Dónde está mejor?"}</button></section>`;
-}
 async function askPlantPlace(id) {
   const p = plantById(id);
   if (!p || plantPlace?.running) return;
@@ -1735,14 +1782,6 @@ async function askPlantPlace(id) {
 // the AI (seasonal tips, fertiliser types, «Sobre la planta», calendar). Watering and feeding figures and
 // notes are replaced only where they still are the AI's own; anything the person edited is kept.
 let plantRefresh = null; // { id, running, ok, text }
-function refreshSection(p) {
-  const r = plantRefresh?.id === p.id && (plantRefresh.running || Date.now() - plantRefresh.at < 15000) ? plantRefresh : null;
-  return `<section class="card"><div class="sec">Ficha de la IA</div>
-    <p class="muted small">Vuelve a consultar a la IA por esta planta y actualiza consejos, abono, «Sobre la planta» y calendario. Lo que hayas cambiado a mano se queda como está.</p>
-    ${r?.text ? `<p class="ai-status ${r.running ? "" : r.ok ? "ok" : "warn"}">${r.running ? `<span class="spinner" aria-hidden="true"></span> ` : ""}${esc(r.text)}</p>` : ""}
-    <button type="button" class="btn block secondary" style="margin-top:12px" data-action="plant-refresh" data-id="${p.id}" ${r?.running || aiOff() ? "disabled" : ""}>✦ Actualizar con la IA</button>
-    ${aiOff() ? `<p class="muted small">La IA está apagada en este móvil (Ajustes → Asistente IA).</p>` : ""}</section>`;
-}
 async function refreshPlantAi(id) {
   const plant = plantById(id);
   if (!plant || plantRefresh?.running) return;
@@ -2785,6 +2824,8 @@ const actions = {
     loadUsage();
   },
   "plant-place": (d) => askPlantPlace(d.id),
+  "pf-photo": () => { plantUi.big = !plantUi.big; plantSheet(plantUi.id); },
+  "pf-month": () => { plantUi.monthAll = !plantUi.monthAll; plantSheet(plantUi.id); },
   "diag-open": (d) => { diag = { id: d.id, symptoms: [], note: "", photo: null, state: "idle", saved: false }; if (!me) loadMe(); diagSheet(); },
   "dg-sym": (d) => { diagRead(); diag.symptoms = diag.symptoms.includes(d.k) ? diag.symptoms.filter((x) => x !== d.k) : [...diag.symptoms, d.k]; diagSheet(); },
   "dg-nophoto": () => { diagRead(); diag.photo = null; diagSheet(); },
