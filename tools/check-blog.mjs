@@ -1,5 +1,9 @@
 // Checks the blog posts against the rules in content/GUIA.md. Used by build-blog.mjs (`node tools/build-blog.mjs --check` only checks).
 // Errors stop the build; warnings are advice (length, number of links...).
+import { readFileSync, existsSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REQUIRED = ["title", "h1", "description", "updated", "published", "ctaTitle", "ctaText", "ctaButton"];
 const PLANT_SECTIONS = [[/^cuidados rápidos$/i, "Cuidados rápidos"], [/^dónde colocar /i, "Dónde colocar…"], [/^cada cuánto regar /i, "Cada cuánto regar…"], [/^cuándo abonar /i, "Cuándo abonar…"], [/temperatura/i, "Temperatura…"], [/^problemas frecuentes$/i, "Problemas frecuentes"], [/^cuidados por estación$/i, "Cuidados por estación"], [/^preguntas frecuentes$/i, "Preguntas frecuentes"]];
 const SEASONS = ["primavera", "verano", "otoño", "invierno"];
@@ -87,6 +91,12 @@ export function checkPages(pages) {
         if (seasons.join() !== SEASONS.join()) err(`«Cuidados por estación» debe tener ### Primavera, Verano, Otoño e Invierno en ese orden (tiene: ${seasons.join(", ") || "nada"})`);
       }
     }
+  }
+  // The landing page links to some guides and to the hubs: they must exist.
+  const landing = join(ROOT, "index.html");
+  if (existsSync(landing)) {
+    const ok = new Set([...paths, "/es/plantas/", "/es/guias/"]);
+    for (const [, href] of readFileSync(landing, "utf8").matchAll(/href="(\/es\/[^"#?]*)"/g)) if (!ok.has(href)) issues.push({ level: "error", file: "index.html", msg: `la landing enlaza a una página del blog que no existe: ${href}` });
   }
   return issues;
 }
