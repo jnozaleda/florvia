@@ -813,8 +813,15 @@ label.link-btn { cursor: pointer; }
 .pf-body .link-btn { margin-top: 6px; }
 .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .mini-year { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; margin-top: 6px; }
-.mini-year i { height: 10px; border-radius: 3px; background: var(--bg); }
+.mini-year i { height: 10px; border-radius: 3px; background: var(--track); }
 .mini-year i.on { background: rgba(47, 143, 78, 0.4); }
 .mini-year i.now { outline: 1.5px solid var(--accent); outline-offset: 0; }
 .mini-year i.on.now { background: var(--accent); }
 .month .pf-body:not(.all) .yt-how { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.act.done-today { background: var(--accent-soft); color: var(--accent); }
+.act.done-today .icon { color: var(--accent); }
+.act.flash { animation: act-flash 1.2s ease-out; }
+.act.flash .icon { animation: act-flash-icon 1.2s ease-out; }
+@keyframes act-flash { 0% { background: var(--accent); color: #fff; transform: scale(0.94); } 30% { transform: scale(1); } 100% { background: var(--accent-soft); } }
+@keyframes act-flash-icon { 0% { color: #fff; } 100% { color: var(--accent); } }

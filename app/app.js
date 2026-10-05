@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005j";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005k";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005j";
-import { buildICS } from "./calendar.js?v=20261005j";
-import { scrubPlant } from "./clean.js?v=20261005j";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005j";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005k";
+import { buildICS } from "./calendar.js?v=20261005k";
+import { scrubPlant } from "./clean.js?v=20261005k";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005k";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005j";
+      sc.src = "vendor/qrcode.min.js?v=20261005k";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1392,7 +1392,7 @@ sheet.addEventListener("touchend", () => {
 sheet.addEventListener("cancel", (e) => { if (!confirmDiscard()) e.preventDefault(); }); // Esc / back gesture
 
 // «Sobre la planta»: size, flowering, difficulty, where it does best and safety (plants added since Explorar).
-let plantUi = { id: null, open: new Set(["month"]), monthAll: false, big: false }; // what is unfolded in the plant sheet (kept across redraws)
+let plantUi = { id: null, open: new Set(["month"]), monthAll: false, big: false, flash: null }; // what is unfolded in the plant sheet (kept across redraws)
 document.addEventListener("toggle", (e) => { const d = e.target; if (d?.classList?.contains("pf") && d.dataset.k) d.open ? plantUi.open.add(d.dataset.k) : plantUi.open.delete(d.dataset.k); }, true);
 // «hoy», «ayer», «hace 3 días»
 const relPast = (iso, today) => { const n = daysBetween(iso, today); return n <= 0 ? "hoy" : n === 1 ? "ayer" : `hace ${n} días`; };
@@ -1449,7 +1449,7 @@ function plantSheet(id) {
     const diff = p.ai.retro
       ? `${changed === 1 ? "1 dato distinto" : `${changed} datos distintos`} de su propuesta`
       : `${changed === 1 ? "1 dato cambiado" : `${changed} datos cambiados`} por ti`;
-    provenance = `<p class="provenance"><span class="ai-mark">✦</span> ${p.ai.retro ? "Revisado con la IA" : "Propuesto por la IA"} el ${fmtDate(p.ai.at, { day: "numeric", month: "long" })}${changed ? ` · ${diff}` : ""}</p>`;
+    provenance = `<p class="provenance"><span class="ai-mark">✦</span> ${p.ai.retro ? "Revisado con la IA" : "Propuesto por la IA"} el ${fmtDate(p.ai.at, { day: "numeric", month: "long" })}${p.ai.time ? ` a las ${p.ai.time}` : ""}${changed ? ` · ${diff}` : ""}</p>`;
   }
   if (missingUpgrades(p).length) provenance += `<p class="provenance">Ficha por actualizar: Ajustes → Fichas por actualizar</p>`;
   const traits = [
@@ -1463,7 +1463,7 @@ function plantSheet(id) {
   ].filter(Boolean);
   const sunWarn = sunAdvice(p, zoneSun());
   const LOG_ICON = { water: "droplet", feed: "flask", prune: "scissors", treat: "bug", note: "notes", task: "check" };
-  if (plantUi.id !== id) plantUi = { id, open: new Set(["month"]), monthAll: false, big: false };
+  if (plantUi.id !== id) plantUi = { id, open: new Set(["month"]), monthAll: false, big: false, flash: null };
   const open = (k) => plantUi.open.has(k);
   const fold = (k, title, preview, body) => `<details class="pf" data-k="${k}" ${open(k) ? "open" : ""}><summary><span class="pf-t"><span>${title}</span><span class="chev">›</span></span>${preview ? `<span class="pf-prev">${preview}</span>` : ""}</summary><div class="pf-body">${body}</div></details>`;
   const month = plantMonthParts(p, today);
@@ -1487,7 +1487,11 @@ function plantSheet(id) {
     ${aiStrip(p)}
     ${nexts.length ? `<section class="card next-care"><div class="sec">${p.seasons ? `Ahora · ${SEASON_LABEL[season].toLowerCase()}` : "Ahora"}</div>${nexts.join("")}${p.tips?.[season] ? `<div class="n-tip">${ICONS[SEASON_ICON[season]]}<span>${esc(p.tips[season])} <span class="ai-mark">✦</span></span></div>` : ""}${nextLine}</section>` : ""}
     <section class="card reg"><div class="acts">
-      ${Object.entries(CARE).filter(([type]) => type !== "task").map(([type, c]) => `<button type="button" class="act" data-action="log" data-type="${type}" data-id="${p.id}" data-reopen="1">${ICONS[LOG_ICON[type]]}${c.done}</button>`).join("")}
+      ${Object.entries(CARE).filter(([type]) => type !== "task").map(([type, c]) => {
+        const doneToday = log.some((e) => e.type === type && e.date === today);
+        const flash = plantUi.flash?.type === type && Date.now() - plantUi.flash.at < 1500;
+        return `<button type="button" class="act ${doneToday ? "done-today" : ""} ${flash ? "flash" : ""}" data-action="log" data-type="${type}" data-id="${p.id}" data-reopen="1">${doneToday ? ICONS.check : ICONS[LOG_ICON[type]]}${c.done}</button>`;
+      }).join("")}
     </div></section>
     ${month ? `<details class="pf month" data-k="month" ${open("month") ? "open" : ""}><summary><span class="pf-t"><span>Este mes · ${month.name}${p.yearTasks?.length ? ` <span class="ai-mark">✦</span>` : ""}</span><span class="pf-count">${month.count}<span class="chev">›</span></span></span></summary><div class="pf-body ${plantUi.monthAll ? "all" : ""}">${month.rows.slice(0, plantUi.monthAll ? 99 : 2).join("")}${month.rows.length > 2 ? `<button type="button" class="link-btn" data-action="pf-month">${plantUi.monthAll ? "Ver menos" : `Ver las ${month.rows.length - 2} restantes`}</button>` : ""}</div></details>` : month === null && calendarPending.has(p.id) ? `<section class="card"><div class="sec">Este mes</div><div class="ai-step"><span class="spinner" aria-hidden="true"></span>Preparando el calendario del año…</div></section>` : ""}
     <div class="pf-group">
@@ -1835,7 +1839,7 @@ function plantForm(id) {
           <input name="name" class="name-input" required placeholder="Tipo de planta" value="${esc(p.name)}" aria-label="Tipo de planta" />
           <input name="nick" class="nick-input" placeholder="Nombre propio (opcional)" value="${esc(p.nick ?? "")}" aria-label="Nombre propio" />
           <input name="species" class="species-input" placeholder="Especie (opcional)" value="${esc(p.species)}" aria-label="Especie" />
-          <span id="editAiLine">${p.ai ? `<span class="ai-pill">✦ ${p.ai.retro ? "Revisado con" : "Propuesto por"} la IA el ${fmtDate(p.ai.at)}</span>` : ""}</span>
+          <span id="editAiLine">${p.ai ? `<span class="ai-pill">✦ ${p.ai.retro ? "Revisado con" : "Propuesto por"} la IA el ${fmtDate(p.ai.at)}${p.ai.time ? ` a las ${p.ai.time}` : ""}</span>` : ""}</span>
         </div>
       </section>
       <button type="button" class="btn secondary ai-btn" data-action="ai-fill">${p.ai ? "✦ Volver a consultar a la IA" : "✦ Rellenar con IA"}</button>
@@ -1930,7 +1934,7 @@ const ALL_CELLS = SEASONS.flatMap((k) => [`${k}.water`, `${k}.feed`]);
 function aiSnapshot(care, from) {
   const values = { species: care.species, notes: care.notes, frostSensitive: care.frostSensitive };
   for (const k of SEASONS) { values[`${k}.water`] = care.seasons[k].water; values[`${k}.feed`] = care.seasons[k].feed; }
-  return { at: localToday(), from: from ?? `${care.commonName} (${care.species})`, values };
+  return { at: localToday(), time: new Date().toTimeString().slice(0, 5), from: from ?? `${care.commonName} (${care.species})`, values };
 }
 function fieldValue(plant, key) {
   const [season, kind] = key.split(".");
@@ -2867,6 +2871,7 @@ const actions = {
       if (note === null || (d.type === "note" && !note.trim())) return;
     }
     addLog(d.id, d.type, note.trim());
+    if (d.reopen) plantUi.flash = { type: d.type, at: Date.now() };
     if (d.type === "water") track("water_done");
     if (d.type === "feed") track("feed_done");
     render();
