@@ -78,3 +78,12 @@ FROM ev GROUP BY person;
 CREATE TABLE IF NOT EXISTS referrals (
   device TEXT PRIMARY KEY, ref TEXT NOT NULL, day TEXT NOT NULL, src TEXT NOT NULL DEFAULT ''
 );
+
+-- Web visits (landing + blog), see «Web visits» in worker.js. Counts only: one visitor per day and page.
+-- pv_seen / pv_seen_day hold a one-way daily hash for 2 days (to count each visitor once) and are then deleted.
+-- kind: person | search (Googlebot, Bingbot…) | ai (GPTBot, ClaudeBot…) | preview (WhatsApp, Slack…) | bot (other robots).
+-- src: direct | google | search | social | ai | other | internal.
+CREATE TABLE IF NOT EXISTS pv_seen (day TEXT NOT NULL, h TEXT NOT NULL, path TEXT NOT NULL, PRIMARY KEY (day, h, path));
+CREATE TABLE IF NOT EXISTS pv_seen_day (day TEXT NOT NULL, h TEXT NOT NULL, PRIMARY KEY (day, h));
+CREATE TABLE IF NOT EXISTS pv_page (day TEXT NOT NULL, path TEXT NOT NULL, src TEXT NOT NULL, kind TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, path, src, kind));
+CREATE TABLE IF NOT EXISTS pv_site (day TEXT NOT NULL, kind TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind));

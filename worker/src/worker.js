@@ -473,6 +473,80 @@ async function handleEvent(request, env, headers, ctx) {
   return json({ ok: true }, 200, headers);
 }
 
+// ---------- Web visits (POST /hit from track.js on the landing and the blog; GET /stats/web for «Uso de la app») ----------
+// Anonymous: no cookies, no ids. A visitor is counted once per day and page; for that, a one-way hash of connection + browser
+// (salted with the day and a secret) is kept for 2 days and then deleted. Only counts per day / page / source / kind are kept.
+// Robots are not dropped: each visit is classified by its User-Agent (person, search engine, AI, link preview, other) and shown apart.
+const HIT_PATH = /^\/(?:es\/(?:plantas|guias)\/(?:[a-z0-9-]+\/)?)?$/;
+const HIT_KINDS = ["person", "search", "ai", "preview", "bot"];
+function hitKind(ua) {
+  if (!ua) return "bot";
+  if (/facebookexternalhit|twitterbot|slackbot|whatsapp|telegrambot|linkedinbot|discordbot|pinterest|skypeuripreview|mastodon|embedly|vkshare|redditbot/i.test(ua)) return "preview";
+  if (/gptbot|chatgpt-user|oai-searchbot|claudebot|claude-user|claude-searchbot|anthropic-ai|perplexity|ccbot|bytespider|google-extended|amazonbot|cohere|meta-externalagent|diffbot|youbot|mistralai/i.test(ua)) return "ai";
+  if (/googlebot|google-inspectiontool|adsbot|storebot-google|bingbot|bingpreview|duckduckbot|yandex|baiduspider|applebot|ecosia|seznambot|sogou|petalbot|slurp/i.test(ua)) return "search";
+  if (/bot|crawl|spider|headless|lighthouse|pagespeed|gtmetrix|python-requests|python-urllib|curl\/|wget|httpclient|node-fetch|axios|go-http|java\/|libwww|scrapy|monitor|uptime|pingdom|phantomjs|puppeteer|playwright/i.test(ua)) return "bot";
+  return "person";
+}
+// The page sends only the host it came from (document.referrer's hostname), never the full address.
+function hitSrc(host) {
+  const h = String(host ?? "").toLowerCase().replace(/^www\./, "").slice(0, 100);
+  if (!/^[a-z0-9.-]+$/.test(h) || !h) return "direct";
+  if (h === "florvia.app") return "internal";
+  if (/(^|\.)(chatgpt\.com|chat\.openai\.com|perplexity\.ai|claude\.ai|gemini\.google\.com|copilot\.microsoft\.com)$/.test(h)) return "ai";
+  if (/(^|\.)google\./.test(h)) return "google";
+  if (/(^|\.)(bing\.com|duckduckgo\.com|ecosia\.org|yahoo\.com|yandex\.[a-z]+|qwant\.com|brave\.com)$/.test(h)) return "search";
+  if (/(^|\.)(facebook\.com|instagram\.com|t\.co|x\.com|twitter\.com|whatsapp\.com|pinterest\.[a-z.]+|reddit\.com|linkedin\.com|youtube\.com|tiktok\.com|t\.me)$/.test(h)) return "social";
+  return "other";
+}
+async function hitHash(env, day, ip, ua) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`hit:${env.ACCESS_CODE ?? ""}:${day}:${ip}:${ua}`));
+  return [...new Uint8Array(digest)].slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function recordHit(env, { day, path, kind, src, h }) {
+  const page = await env.DB.prepare("INSERT OR IGNORE INTO pv_seen (day, h, path) VALUES (?, ?, ?)").bind(day, h, path).run();
+  if (page.meta?.changes) await env.DB.prepare("INSERT INTO pv_page (day, path, src, kind, n) VALUES (?, ?, ?, ?, 1) ON CONFLICT (day, path, src, kind) DO UPDATE SET n = n + 1").bind(day, path, src, kind).run();
+  const site = await env.DB.prepare("INSERT OR IGNORE INTO pv_seen_day (day, h) VALUES (?, ?)").bind(day, h).run();
+  if (site.meta?.changes) await env.DB.prepare("INSERT INTO pv_site (day, kind, n) VALUES (?, ?, 1) ON CONFLICT (day, kind) DO UPDATE SET n = n + 1").bind(day, kind).run();
+}
+async function handleHit(request, env, headers, ctx) {
+  const none = () => new Response(null, { status: 204, headers });
+  if (!env.DB || originSrc(request) !== "prod") return none(); // only pages served from florvia.app count
+  let body;
+  try { body = JSON.parse(await request.text()); } catch { return none(); }
+  const path = String(body.path ?? "").replace(/index\.html$/, "");
+  if (!HIT_PATH.test(path)) return none();
+  const day = new Date().toISOString().slice(0, 10);
+  const ua = request.headers.get("User-Agent") ?? "";
+  const h = await hitHash(env, day, request.headers.get("CF-Connecting-IP") ?? "", ua);
+  ctx.waitUntil(recordHit(env, { day, path, kind: hitKind(ua), src: hitSrc(body.ref), h }).catch((err) => console.error("hit", err?.message)));
+  return none();
+}
+async function handleWebStats(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  const n = Math.min(90, Math.max(1, Number(new URL(request.url).searchParams.get("days")) || 30));
+  const dayList = [...Array(n).keys()].map((i) => new Date(Date.now() - (n - 1 - i) * 86400000).toISOString().slice(0, 10));
+  const [site, pages] = await Promise.all([
+    env.DB.prepare("SELECT day, kind, n FROM pv_site WHERE day >= ?").bind(dayList[0]).all(),
+    env.DB.prepare("SELECT day, path, src, kind, n FROM pv_page WHERE day >= ?").bind(dayList[0]).all(),
+  ]);
+  const days = Object.fromEntries(dayList.map((d) => [d, { date: d, person: 0, search: 0, ai: 0, preview: 0, bot: 0 }]));
+  const totals = { person: 0, search: 0, ai: 0, preview: 0, bot: 0 };
+  for (const r of site.results ?? []) if (days[r.day] && HIT_KINDS.includes(r.kind)) { days[r.day][r.kind] += r.n; totals[r.kind] += r.n; }
+  const byPage = {}, bySrc = {}, botPages = {};
+  for (const r of pages.results ?? []) {
+    if (r.kind === "person") { byPage[r.path] = (byPage[r.path] ?? 0) + r.n; if (r.src !== "internal") bySrc[r.src] = (bySrc[r.src] ?? 0) + r.n; }
+    else if (r.kind === "search" || r.kind === "ai") botPages[`${r.kind}|${r.path}`] = (botPages[`${r.kind}|${r.path}`] ?? 0) + r.n;
+  }
+  const top = (o, k) => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, k);
+  return json({
+    days: dayList.map((d) => days[d]), totals,
+    pages: top(byPage, 8).map(([path, n]) => ({ path, n })),
+    sources: Object.entries(bySrc).map(([src, n]) => ({ src, n })).sort((a, b) => b.n - a.n),
+    crawled: { search: Object.keys(botPages).filter((k) => k.startsWith("search|")).length, ai: Object.keys(botPages).filter((k) => k.startsWith("ai|")).length },
+  }, 200, headers);
+}
+
 // ---------- Usage report (GET /stats2), «marcar como mío» (POST /internal), names (POST /usage/label) ----------
 // A person is a synced garden, or a device that isn't synced (its earlier rows join the garden once it syncs).
 // «Real» use = from the app on florvia.app (or the old address), not from a device Noza marked as theirs, and
@@ -1510,7 +1584,7 @@ export default {
   // 06:00 and 07:00 UTC: whichever is 08:00 in Madrid (summer or winter) sends the daily push.
   async scheduled(event, env, ctx) {
     if (madridNow().hour !== 8) return;
-    if (env.DB) ctx.waitUntil(env.DB.batch([env.DB.prepare("DELETE FROM events WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM errors WHERE day < date('now', '-90 days')")]).catch(() => {}));
+    if (env.DB) ctx.waitUntil(env.DB.batch([env.DB.prepare("DELETE FROM events WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM errors WHERE day < date('now', '-90 days')"), env.DB.prepare("DELETE FROM pv_seen WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_seen_day WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_page WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM pv_site WHERE day < date('now', '-400 days')")]).catch(() => {}));
     console.log("daily push sent:", await sendDaily(env));
   },
   async fetch(request, env, ctx) {
@@ -1524,6 +1598,8 @@ export default {
     if (pathname === "/event" && request.method === "POST") return handleEvent(request, env, headers, ctx);
     if (pathname === "/stats") return handleStats(request, env, headers);
     if (pathname === "/stats2") return handleStats2(request, env, headers);
+    if (pathname === "/stats/web") return handleWebStats(request, env, headers);
+    if (pathname === "/hit" && request.method === "POST") return handleHit(request, env, headers, ctx);
     if (pathname === "/feedback" && request.method === "POST") return handleFeedback(request, env, headers, ctx);
     if (pathname === "/push/admin" && request.method === "POST") return handleAdminPush(request, env, headers);
     if (pathname === "/me" && request.method === "GET") return handleMe(request, env, headers);
