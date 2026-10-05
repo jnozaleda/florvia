@@ -156,7 +156,7 @@ function careMessages({ name, place, lat, lon }) {
 // ---------- Providers ----------
 // Each returns the parsed care object (or throws). Add "claude" here when moving to paid.
 const providers = {
-  async "workers-ai"(env, messages, schema = CARE_SCHEMA, name = "ficha_cuidados") {
+  async "workers-ai"(env, messages, schema = CARE_SCHEMA, name = "ficha_cuidados", _model, meta = {}) {
     const out = await env.AI.run(env.MODEL, {
       messages,
       response_format: { type: "json_schema", json_schema: { name, schema, strict: true } },
@@ -164,6 +164,8 @@ const providers = {
       max_tokens: 3800,
       temperature: 0.2,
     });
+    meta.tin = Number(out?.usage?.prompt_tokens) || 0;
+    meta.tout = Number(out?.usage?.completion_tokens) || 0;
     const content = out?.choices?.[0]?.message?.content ?? out?.response;
     if (content && typeof content === "object") return content;
     try { return JSON.parse(content); } catch {
@@ -171,7 +173,7 @@ const providers = {
     }
   },
   // Google Gemini (free tier from AI Studio; key in the GEMINI_API_KEY secret, model in GEMINI_MODEL).
-  async gemini(env, messages, schema = CARE_SCHEMA, name, model = env.GEMINI_MODEL) {
+  async gemini(env, messages, schema = CARE_SCHEMA, name, model = env.GEMINI_MODEL, meta = {}) {
     if (!env.GEMINI_API_KEY) throw new Error("no GEMINI_API_KEY");
     const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
     // "High demand" 503s are usually brief: one retry after 2 s before falling to the next provider.
@@ -189,6 +191,8 @@ const providers = {
     if (res.status === 503) { await new Promise((r) => setTimeout(r, 2000)); res = await call(); }
     if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 1500)}`);
     const out = await res.json();
+    meta.tin = Number(out?.usageMetadata?.promptTokenCount) || 0;
+    meta.tout = (Number(out?.usageMetadata?.candidatesTokenCount) || 0) + (Number(out?.usageMetadata?.thoughtsTokenCount) || 0);
     const text = out?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("");
     try { return JSON.parse(text); } catch {
       throw new Error(`unparseable output: ${JSON.stringify(out).slice(0, 300)}`);
@@ -204,7 +208,8 @@ async function askAI(env, messages, schema, name) {
   let last;
   for (const p of chain(env)) {
     const [kind, model] = p.split(":");
-    try { return { from: p, out: await providers[kind](env, messages, schema, name, model || undefined) }; } catch (err) {
+    const usage = {};
+    try { return { from: p, out: await providers[kind](env, messages, schema, name, model || undefined, usage), usage }; } catch (err) {
       console.error("provider failed", p, err?.message);
       last = err;
     }
@@ -317,7 +322,7 @@ function cors(request, env) {
   const origin = request.headers.get("Origin") ?? "";
   const allowed = env.ALLOWED_ORIGINS.split(",").map((s) => s.trim());
   return allowed.includes(origin)
-    ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS", "Access-Control-Allow-Headers": "Content-Type,X-Access-Code,X-Device,X-Usage", "Vary": "Origin" }
+    ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS", "Access-Control-Allow-Headers": "Content-Type,X-Access-Code,X-Device,X-Usage,X-Key", "Vary": "Origin" }
     : {};
 }
 
@@ -375,20 +380,23 @@ async function handleCare(request, env, headers, ctx) {
   const cached = await env.CACHE.get(cacheKey, "json");
   if (cached) { recordAi(env, ctx, "cached", 0, request, kind); return json({ ...withLegacy(cached, body.month, lat), cached: true }, 200, headers); }
 
+  const blocked = await paywallCheck(env, request, "total");
+  if (blocked) return json(blocked, 402, headers);
   if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, kind); return json({ error: "limit" }, 429, headers); }
 
   if (!chain(env).length) return json({ error: "provider" }, 500, headers);
-  let care;
+  let care, aiUsage;
   const t0 = Date.now();
   try {
-    const { from, out } = await askAI(env, careMessages({ name, place, lat, lon }));
+    const { from, out, usage } = await askAI(env, careMessages({ name, place, lat, lon }));
+    aiUsage = usage;
     care = { ...sanitize(out), provider: from };
   } catch (err) {
     console.error("care failed", env.PROVIDER, err?.message);
     recordAi(env, ctx, "error", 0, request, kind);
     return json({ error: "ai" }, 502, headers);
   }
-  recordAi(env, ctx, "call", Date.now() - t0, request, kind);
+  recordAi(env, ctx, "call", Date.now() - t0, request, kind, aiUsage);
   if (!care.isPlant) { recordAi(env, ctx, "not_plant"); return json({ error: "not_plant" }, 422, headers); }
   if (care.confidence !== "baja") await env.CACHE.put(cacheKey, JSON.stringify(care), { expirationTtl: CACHE_TTL });
   return json(withLegacy(care, body.month, lat), 200, headers);
@@ -398,7 +406,7 @@ async function handleCare(request, env, headers, ctx) {
 // One KV document per day: { e: { event: count }, d: [device hashes], ai: { calls, cached, errors, notPlant, ms } }.
 // Anonymous counts only: the app sends event names and a random per-install id (hashed here).
 // Read-modify-write, so two writes at the same instant may lose one count: fine for a family app.
-const EVENTS = ["app_open", "plant_add_ai", "plant_add_manual", "water_done", "water_skip_rain", "feed_done", "task_done", "upgrade_done", "ai_fill_edit", "plant_identify", "plant_explore", "plant_duplicate"];
+const EVENTS = ["app_open", "plant_add_ai", "plant_add_manual", "water_done", "water_skip_rain", "feed_done", "task_done", "upgrade_done", "ai_fill_edit", "plant_identify", "plant_explore", "plant_duplicate", "paywall_view", "premium_intent"];
 const statsKey = (day = new Date().toISOString().slice(0, 10)) => `stats:${day}`;
 async function hashId(id) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`mj:${id}`));
@@ -434,18 +442,23 @@ async function usageWho(request, rawDevice = null) {
 async function logUsage(env, request, rows, rawDevice = null, gardenOverride = "") {
   if (!env.DB || !rows.length) return;
   const who = await usageWho(request, rawDevice);
-  const garden = gardenOverride || who.garden;
+  const garden = gardenOverride || who.garden || (await keyGarden(request));
   const src = originSrc(request);
   const now = Date.now();
   const day = new Date(now).toISOString().slice(0, 10);
-  const stmt = env.DB.prepare("INSERT INTO events (ts, day, src, kind, name, device, garden, ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-  await env.DB.batch(rows.map((r) => stmt.bind(now, day, src, r.kind, r.name, who.device, garden, r.ms ?? 0)));
+  const stmt = env.DB.prepare("INSERT INTO events (ts, day, src, kind, name, device, garden, ms, tin, tout) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+  await env.DB.batch(rows.map((r) => stmt.bind(now, day, src, r.kind, r.name, who.device, garden, r.ms ?? 0, r.tin ?? 0, r.tout ?? 0)));
 }
-const recordAi = (env, ctx, what, ms = 0, request = null, kind = "") => {
+const recordAi = (env, ctx, what, ms = 0, request = null, kind = "", usage = null) => {
   if (!request) return;
   const name = { cached: `${kind}_hit`, error: "error", limit: "limit", call: kind, not_plant: "not_plant" }[what];
-  if (name) ctx.waitUntil(logUsage(env, request, [{ kind: "ai", name, ms }]).catch((err) => console.error("usage log", err?.message)));
+  if (name) ctx.waitUntil(logUsage(env, request, [{ kind: "ai", name, ms, tin: usage?.tin ?? 0, tout: usage?.tout ?? 0 }]).catch((err) => console.error("usage log", err?.message)));
 };
+// The garden hash proven by the garden key (X-Key), the same hash the app derives for X-Usage. The key itself is never stored.
+async function keyGarden(request) {
+  const key = request.headers.get("X-Key") ?? "";
+  return KEY_RE.test(key) ? (await sha(`usage:${key}`)).slice(0, 16) : "";
+}
 
 async function handleEvent(request, env, headers, ctx) {
   let body;
@@ -467,7 +480,7 @@ const USAGE_SQL = `
   WITH dg AS (SELECT device, MAX(garden) AS garden FROM events WHERE garden <> '' AND device <> '' GROUP BY device)
   SELECT e.day AS day,
     CASE WHEN e.garden <> '' THEN e.garden WHEN dg.garden IS NOT NULL THEN dg.garden WHEN e.device <> '' THEN e.device ELSE 'anon' END AS person,
-    e.src AS src, e.kind AS kind, e.name AS name, COUNT(*) AS n, SUM(e.ms) AS ms,
+    e.src AS src, e.kind AS kind, e.name AS name, COUNT(*) AS n, SUM(e.ms) AS ms, SUM(e.tin) AS tin, SUM(e.tout) AS tout,
     MAX(CASE WHEN e.garden IN (SELECT id FROM internal) OR e.device IN (SELECT id FROM internal) OR dg.garden IN (SELECT id FROM internal) THEN 1 ELSE 0 END) AS internal
   FROM events e LEFT JOIN dg ON dg.device = e.device
   GROUP BY e.day, person, e.src, e.kind, e.name`;
@@ -488,6 +501,7 @@ async function handleStats2(request, env, headers) {
   const isReal = (r) => (r.src === "prod" || r.src === "old") && !internalPeople.has(r.person) && r.day >= cleanStart;
   const isCall = (r) => r.kind === "ai" && !r.name.endsWith("_hit") && !AI_NOT_CALL.includes(r.name);
 
+  const aiKinds = {};
   const days = Object.fromEntries(dayList.map((d) => [d, { date: d, opens: 0, people: new Set(), events: {}, ai: { calls: 0, hits: 0, errors: 0, limits: 0, ms: 0 } }]));
   const people = {};
   const tests = { events: 0, ai: 0, byBucket: {}, people: new Set() };
@@ -507,7 +521,7 @@ async function handleStats2(request, env, headers) {
     if (!d) continue;
     d.people.add(r.person);
     if (r.kind === "event") { d.events[r.name] = (d.events[r.name] ?? 0) + r.n; if (r.name === "app_open") d.opens += r.n; }
-    else if (isCall(r)) { d.ai.calls += r.n; d.ai.ms += r.ms ?? 0; }
+    else if (isCall(r)) { d.ai.calls += r.n; d.ai.ms += r.ms ?? 0; const k = (aiKinds[r.name] ??= { n: 0, tin: 0, tout: 0 }); k.n += r.n; k.tin += r.tin ?? 0; k.tout += r.tout ?? 0; }
     else if (r.name.endsWith("_hit")) d.ai.hits += r.n;
     else if (r.name === "limit") d.ai.limits += r.n;
     else d.ai.errors += r.n;
@@ -517,8 +531,15 @@ async function handleStats2(request, env, headers) {
     .sort((a, b) => (b.last > a.last ? 1 : b.last < a.last ? -1 : b.activeDays - a.activeDays));
   const who = await usageWho(request);
   const mine = await env.DB.prepare("SELECT id FROM internal WHERE id IN (?, ?)").bind(who.device || "-", who.garden || "-").all();
+  const intentRows = (await env.DB.prepare("SELECT choice, contact, ts, device, garden FROM premium_intent ORDER BY id DESC LIMIT 100").all()).results ?? [];
+  const intent = { monthly: 0, yearly: 0, lifetime: 0, total: 0, recent: [] };
+  for (const i of intentRows) {
+    if (internalPeople.has(i.garden || i.device)) continue;
+    intent[i.choice] += 1; intent.total += 1;
+    if (intent.recent.length < 8) intent.recent.push({ choice: i.choice, contact: i.contact, ts: i.ts, code: (i.garden || i.device || "").slice(0, 4).toUpperCase() });
+  }
   return json({
-    cleanStart, today,
+    cleanStart, today, aiKinds, intent,
     me: { internal: (mine.results ?? []).length > 0, code: (who.garden || who.device || "").slice(0, 4).toUpperCase() },
     days: dayList.map((d) => ({ ...days[d], people: days[d].people.size })),
     people: list,
@@ -575,6 +596,23 @@ const FEEDBACK_TYPE_ES = { idea: "Idea", bug: "Algo no funciona", other: "Otro",
 const b64text = (text) => { const bytes = new TextEncoder().encode(text); let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(bin); };
 // New comment → an email to Noza (Cloudflare Email Routing: the destination is the secret NOTIFY_EMAIL, which must be a
 // verified address there) and a push to the devices Noza enabled in «Uso de la app».
+async function sendAdminEmail(env, subject, bodyText, replyTo = "") {
+  if (!env.EMAIL || !env.NOTIFY_EMAIL) return;
+  const from = "feedback@florvia.app";
+  const lines = [`From: Florvia <${from}>`, `To: ${env.NOTIFY_EMAIL}`, ...(replyTo ? [`Reply-To: ${replyTo}`] : []), `Subject: =?UTF-8?B?${b64text(subject)}?=`, `Date: ${new Date().toUTCString()}`, `Message-ID: <${crypto.randomUUID()}@florvia.app>`, "MIME-Version: 1.0", "Content-Type: text/plain; charset=utf-8", "Content-Transfer-Encoding: base64", "", (b64text(bodyText).match(/.{1,76}/g) ?? []).join("\r\n")];
+  await env.EMAIL.send(new EmailMessage(from, env.NOTIFY_EMAIL, lines.join("\r\n")));
+}
+async function pushAdmin(env, title, body) {
+  const names = [];
+  let cursor;
+  do { const page = await env.CACHE.list({ prefix: "adm:", cursor }); names.push(...page.keys.map((k) => k.name)); cursor = page.list_complete ? undefined : page.cursor; } while (cursor);
+  for (const name of names) {
+    const rec = await env.CACHE.get(name, "json");
+    if (!rec?.sub) continue;
+    const status = await sendPush(rec.sub, { title, body, url: "./" }, env).catch(() => 0);
+    if (status === 404 || status === 410) await env.CACHE.delete(name);
+  }
+}
 async function emailFeedback(env, f) {
   if (!env.EMAIL || !env.NOTIFY_EMAIL) return;
   const from = "feedback@florvia.app";
@@ -685,6 +723,96 @@ async function handleFeedbackStatus(request, env, headers) {
   return json({ ok: true }, 200, headers);
 }
 
+// ---------- Plans and limits (paywall phase 1) ----------
+// A person is free, premium, lifetime or founder. Founders are everyone first seen before meta.paywall_start (they keep
+// Premium for free); devices Noza marked as theirs are premium too. Until the start date nothing is limited.
+// The plan comes from the garden key (X-Key): without it (a phone that isn't synced) the person is free, counted by device.
+// Plants live on the phone, so the plant limit is applied by the app; the AI limits below are applied here.
+const PAYWALL_START_DEFAULT = "2026-10-19";
+const PLAN_LIMITS = {
+  free: { plants: 8, suggest: 3, identify: 3 },
+  premium: { plants: 0, suggest: 30, identify: 30, total: 300 }, // 0 = unlimited
+};
+async function paywallStart(env) {
+  try { return (await env.DB.prepare("SELECT v FROM meta WHERE k = 'paywall_start'").first())?.v ?? PAYWALL_START_DEFAULT; } catch { return PAYWALL_START_DEFAULT; }
+}
+async function planOf(env, request) {
+  const who = await usageWho(request);
+  const garden = (await keyGarden(request)) || "";
+  const device = who.device;
+  const today = new Date().toISOString().slice(0, 10);
+  const start = env.DB ? await paywallStart(env) : PAYWALL_START_DEFAULT;
+  const live = today >= start;
+  const ids = [device, garden].filter(Boolean);
+  let plan = "free";
+  let source = "";
+  if (env.DB && ids.length) {
+    const internal = await env.DB.prepare(`SELECT 1 AS x FROM internal WHERE id IN (${ids.map(() => "?").join(",")})`).bind(...ids).first();
+    if (internal) { plan = "premium"; source = "internal"; }
+    if (plan === "free" && garden) {
+      const e = await env.DB.prepare("SELECT plan, until FROM entitlements WHERE garden = ?").bind(garden).first();
+      if (e && (!e.until || e.until > Date.now())) { plan = e.plan === "lifetime" ? "lifetime" : "premium"; source = "paid"; }
+    }
+    if (plan === "free") {
+      const first = await env.DB.prepare("SELECT MIN(day) AS d FROM events WHERE (garden <> '' AND garden = ?) OR (device <> '' AND device = ?)").bind(garden || "-", device || "-").first();
+      if ((first?.d ?? today) < start) { plan = "founder"; source = "founder"; }
+    }
+  }
+  return { plan, source, live, start, garden, device, premium: plan !== "free", limits: plan === "free" ? PLAN_LIMITS.free : PLAN_LIMITS.premium };
+}
+const monthStart = () => `${new Date().toISOString().slice(0, 7)}-01`;
+async function monthlyUse(env, p, names) {
+  if (!env.DB || (!p.garden && !p.device)) return 0;
+  const q = `SELECT COUNT(*) AS n FROM events WHERE kind = 'ai' AND day >= ? AND name IN (${names.map(() => "?").join(",")}) AND ((garden <> '' AND garden = ?) OR (device <> '' AND device = ?))`;
+  return (await env.DB.prepare(q).bind(monthStart(), ...names, p.garden || "-", p.device || "-").first())?.n ?? 0;
+}
+const TOTAL_CALLS = ["care", "care_edit", "care_upgrade", "care_explore", "calendar", "identify", "place", "suggest"];
+// Returns null when the call may go ahead, or the 402 body when the person has used their share this month.
+async function paywallCheck(env, request, feature) {
+  if (!env.DB) return null;
+  const p = await planOf(env, request);
+  if (!p.live) return null;
+  const limit = p.limits[feature];
+  if (limit) {
+    const used = await monthlyUse(env, p, [feature]);
+    if (used >= limit) return { error: "paywall", feature, plan: p.plan, used, limit };
+  }
+  if (p.limits.total && (await monthlyUse(env, p, TOTAL_CALLS)) >= p.limits.total) return { error: "fair_use", plan: p.plan, limit: p.limits.total };
+  return null;
+}
+async function handleMe(request, env, headers) {
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  const p = await planOf(env, request);
+  const [suggest, identify] = await Promise.all([monthlyUse(env, p, ["suggest"]), monthlyUse(env, p, ["identify"])]);
+  const lifetimeLeft = Math.max(0, 25 - ((await env.DB.prepare("SELECT COUNT(*) AS n FROM entitlements WHERE plan = 'lifetime'").first())?.n ?? 0));
+  return json({
+    plan: p.plan, source: p.source, premium: p.premium, enforced: p.live, start: p.start,
+    limits: p.limits, used: { suggest, identify }, synced: Boolean(p.garden), lifetimeLeft,
+  }, 200, headers);
+}
+// «Quiero Premium»: records interest (no payments yet) and tells Noza by email and push.
+async function handlePremiumIntent(request, env, headers, ctx) {
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const choice = ["monthly", "yearly", "lifetime"].includes(body.choice) ? body.choice : "";
+  if (!choice) return json({ error: "input" }, 400, headers);
+  const contact = /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(clean(body.contact, 80)) ? clean(body.contact, 80) : "";
+  const p = await planOf(env, request);
+  const day = new Date().toISOString().slice(0, 10);
+  const used = await env.DB.prepare("SELECT COUNT(*) AS n FROM premium_intent WHERE day = ? AND device <> '' AND device = ?").bind(day, p.device || "-").first();
+  if ((used?.n ?? 0) >= 10) return json({ ok: true }, 200, headers);
+  await env.DB.prepare("INSERT INTO premium_intent (ts, day, src, choice, contact, device, garden) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(Date.now(), day, originSrc(request), choice, contact, p.device, p.garden).run();
+  if (["prod", "old"].includes(originSrc(request)) && !p.source.startsWith("internal")) {
+    const label = { monthly: "mensual", yearly: "anual", lifetime: "de por vida" }[choice];
+    ctx.waitUntil(Promise.allSettled([
+      sendAdminEmail(env, `Florvia · Interés en Premium (${label})`, `Alguien ha pulsado «Quiero Premium» (${label}).\nPlan actual: ${p.plan}\n${contact ? `Contacto: ${contact}` : "Sin correo"}\nPersona: ${(p.garden || p.device || "—").slice(0, 4).toUpperCase()}`, contact),
+      pushAdmin(env, "Interés en Premium", `Plan ${label}${contact ? ` · ${contact}` : ""}`),
+    ]));
+  }
+  return json({ ok: true }, 200, headers);
+}
+
 // Stats always need the access code, even while the AI is open (REQUIRE_CODE = "off").
 async function handleStats(request, env, headers) {
   if (!env.ACCESS_CODE || request.headers.get("X-Access-Code") !== env.ACCESS_CODE) return json({ error: "code" }, 401, headers);
@@ -712,17 +840,18 @@ async function handleCalendar(request, env, headers, ctx) {
   if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, "calendar"); return json({ error: "limit" }, 429, headers); }
 
   if (!chain(env).length) return json({ error: "provider" }, 500, headers);
-  let cal;
+  let cal, aiUsage;
   const t0 = Date.now();
   try {
-    const { from, out } = await askAI(env, calendarMessages({ name: subject, species: "", place, lat }), CALENDAR_SCHEMA, "calendario");
+    const { from, out, usage } = await askAI(env, calendarMessages({ name: subject, species: "", place, lat }), CALENDAR_SCHEMA, "calendario");
+    aiUsage = usage;
     cal = { ...sanitizeCalendar(out), provider: from };
   } catch (err) {
     console.error("calendar failed", env.PROVIDER, err?.message);
     recordAi(env, ctx, "error", 0, request, "calendar");
     return json({ error: "ai" }, 502, headers);
   }
-  recordAi(env, ctx, "call", Date.now() - t0, request, "calendar");
+  recordAi(env, ctx, "call", Date.now() - t0, request, "calendar", aiUsage);
   if (cal.tasks.length) await env.CACHE.put(cacheKey, JSON.stringify(cal), { expirationTtl: CACHE_TTL });
   return json(cal, 200, headers);
 }
@@ -828,17 +957,18 @@ async function handlePlace(request, env, headers, ctx) {
   if (cached) { recordAi(env, ctx, "cached", 0, request, "place"); return json({ ...cached, cached: true }, 200, headers); }
   if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, "place"); return json({ error: "limit" }, 429, headers); }
   if (!chain(env).length) return json({ error: "provider" }, 500, headers);
-  let res;
+  let res, aiUsage;
   const t0 = Date.now();
   try {
-    const { from, out } = await askAI(env, placeMessages(input), PLACE_SCHEMA, "ubicacion");
+    const { from, out, usage } = await askAI(env, placeMessages(input), PLACE_SCHEMA, "ubicacion");
+    aiUsage = usage;
     res = { ...sanitizePlace(out, names), provider: from };
   } catch (err) {
     console.error("place failed", env.PROVIDER, err?.message);
     recordAi(env, ctx, "error", 0, request, "place");
     return json({ error: "ai" }, 502, headers);
   }
-  recordAi(env, ctx, "call", Date.now() - t0, request, "place");
+  recordAi(env, ctx, "call", Date.now() - t0, request, "place", aiUsage);
   if (res.zones.length) await env.CACHE.put(cacheKey, JSON.stringify(res), { expirationTtl: CACHE_TTL });
   return json(res, 200, headers);
 }
@@ -928,19 +1058,22 @@ async function handleSuggest(request, env, headers, ctx) {
   const cacheKey = `suggest:v1:${(await sha(JSON.stringify(input))).slice(0, 40)}`;
   const cached = await env.CACHE.get(cacheKey, "json");
   if (cached) { recordAi(env, ctx, "cached", 0, request, "suggest"); return json({ ...cached, cached: true }, 200, headers); }
+  const blocked = await paywallCheck(env, request, "suggest");
+  if (blocked) return json(blocked, 402, headers);
   if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, "suggest"); return json({ error: "limit" }, 429, headers); }
   if (!chain(env).length) return json({ error: "provider" }, 500, headers);
-  let res;
+  let res, aiUsage;
   const t0 = Date.now();
   try {
-    const { from, out } = await askAI(env, suggestMessages(input), SUGGEST_SCHEMA, "sugerencias");
+    const { from, out, usage } = await askAI(env, suggestMessages(input), SUGGEST_SCHEMA, "sugerencias");
+    aiUsage = usage;
     res = { ...sanitizeSuggest(out, owned), provider: from };
   } catch (err) {
     console.error("suggest failed", env.PROVIDER, err?.message);
     recordAi(env, ctx, "error", 0, request, "suggest");
     return json({ error: "ai" }, 502, headers);
   }
-  recordAi(env, ctx, "call", Date.now() - t0, request, "suggest");
+  recordAi(env, ctx, "call", Date.now() - t0, request, "suggest", aiUsage);
   if (res.picks.length) await env.CACHE.put(cacheKey, JSON.stringify(res), { expirationTtl: CACHE_TTL });
   return json(res, 200, headers);
 }
@@ -1223,6 +1356,8 @@ async function handleIdentify(request, env, headers, ctx) {
   const image = String(body.image ?? "");
   if (!/^[A-Za-z0-9+/=]+$/.test(image) || image.length < 200 || image.length > IDENTIFY_MAX) return json({ error: "input" }, 400, headers);
   const place = String(body.place ?? "").slice(0, 60);
+  const blocked = await paywallCheck(env, request, "identify");
+  if (blocked) return json(blocked, 402, headers);
   if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, "identify"); return json({ error: "limit" }, 429, headers); }
   const prompt = `Identifica la planta de esta foto. Responde en español. Da de 1 a 3 candidatos, del más al menos probable, con su nombre común en español y su nombre científico, y tu seguridad (alta, media o baja). La persona vive en ${place || "España"} (clima mediterráneo): si dudas entre especies, prefiere las comunes en jardines y terrazas de la zona. Si la foto no muestra una planta o no se puede distinguir cuál es, pon isPlant en false o devuelve confianza "baja".`;
   const t0 = Date.now();
@@ -1246,7 +1381,7 @@ async function handleIdentify(request, env, headers, ctx) {
         species: String(c.species ?? "").slice(0, 80),
         confidence: ["alta", "media", "baja"].includes(c.confidence) ? c.confidence : "baja",
       })).filter((c) => c.commonName && c.species);
-      recordAi(env, ctx, "call", Date.now() - t0, request, "identify");
+      recordAi(env, ctx, "call", Date.now() - t0, request, "identify", { tin: Number(out?.usageMetadata?.promptTokenCount) || 0, tout: (Number(out?.usageMetadata?.candidatesTokenCount) || 0) + (Number(out?.usageMetadata?.thoughtsTokenCount) || 0) });
       console.log("identify ok", spec, Date.now() - t0, "ms");
       return json({ isPlant: parsed.isPlant !== false && candidates.length > 0, candidates }, 200, headers);
     } catch (err) {
@@ -1376,6 +1511,8 @@ export default {
     if (pathname === "/stats2") return handleStats2(request, env, headers);
     if (pathname === "/feedback" && request.method === "POST") return handleFeedback(request, env, headers, ctx);
     if (pathname === "/push/admin" && request.method === "POST") return handleAdminPush(request, env, headers);
+    if (pathname === "/me" && request.method === "GET") return handleMe(request, env, headers);
+    if (pathname === "/premium/intent" && request.method === "POST") return handlePremiumIntent(request, env, headers, ctx);
     if (pathname === "/feedback" && request.method === "GET") return handleFeedbackList(request, env, headers);
     if (pathname === "/feedback/status" && request.method === "POST") return handleFeedbackStatus(request, env, headers);
     if (pathname === "/error" && request.method === "POST") return handleError(request, env, headers, ctx);

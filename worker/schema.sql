@@ -37,3 +37,22 @@ CREATE TABLE IF NOT EXISTS errors (
   device TEXT NOT NULL DEFAULT '', garden TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_errors_day ON errors(day);
+
+-- Plans (phase 1 of the paywall). `garden` is the garden hash derived from the garden key (X-Key); plan = premium | lifetime.
+-- Founders are not stored: anyone first seen before meta.paywall_start is a founder (computed from events).
+CREATE TABLE IF NOT EXISTS entitlements (
+  garden TEXT PRIMARY KEY, plan TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'manual',
+  since INTEGER NOT NULL, until INTEGER, note TEXT NOT NULL DEFAULT ''
+);
+-- Who tapped «Quiero Premium» (interest test before payments exist).
+CREATE TABLE IF NOT EXISTS premium_intent (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, day TEXT NOT NULL, src TEXT NOT NULL,
+  choice TEXT NOT NULL,            -- monthly | yearly | lifetime
+  contact TEXT NOT NULL DEFAULT '', device TEXT NOT NULL DEFAULT '', garden TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_intent_day ON premium_intent(day);
+
+-- Migration already applied on 2026-10-05 (run once; not idempotent):
+--   ALTER TABLE events ADD COLUMN tin INTEGER NOT NULL DEFAULT 0;   -- model input tokens of an AI call
+--   ALTER TABLE events ADD COLUMN tout INTEGER NOT NULL DEFAULT 0;  -- model output tokens (incl. thinking)
+-- Launch date of the paywall (YYYY-MM-DD): INSERT OR REPLACE INTO meta(k,v) VALUES('paywall_start','2026-10-19');

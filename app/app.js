@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261004w";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005a";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261004w";
-import { buildICS } from "./calendar.js?v=20261004w";
-import { scrubPlant } from "./clean.js?v=20261004w";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261004w";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005a";
+import { buildICS } from "./calendar.js?v=20261005a";
+import { scrubPlant } from "./clean.js?v=20261005a";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005a";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -602,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261004w";
+      sc.src = "vendor/qrcode.min.js?v=20261005a";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -772,6 +772,8 @@ function moreView() {
       ${row("open-ai", "sparkle", "#7a56d6", "Asistente IA", aiOff() ? "Apagada" : aiOn ? `<span class="ok">${ICONS.circleCheck}Activado</span>` : "Sin activar")}
       ${pending || upgrade ? row("open-upgrades", "refresh", "#c7771a", "Fichas por actualizar", pending ? `<span class="dot"></span>${pending}` : "Al día") : ""}
     </section>
+    <div class="group-title">Florvia Premium</div>
+    <section class="card list-card settings">${row("open-premium", "sparkle", "#7a56d6", "Plan", esc(planLabel()))}</section>
     ${zoneDetailsCard()}
     <div class="group-title">Avisos y calendario</div>
     <section class="card list-card settings">
@@ -811,6 +813,72 @@ function upgradesSheet() {
     <div class="sheet-head"><h2>Fichas por actualizar</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>
     ${upgradesCard() || `<p class="muted">Todas tus fichas están al día.</p>`}`, "upgrades");
 }
+// ---------- Premium: plan, limits and the «Quiero Premium» screen ----------
+// The plan lives on the server (/me, from the garden key). Plants are limited here because they live on the phone; the
+// AI limits are applied by the Worker (402 "paywall"). Until the start date nothing is limited and nobody pays.
+const PRICES = { monthly: "1 € al mes", yearly: "9,99 € al año", lifetime: "10 € de por vida" };
+let me = null; // { plan, premium, enforced, start, limits, used, lifetimeLeft } from /me
+let premiumUi = { reason: "", sent: "", email: "", error: "" };
+async function loadMe() {
+  try {
+    const res = await fetch(`${API}/me`, { headers: aiHeaders() });
+    if (!res.ok) return;
+    me = await res.json();
+    render();
+    if (sheet.open && sheet.dataset.view === "premium") premiumSheet(premiumUi.reason, true);
+  } catch {}
+}
+const plantLimitHit = () => Boolean(me && me.enforced && !me.premium && me.limits?.plants && state.data.plants.length >= me.limits.plants);
+const planLabel = () => (!me ? "" : me.plan === "founder" ? "Fundador/a" : me.premium ? "Premium" : me.enforced ? "Gratis" : "Próximamente");
+function premiumSheet(reason = "", keep = false) {
+  const head = `<div class="sheet-head"><h2>Florvia Premium</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>`;
+  if (!keep) { premiumUi = { reason, sent: "", email: premiumUi.email, error: "" }; track("paywall_view"); }
+  if (!me) { loadMe(); return openSheet(`${head}<div class="ai-step"><span class="spinner" aria-hidden="true"></span>Cargando…</div>`, "premium"); }
+  const L = me.limits;
+  const used = me.used ?? {};
+  const row = (t, v) => `<div class="u-row"><span>${t}</span><b>${v}</b></div>`;
+  const REASON = {
+    plants: `Con el plan gratuito puedes tener ${me.limits?.plants ?? 8} plantas.`,
+    suggest: `Has usado tus ${me.limits?.suggest ?? 3} búsquedas de «Qué planto aquí» de este mes.`,
+    identify: `Has usado tus ${me.limits?.identify ?? 3} identificaciones por foto de este mes.`,
+  };
+  if (me.premium) {
+    return openSheet(`${head}
+      <section class="card"><b>Tienes Premium${me.plan === "founder" ? " · fundador/a" : me.plan === "lifetime" ? " · de por vida" : ""}</b>
+        <p class="muted">${me.plan === "founder" ? "Usas Florvia desde antes del lanzamiento, así que Premium es gratis para ti. Gracias por ser de las primeras personas." : "Gracias por apoyar Florvia."}</p></section>
+      <section class="card"><div class="sec">Este mes</div>${row("Qué planto aquí", `${used.suggest ?? 0} de ${L.suggest}`)}${row("Identificar por foto", `${used.identify ?? 0} de ${L.identify}`)}${L.plants ? "" : row("Plantas", "ilimitadas")}</section>
+      <p class="muted small">Las consultas guardadas en memoria no cuentan. El contador se reinicia el día 1.</p>`, "premium");
+  }
+  const sent = premiumUi.sent;
+  const plan = (key, name, price, extra = "", best = false) => `<div class="pm-plan ${best ? "best" : ""}"><div><b>${name}</b><span>${price}</span>${extra ? `<small>${extra}</small>` : ""}</div>
+    <button type="button" class="btn small ${best ? "" : "secondary"}" data-action="premium-intent" data-c="${key}" ${sent ? "disabled" : ""}>Quiero esto</button></div>`;
+  openSheet(`${head}
+    ${premiumUi.reason && me.enforced ? `<p class="ai-status warn">${esc(REASON[premiumUi.reason] ?? "")}</p>` : ""}
+    <section class="card"><div class="sec">${me.enforced ? "Gratis" : "Cómo será"}</div>
+      <p class="muted small">${me.enforced ? "" : `A partir del ${fmtDate(me.start)} habrá un plan gratuito y un plan Premium. Hasta entonces todo es gratis, y quien ya usa Florvia antes de esa fecha es fundador/a: tiene Premium gratis.`}</p>
+      ${row("Plantas", `${L.plants} (Premium: ilimitadas)`)}${row("Qué planto aquí", `${L.suggest} al mes (Premium: ${PLAN_PREMIUM.suggest})`)}${row("Identificar por foto", `${L.identify} al mes (Premium: ${PLAN_PREMIUM.identify})`)}
+      <p class="muted small">Siempre gratis: ficha de cada planta, Explorar, «¿Dónde está mejor?», compartir, sincronizar y el aviso diario.</p></section>
+    <section class="card"><div class="sec">Premium</div>
+      ${plan("yearly", "Anual", PRICES.yearly, "La mejor opción", true)}${plan("monthly", "Mensual", PRICES.monthly)}${plan("lifetime", "De por vida", PRICES.lifetime, me.lifetimeLeft ? `Solo para las primeras personas · quedan ${me.lifetimeLeft}` : "Agotado")}
+      <label class="seg-label" for="pmEmail">Tu correo, para avisarte cuando abramos los pagos (opcional)</label>
+      <input id="pmEmail" type="email" class="big-input" inputmode="email" autocomplete="off" maxlength="80" placeholder="nombre@correo.com" value="${esc(premiumUi.email)}" />
+      ${sent ? `<p class="ai-status ok">¡Apuntado! Todavía no se puede pagar: te avisamos en cuanto esté abierto.</p>` : ""}
+      ${premiumUi.error ? `<p class="ai-status warn">${esc(premiumUi.error)}</p>` : ""}
+      <p class="muted small">Los pagos aún no están abiertos. Al pulsar solo apuntamos tu interés.</p></section>`, "premium");
+}
+const PLAN_PREMIUM = { suggest: 30, identify: 30 };
+async function premiumIntent(choice) {
+  if ($("pmEmail")) premiumUi.email = $("pmEmail").value.trim();
+  premiumUi.error = "";
+  try {
+    const res = await fetch(`${API}/premium/intent`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ choice, contact: premiumUi.email }) });
+    if (!res.ok) throw new Error("x");
+    premiumUi.sent = choice;
+    track("premium_intent");
+  } catch { premiumUi.error = "No se ha podido apuntar. Prueba otra vez."; }
+  premiumSheet(premiumUi.reason, true);
+}
+
 // ---------- Comments («Enviar un comentario») and technical errors ----------
 const APP_VERSION = new URL(import.meta.url).searchParams.get("v") ?? "";
 let fb = null; // { type, text, contact, tech, state: "idle" | "sending" | "sent" | "error", error }
@@ -892,6 +960,25 @@ function feedbackAdminCards() {
     <section class="card"><div class="sec">Errores de la app <span class="meta">14 días</span></div>${errs || `<p class="muted small">Ninguno registrado.</p>`}</section>`;
 }
 
+const KIND_LABEL = { care: "Ficha (alta)", care_explore: "Explorar", care_edit: "Editar con IA", care_upgrade: "Actualizar fichas", calendar: "Calendario del año", place: "¿Dónde está mejor?", suggest: "Qué planto aquí", identify: "Identificar por foto" };
+// Real tokens per kind of AI call (from the provider's own count), to know what costs what.
+function tokensCard() {
+  const k = usage?.aiKinds ?? {};
+  const rows = Object.entries(k).sort((a, b) => b[1].tin + b[1].tout - (a[1].tin + a[1].tout));
+  if (!rows.length) return `<section class="card"><div class="sec">Tokens de la IA <span class="meta">30 días</span></div><p class="muted small">Aún no hay consultas con tokens registrados.</p></section>`;
+  const fmt = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)} k` : String(n));
+  const totIn = rows.reduce((a, [, v]) => a + v.tin, 0), totOut = rows.reduce((a, [, v]) => a + v.tout, 0);
+  return `<section class="card"><div class="sec">Tokens de la IA <span class="meta">30 días · ${fmt(totIn)} entrada · ${fmt(totOut)} salida</span></div>
+    ${rows.map(([name, v]) => `<div class="u-row"><span>${esc(KIND_LABEL[name] ?? name)}</span><b>${v.n}<small>media ${fmt(Math.round(v.tin / v.n))} ent. · ${fmt(Math.round(v.tout / v.n))} sal.</small></b></div>`).join("")}</section>`;
+}
+function intentCard() {
+  const i = usage?.intent;
+  if (!i) return "";
+  return `<section class="card"><div class="sec">Interés en Premium</div>
+    <div class="u-row"><span>Han pulsado «Quiero»</span><b>${i.total}<small>${i.yearly} anual · ${i.monthly} mensual · ${i.lifetime} de por vida</small></b></div>
+    ${i.recent.map((r) => `<div class="u-row"><span>${esc(r.contact || `Persona ${r.code}`)}</span><b>${esc({ monthly: "mensual", yearly: "anual", lifetime: "de por vida" }[r.choice])}<small>${fmtDate(new Date(r.ts).toISOString().slice(0, 10))}</small></b></div>`).join("")}</section>`;
+}
+
 // «Uso de la app» (needs the access code): real use only, from the Worker's D1 log (/stats2).
 // «Real» = opened from florvia.app (or the old address), not from a device marked as Noza's, and since the
 // clean start date. Tests and your own devices are listed apart and never added to the real numbers.
@@ -956,6 +1043,8 @@ function usageSheet() {
     <section class="card"><div class="sec">Pruebas y dispositivos tuyos</div>
       <p class="muted small">${buckets ? `Fuera de las cifras: ${esc(buckets)}.` : "Nada fuera de las cifras por ahora."}</p>
       <button type="button" class="btn block secondary" data-action="usage-mine" data-on="${usage.me.internal ? "0" : "1"}">${usage.me.internal ? "Este dispositivo está marcado como tuyo · quitar la marca" : "Marcar este dispositivo como mío"}</button></section>
+    ${tokensCard()}
+    ${intentCard()}
     ${feedbackAdminCards()}
     <section class="card"><div class="sec">Avisos de comentarios nuevos</div>
       <p class="muted small">Te llega un correo cada vez que alguien manda un comentario. Aquí puedes recibir también un aviso en este dispositivo (en el iPhone, con la app instalada).</p>
@@ -970,7 +1059,7 @@ document.addEventListener("focusin", (e) => { if (e.target.classList?.contains("
 document.addEventListener("pointerover", (e) => { const b = e.target.closest?.(".u-bar"); if (b && $("usageTip")) $("usageTip").textContent = b.getAttribute("aria-label"); });
 document.addEventListener("focusin", (e) => { const b = e.target.closest?.(".u-bar"); if (b && $("usageTip")) $("usageTip").textContent = b.getAttribute("aria-label"); });
 
-const SHEET_VIEWS = { ai: aiSheet, upgrades: upgradesSheet, usage: usageSheet, suggest: () => { suggestRead(); suggestSheet(); }, feedback: () => { fbRead(); feedbackSheet(); } };
+const SHEET_VIEWS = { ai: aiSheet, upgrades: upgradesSheet, usage: usageSheet, suggest: () => { suggestRead(); suggestSheet(); }, feedback: () => { fbRead(); feedbackSheet(); }, premium: () => premiumSheet(premiumUi.reason, true) };
 
 // ---------- Care sheet upgrades ----------
 // When an improvement needs new data from the AI, it gets a version and an entry here. Plants
@@ -1367,6 +1456,7 @@ async function suggestGo() {
       res = await fetch(`${API}/suggest`, { method: "POST", signal: AbortSignal.timeout(50000), headers: aiHeaders(), body: JSON.stringify({ site, prefs: sg.prefs, note: sg.note.trim(), owned, place: loc.name, lat: loc.lat, lon: loc.lon }) });
     } catch (err) { throw new Error(err?.name === "TimeoutError" ? "timeout" : "network"); }
     const body = await res.json().catch(() => ({}));
+    if (res.status === 402) throw Object.assign(new Error("paywall"), { feature: body.feature || "suggest" });
     if (!res.ok) throw new Error(body.error in AI_ERRORS ? body.error : "ai");
     if (suggest !== sg) return;
     sg.res = body;
@@ -1375,6 +1465,7 @@ async function suggestGo() {
     body.picks.forEach((p) => refPhoto(p.species).then((ph) => { if (ph && suggest === sg && sg.state === "done") { p.photo = ph; if ($("sheet").open && sheet.dataset.view === "suggest") suggestSheet(); } }));
   } catch (err) {
     if (suggest !== sg) return;
+    if (err.message === "paywall") { sg.state = "idle"; suggestSheet(); return premiumSheet("suggest"); }
     sg.state = "error";
     sg.error = aiErrorText(err.message);
     suggestSheet();
@@ -1702,6 +1793,8 @@ function download(name, text, type) {
 // Asks the backend for this plant's care sheet (for the current place and month) and fills the
 // form. Nothing is saved until the user reviews it and taps Guardar.
 const AI_ERRORS = {
+  paywall: "Has llegado al límite gratuito de este mes. Con Premium tienes más.",
+  fair_use: "Has llegado al uso razonable de este mes. Se renueva el día 1.",
   off: "La IA está apagada. Puedes volver a encenderla en Ajustes → Asistente IA.",
   code: "Código de acceso incorrecto o sin poner: revísalo en Ajustes.",
   limit: "Se ha alcanzado el límite de hoy. Rellénalo a mano o prueba mañana.",
@@ -1723,7 +1816,7 @@ const aiOff = () => store.get("mj_ai_off", false) === true;
 const hasAI = () => !aiOff() && (aiOpen === true || Boolean(aiCode()));
 // True when a lookup can be tried: AI not switched off here, and either open, with a code, or not known yet.
 const aiGo = () => !aiOff() && (hasAI() || aiOpen === null);
-const aiHeaders = () => ({ "Content-Type": "application/json", ...(aiCode() ? { "X-Access-Code": aiCode() } : {}), ...(usageId ? { "X-Usage": usageId } : {}), "X-Device": deviceId });
+const aiHeaders = () => ({ "Content-Type": "application/json", ...(aiCode() ? { "X-Access-Code": aiCode() } : {}), ...(usageId ? { "X-Usage": usageId } : {}), ...(syncKey() ? { "X-Key": syncKey() } : {}), "X-Device": deviceId });
 // Anonymous id for the Worker's usage counters: a hash of the garden key when synced, else of this
 // device. It's hashed here with its own prefix, so the garden key itself is never sent with AI requests.
 let usageId = null;
@@ -1735,6 +1828,7 @@ async function refreshUsageId() {
   const dev = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`mj:${store.get("mj_device", "")}`)))].slice(0, 6).map((b) => b.toString(16).padStart(2, "0")).join("");
   const code = (key ? usageId.slice(2) : dev).slice(0, 4).toUpperCase();
   if (code !== usageCode) { usageCode = code; if (typeof render === "function" && state?.data) render(); }
+  if (typeof loadMe === "function") loadMe();
 }
 let usageCode = "";
 fetch(`${API}/health`).then((r) => r.json()).then((h) => { aiOpen = h.code === false; render(); }).catch(() => {});
@@ -1933,6 +2027,7 @@ let wiz = null;
 const PLACE_DEFAULTS = { zone: "", inPot: true, rainReaches: true };
 
 function newPlantWizard() {
+  if (plantLimitHit()) return premiumSheet("plants");
   draftPhoto = null;
   wiz = {
     step: 1, name: "", ai: "idle", aiError: "", care: null, touched: {},
@@ -2056,6 +2151,7 @@ async function callIdentify(photo) {
     body: JSON.stringify({ image: photo.split(",")[1], place: here().name }),
   });
   const body = await res.json().catch(() => ({}));
+  if (res.status === 402) { loadMe(); throw new Error("paywall"); }
   if (!res.ok) throw new Error(body.error in AI_ERRORS ? body.error : "ai");
   return body;
 }
@@ -2437,7 +2533,7 @@ const actions = {
     renderWizard();
     wiz.care.alternatives.forEach((a, i) => refPhoto(a.species).then((ph) => { (wiz.altPhotos ??= {})[i] = ph; if ($("wizStep2")) renderWizard(); }));
   },
-  "dup-plant": (d) => dupSheet(d.id),
+  "dup-plant": (d) => (plantLimitHit() ? premiumSheet("plants") : dupSheet(d.id)),
   "dup-save": (d) => {
     const src = plantById(d.id);
     if (!src) return;
@@ -2461,6 +2557,8 @@ const actions = {
   "wiz-notes": () => { wiz.notesOpen = !wiz.notesOpen; renderWizard(); },
   "edit-plant": (d) => plantForm(d.id),
   "plant-refresh": (d) => refreshPlantAi(d.id),
+  "open-premium": () => premiumSheet(""),
+  "premium-intent": (d) => premiumIntent(d.c),
   "open-feedback": () => { fb = null; feedbackSheet(); },
   "admin-push": async (d) => {
     const on = d.on === "1";

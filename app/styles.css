@@ -764,3 +764,8 @@ label.link-btn { cursor: pointer; }
   .fb-type.bug { color: #b3261e; } .fb-type.idea { color: #6b46c1; } .fb-type.question { color: #1d5fb8; }
   .menu-ic.explore { color: #1d5fb8; } .menu-ic.suggest { color: #6b46c1; }
 }
+
+/* Premium */
+.pm-plan { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-top: 0.5px solid var(--hairline); }
+.pm-plan:first-of-type { border-top: 0; }
+.pm-plan b { display: block; } .pm-plan span { display: block; font-size: 14px; color: var(--text-2); } .pm-plan small { display: block; font-size: 12px; color: var(--accent); font-weight: 600; }
