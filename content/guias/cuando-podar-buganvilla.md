@@ -13,6 +13,7 @@ ctaFinalText: Florvia te recuerda cada tarea de tus plantas en su época, adapta
 related:
   - plantas/buganvilla|Buganvilla: cuidados, riego, poda y ubicación
   - guias/plantas-terraza-mucho-sol|Plantas para una terraza con mucho sol
+  - guias/proteger-plantas-heladas|Cómo proteger tus plantas de las heladas
 ---
 La poda principal de la buganvilla se hace **al final del invierno o a principios de primavera**, cuando ya ha pasado el riesgo de heladas fuertes y la planta empieza a brotar. Después, una **poda ligera tras cada oleada de flores** ayuda a que vuelva a florecer. En otoño es mejor no podar con fuerza.
 

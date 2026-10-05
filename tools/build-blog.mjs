@@ -155,8 +155,8 @@ const byKey = Object.fromEntries(pages.map((p) => [`${p.type}/${p.slug}`, p]));
 for (const p of pages) {
   const m = p.meta;
   const ref = `${p.type === "plantas" ? "planta" : "guia"}-${p.slug}`;
-  const appLink = (hash) => `/app/?ref=${encodeURIComponent(ref)}#${hash}`;
-  const ctaHash = m.ctaHash || (m.plant ? `anadir=${encodeURIComponent(m.plant)}` : "explorar");
+  const appLink = (hash) => `/app/?ref=${encodeURIComponent(ref)}${hash ? `#${hash}` : ""}`;
+  const ctaHash = m.ctaHash === "none" ? "" : m.ctaHash || (m.plant ? `anadir=${encodeURIComponent(m.plant)}` : "explorar");
   const cta = (final = false) => `<div class="cta"><b>${esc(final && m.ctaFinalTitle ? m.ctaFinalTitle : m.ctaTitle)}</b><p>${esc(final && m.ctaFinalText ? m.ctaFinalText : m.ctaText)}</p><a class="btn cream" href="${appLink(ctaHash)}">${esc(m.ctaButton)}</a></div>`;
   let html = markdown(p.body, { cta: () => cta(false) });
   const related = (m.related ?? []).map((r) => { const [key, label] = r.split("|").map((x) => x.trim()); return byKey[key] ? `<li><a href="${byKey[key].path}">${esc(label || byKey[key].meta.h1)}</a></li>` : ""; }).join("");

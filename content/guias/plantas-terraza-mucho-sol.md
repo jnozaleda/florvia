@@ -13,6 +13,10 @@ ctaFinalText: Explora cualquier planta en Florvia y mira si aguanta tu clima, tu
 related:
   - plantas/buganvilla|Buganvilla: cuidados, riego, poda y ubicación
   - guias/cuando-podar-buganvilla|Cuándo podar una buganvilla
+  - plantas/lavanda|Lavanda: cuidados, riego, poda y maceta
+  - plantas/olivo|Olivo: cuidados, riego, poda y maceta
+  - plantas/geranio|Geranio: cuidados, riego, poda y floración
+  - plantas/limonero|Limonero: cuidados, riego, poda y abonado
 ---
 Para una terraza con sol directo de verano, las mejores apuestas son plantas mediterráneas y de flor resistentes al calor y a la sequía: **lavanda, romero, tomillo, geranio, buganvilla, olivo en maceta, lantana y gazania**. Todas piden sol, buen drenaje y riegos moderados; lo que más cambia entre ellas es cuánto frío aguantan.
 
@@ -37,7 +41,7 @@ Los datos de frío son orientativos y dependen de la especie y variedad.
 
 ### Lavanda
 
-Sol pleno, riego escaso y sustrato muy drenante. Florece en verano y perfuma la terraza. Es una de las más fáciles para empezar.
+Sol pleno, riego escaso y sustrato muy drenante. Florece en verano y perfuma la terraza. Es una de las más fáciles para empezar. Más en [lavanda: cuidados, riego, poda y maceta](/es/plantas/lavanda/).
 
 ### Romero
 
@@ -49,7 +53,7 @@ Pequeño y resistente: ideal para macetas poco profundas o jardineras. Poco rieg
 
 ### Geranio
 
-Floración larga y abundante. Si el sol de la tarde es muy fuerte donde vives, un poco de sombra en las horas centrales le sienta bien. Es sensible al frío.
+Floración larga y abundante. Si el sol de la tarde es muy fuerte donde vives, un poco de sombra en las horas centrales le sienta bien. Es sensible al frío. Más en [geranio: cuidados, riego, poda y floración](/es/plantas/geranio/).
 
 ### Buganvilla
 
@@ -59,7 +63,7 @@ Flor espectacular, pide mucho sol. Es más exigente con el riego y el frío. Tie
 
 ### Olivo en maceta
 
-Resistente y de aspecto elegante. En maceta necesita un recipiente grande y un sustrato que drene. Riega poco una vez asentado.
+Resistente y de aspecto elegante. En maceta necesita un recipiente grande y un sustrato que drene. Riega poco una vez asentado. Más en [olivo: cuidados, riego, poda y maceta](/es/plantas/olivo/).
 
 ### Lantana
 

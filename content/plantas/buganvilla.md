@@ -13,6 +13,8 @@ ctaFinalText: No tienes que acordarte de cuándo toca cada cosa: Florvia te lo r
 related:
   - guias/cuando-podar-buganvilla|Cuándo podar una buganvilla
   - guias/plantas-terraza-mucho-sol|Plantas para una terraza con mucho sol
+  - guias/proteger-plantas-heladas|Cómo proteger tus plantas de las heladas
+  - guias/hojas-amarillas-causas-y-solucion|Por qué las hojas se ponen amarillas
 ---
 La buganvilla necesita mucho sol y un sustrato que drene bien. En verano agradece riegos regulares, sobre todo en maceta, y en invierno conviene espaciarlos. Es sensible a las heladas, y suele florecer mejor cuando recibe varias horas de sol directo y no se abona en exceso con nitrógeno.
 
