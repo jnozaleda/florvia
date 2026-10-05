@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005a";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005b";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005a";
-import { buildICS } from "./calendar.js?v=20261005a";
-import { scrubPlant } from "./clean.js?v=20261005a";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005a";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005b";
+import { buildICS } from "./calendar.js?v=20261005b";
+import { scrubPlant } from "./clean.js?v=20261005b";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005b";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -602,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005a";
+      sc.src = "vendor/qrcode.min.js?v=20261005b";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -971,6 +971,13 @@ function tokensCard() {
   return `<section class="card"><div class="sec">Tokens de la IA <span class="meta">30 días · ${fmt(totIn)} entrada · ${fmt(totOut)} salida</span></div>
     ${rows.map(([name, v]) => `<div class="u-row"><span>${esc(KIND_LABEL[name] ?? name)}</span><b>${v.n}<small>media ${fmt(Math.round(v.tin / v.n))} ent. · ${fmt(Math.round(v.tout / v.n))} sal.</small></b></div>`).join("")}</section>`;
 }
+const REF_LABEL = (ref) => ref.replace(/^planta-/, "Planta: ").replace(/^guia-/, "Guía: ").replace(/-/g, " ");
+// Where people came from (links from the blog): who opened the app and who added a plant.
+function refsCard() {
+  const refs = usage?.refs ?? [];
+  if (!refs.length) return `<section class="card"><div class="sec">Procedencia (blog)</div><p class="muted small">Aún nadie ha entrado desde una página del blog.</p></section>`;
+  return `<section class="card"><div class="sec">Procedencia (blog)</div>${refs.map((r) => `<div class="u-row"><span>${esc(REF_LABEL(r.ref))}</span><b>${r.people}<small>${r.planted} ${r.planted === 1 ? "añadió una planta" : "añadieron una planta"}</small></b></div>`).join("")}</section>`;
+}
 function intentCard() {
   const i = usage?.intent;
   if (!i) return "";
@@ -1044,6 +1051,7 @@ function usageSheet() {
       <p class="muted small">${buckets ? `Fuera de las cifras: ${esc(buckets)}.` : "Nada fuera de las cifras por ahora."}</p>
       <button type="button" class="btn block secondary" data-action="usage-mine" data-on="${usage.me.internal ? "0" : "1"}">${usage.me.internal ? "Este dispositivo está marcado como tuyo · quitar la marca" : "Marcar este dispositivo como mío"}</button></section>
     ${tokensCard()}
+    ${refsCard()}
     ${intentCard()}
     ${feedbackAdminCards()}
     <section class="card"><div class="sec">Avisos de comentarios nuevos</div>
@@ -3058,7 +3066,7 @@ function flushEvents() {
   const batch = eventQueue.splice(0, 50);
   store.set("mj_events", eventQueue);
   // text/plain keeps it a "simple" request (no CORS preflight); keepalive lets it finish on close.
-  fetch(`${API}/event`, { method: "POST", keepalive: true, headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ device: deviceId, garden: usageId?.startsWith("g:") ? usageId : "", events: batch }) })
+  fetch(`${API}/event`, { method: "POST", keepalive: true, headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ device: deviceId, garden: usageId?.startsWith("g:") ? usageId : "", ref: store.get("mj_ref", ""), events: batch }) })
     .catch(() => { eventQueue = batch.concat(eventQueue); store.set("mj_events", eventQueue); });
 }
 document.addEventListener("visibilitychange", () => {
@@ -3072,10 +3080,30 @@ render();
 refreshUsageId();
 loadFeedback();
 // A shared-garden link (#jardin=KEY) opens the join sheet; otherwise bring the synced garden down.
+// Links from the blog: ?ref=<page> (first touch is remembered for the usage report), #anadir=<plant> starts adding it
+// and #explorar[=<plant>] opens Explorar.
 {
+  const ref = new URLSearchParams(location.search).get("ref");
+  if (ref && /^[a-z0-9-]{1,60}$/.test(ref) && !store.get("mj_ref", "")) store.set("mj_ref", ref);
   const hash = new URLSearchParams(location.hash.slice(1));
   const linked = parseKey(hash.get("jardin"));
   const sharedId = hash.get("ver") ?? hash.get("planta");
+  const addName = hash.get("anadir");
+  if (addName && addName.length <= 60 && !(sharedId || linked)) {
+    history.replaceState(null, "", location.pathname);
+    pullNow();
+    setTimeout(() => {
+      newPlantWizard();
+      if (!wiz) return;
+      Object.assign(wiz, { name: addName.trim(), query: null, step: 2 });
+      if (aiGo()) wizLookup(); else renderWizard();
+    }, 600);
+  } else if (hash.has("explorar") && !(sharedId || linked)) {
+    const name = (hash.get("explorar") ?? "").trim().slice(0, 60);
+    history.replaceState(null, "", location.pathname);
+    pullNow();
+    setTimeout(() => { if (name && aiGo()) exploreLookup(name); else { explore = { state: "idle" }; exploreSheet(); } }, 600);
+  } else
   if (sharedId && /^[a-z0-9]{10}$/.test(sharedId)) {
     history.replaceState(null, "", location.pathname + location.search);
     openShared(sharedId);

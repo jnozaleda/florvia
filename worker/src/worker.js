@@ -467,6 +467,8 @@ async function handleEvent(request, env, headers, ctx) {
   const events = (Array.isArray(body.events) ? body.events : []).slice(0, 50).filter((e) => EVENTS.includes(e));
   if (!device || !events.length) return json({ ok: true }, 200, headers);
   const garden = /^g:[a-f0-9]{16}$/.test(String(body.garden ?? "")) ? body.garden.slice(2) : "";
+  const ref = /^[a-z0-9-]{1,60}$/.test(String(body.ref ?? "")) ? body.ref : "";
+  if (ref && env.DB) ctx.waitUntil((async () => env.DB.prepare("INSERT OR IGNORE INTO referrals (device, ref, day, src) VALUES (?, ?, ?, ?)").bind(await hashId(device), ref, new Date().toISOString().slice(0, 10), originSrc(request)).run())().catch(() => {}));
   ctx.waitUntil(logUsage(env, request, events.map((name) => ({ kind: "event", name })), device, garden).catch((err) => console.error("usage log", err?.message)));
   return json({ ok: true }, 200, headers);
 }
@@ -538,8 +540,9 @@ async function handleStats2(request, env, headers) {
     intent[i.choice] += 1; intent.total += 1;
     if (intent.recent.length < 8) intent.recent.push({ choice: i.choice, contact: i.contact, ts: i.ts, code: (i.garden || i.device || "").slice(0, 4).toUpperCase() });
   }
+  const refRows = (await env.DB.prepare("SELECT r.ref AS ref, COUNT(*) AS people, SUM(EXISTS (SELECT 1 FROM events e WHERE e.device = r.device AND e.kind = 'event' AND e.name IN ('plant_add_ai', 'plant_add_manual'))) AS planted FROM referrals r WHERE r.src IN ('prod', 'old') AND r.device NOT IN (SELECT id FROM internal) GROUP BY r.ref ORDER BY people DESC LIMIT 30").all()).results ?? [];
   return json({
-    cleanStart, today, aiKinds, intent,
+    cleanStart, today, aiKinds, intent, refs: refRows,
     me: { internal: (mine.results ?? []).length > 0, code: (who.garden || who.device || "").slice(0, 4).toUpperCase() },
     days: dayList.map((d) => ({ ...days[d], people: days[d].people.size })),
     people: list,

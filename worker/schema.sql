@@ -56,3 +56,25 @@ CREATE INDEX IF NOT EXISTS idx_intent_day ON premium_intent(day);
 --   ALTER TABLE events ADD COLUMN tin INTEGER NOT NULL DEFAULT 0;   -- model input tokens of an AI call
 --   ALTER TABLE events ADD COLUMN tout INTEGER NOT NULL DEFAULT 0;  -- model output tokens (incl. thinking)
 -- Launch date of the paywall (YYYY-MM-DD): INSERT OR REPLACE INTO meta(k,v) VALUES('paywall_start','2026-10-19');
+
+-- Handy view for reading people in the D1 console: one row per person (synced garden, or a device that isn't synced).
+CREATE VIEW IF NOT EXISTS people AS
+WITH dg AS (SELECT device, MAX(garden) AS garden FROM events WHERE garden <> '' AND device <> '' GROUP BY device),
+ev AS (
+  SELECT e.*, CASE WHEN e.garden <> '' THEN e.garden WHEN dg.garden IS NOT NULL THEN dg.garden WHEN e.device <> '' THEN e.device ELSE 'anon' END AS person
+  FROM events e LEFT JOIN dg ON dg.device = e.device
+)
+SELECT person, CASE WHEN length(person) = 16 THEN 'jardin' WHEN person = 'anon' THEN 'anon' ELSE 'movil' END AS kind,
+  MIN(day) AS first_seen, MAX(day) AS last_seen, COUNT(DISTINCT day) AS active_days,
+  SUM(kind = 'event' AND name = 'app_open') AS opens,
+  SUM(kind = 'ai' AND name NOT LIKE '%!_hit' ESCAPE '!' AND name NOT IN ('error', 'limit', 'not_plant')) AS ai_calls,
+  SUM(tin) AS tokens_in, SUM(tout) AS tokens_out,
+  GROUP_CONCAT(DISTINCT src) AS origins,
+  (SELECT label FROM labels WHERE id = person) AS label,
+  EXISTS (SELECT 1 FROM internal i WHERE i.id = person) AS internal
+FROM ev GROUP BY person;
+
+-- First-touch source of each device (?ref=<page> on the app link from the blog): visit → app → plant added.
+CREATE TABLE IF NOT EXISTS referrals (
+  device TEXT PRIMARY KEY, ref TEXT NOT NULL, day TEXT NOT NULL, src TEXT NOT NULL DEFAULT ''
+);
