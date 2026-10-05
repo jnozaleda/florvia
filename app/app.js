@@ -816,7 +816,7 @@ function upgradesSheet() {
 // ---------- Premium: plan, limits and the «Quiero Premium» screen ----------
 // The plan lives on the server (/me, from the garden key). Plants are limited here because they live on the phone; the
 // AI limits are applied by the Worker (402 "paywall"). Until the start date nothing is limited and nobody pays.
-const PRICES = { monthly: "1 € al mes", yearly: "9,99 € al año", lifetime: "10 € de por vida" };
+const PRICES = { monthly: "1 € al mes", yearly: "9,99 € al año", lifetime: "20 € de por vida" };
 let me = null; // { plan, premium, enforced, start, limits, used, lifetimeLeft } from /me
 let premiumUi = { reason: "", sent: "", email: "", error: "" };
 async function loadMe() {
@@ -839,8 +839,8 @@ function premiumSheet(reason = "", keep = false) {
   const row = (t, v) => `<div class="u-row"><span>${t}</span><b>${v}</b></div>`;
   const REASON = {
     plants: `Con el plan gratuito puedes tener ${me.limits?.plants ?? 8} plantas.`,
-    suggest: `Has usado tus ${me.limits?.suggest ?? 3} búsquedas de «Qué planto aquí» de este mes.`,
-    identify: `Has usado tus ${me.limits?.identify ?? 3} identificaciones por foto de este mes.`,
+    suggest: `Has usado tus ${me.limits?.suggest ?? 5} búsquedas de «Qué planto aquí» de este mes.`,
+    identify: `Has usado tus ${me.limits?.identify ?? 5} identificaciones por foto de este mes.`,
   };
   if (me.premium) {
     return openSheet(`${head}

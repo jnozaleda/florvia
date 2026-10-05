@@ -819,7 +819,7 @@ async function handleFeedbackStatus(request, env, headers) {
 // Plants live on the phone, so the plant limit is applied by the app; the AI limits below are applied here.
 const PAYWALL_START_DEFAULT = "2026-10-19";
 const PLAN_LIMITS = {
-  free: { plants: 8, suggest: 3, identify: 3 },
+  free: { plants: 8, suggest: 5, identify: 5 },
   premium: { plants: 0, suggest: 30, identify: 30, total: 300 }, // 0 = unlimited
 };
 async function paywallStart(env) {
