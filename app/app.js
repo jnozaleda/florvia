@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005d";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005e";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005d";
-import { buildICS } from "./calendar.js?v=20261005d";
-import { scrubPlant } from "./clean.js?v=20261005d";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005d";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005e";
+import { buildICS } from "./calendar.js?v=20261005e";
+import { scrubPlant } from "./clean.js?v=20261005e";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005e";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -602,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005d";
+      sc.src = "vendor/qrcode.min.js?v=20261005e";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1459,7 +1459,8 @@ function diagSheet() {
       return openSheet(`${head}<section class="card"><b>${other ? `La foto no parece ser de «${esc(plantLabel(p))}»` : "No parece que la foto muestre una planta"}</b>
         <p class="muted small">${other && r.photoSeen ? `Parece ${esc(r.photoSeen)}. ` : ""}Para no darte un consejo equivocado, no he hecho el diagnóstico, y esta consulta no gasta uno de tus diagnósticos del mes. ${other ? "Si es otra planta, abre su ficha y diagnostícala desde allí." : ""}</p></section>
         <button type="button" class="btn block secondary" data-action="dg-back">Probar con otra foto</button>
-        <button type="button" class="btn block secondary" style="margin-top:8px" data-action="dg-dropphoto">Diagnosticar sin foto</button>`, "diag");
+        <button type="button" class="btn block secondary" style="margin-top:8px" data-action="dg-dropphoto">Quitar la foto y describir el problema</button>
+        <p class="muted small">Quitar la foto no llama a la IA. Cuando pulses Diagnosticar, ese diagnóstico sí gastará uno de tus diagnósticos del mes.</p>`, "diag");
     }
     if (!r.isPlant || !r.causes.length) {
       return openSheet(`${head}<section class="card"><b>No he podido sacar una causa clara</b>
@@ -1486,7 +1487,9 @@ function diagSheet() {
     <p class="muted small">${esc(plantLabel(p))}: marca lo que ves. Cuantos más detalles, mejor. La IA tiene en cuenta su riego, su zona y la época.</p>
     <div class="group-title">Síntomas</div>
     <div class="chips">${DIAG_SYMPTOMS.map(([k, t]) => `<button type="button" class="chip ${dg.symptoms.includes(k) ? "on" : ""}" data-action="dg-sym" data-k="${k}" aria-pressed="${dg.symptoms.includes(k)}">${t}</button>`).join("")}</div>
-    <textarea id="dgNote" maxlength="300" rows="3" class="big-input" placeholder="Algo más: desde cuándo, qué has cambiado, dónde está la mancha…">${esc(dg.note)}</textarea>
+    <div class="group-title">Cuéntalo con tus palabras <span class="muted">(hasta 300 caracteres)</span></div>
+    <textarea id="dgNote" maxlength="300" rows="3" class="big-input" placeholder="Desde cuándo pasa, qué has cambiado, dónde está la mancha…">${esc(dg.note)}</textarea>
+    ${dg.photo ? "" : `<p class="muted small">Sin foto, la IA se apoya solo en lo que marques y cuentes: cuanto más detalle, más precisa será.</p>`}
     <div class="group-title">Foto <span class="muted">(opcional, ayuda mucho)</span></div>
     ${dg.photo ? `<img class="hero-photo" src="${esc(dg.photo)}" alt="" style="max-height:220px;object-fit:cover" />
       <div class="row"><label class="link-btn">Cambiar foto<input type="file" id="dgPhotoInput" accept="image/*" hidden /></label><button type="button" class="link-btn" data-action="dg-nophoto">Quitar</button></div>`
@@ -2756,7 +2759,7 @@ const actions = {
   "dg-nophoto": () => { diagRead(); diag.photo = null; diagSheet(); },
   "dg-go": () => diagGo(),
   "dg-back": () => { diag.state = "idle"; diag.res = null; diag.saved = false; diagSheet(); },
-  "dg-dropphoto": () => { diag.photo = null; diag.state = "idle"; diag.res = null; diag.saved = false; diagSheet(); },
+  "dg-dropphoto": () => { diag.photo = null; diag.state = "idle"; diag.res = null; diag.saved = false; diagSheet(); setTimeout(() => $("dgNote")?.focus(), 60); },
   "dg-save": () => {
     const r = diag?.res;
     if (!r?.causes?.length || diag.saved) return;
