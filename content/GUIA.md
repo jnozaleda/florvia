@@ -51,7 +51,7 @@ related:
 | `ctaHash` | Solo en guías generales | `explorar` abre «Explorar plantas» en la app. `none` deja el botón sin destino concreto. Si hay `plant`, no hace falta |
 | `ctaTitle`, `ctaText`, `ctaButton` | Sí | El bloque verde oscuro que aparece **en mitad** del post (ver sección 5) |
 | `ctaFinalTitle`, `ctaFinalText` | Recomendado | El mismo bloque, al **final**, con otro mensaje. Si faltan, se repite el del medio |
-| `related` | Recomendado | Lista de 3 o 4 posts de «Te puede interesar» (ver sección 6) |
+| `related` | Recomendado | Lista de 3 a 5 posts de «Te puede interesar» (ver sección 6) |
 | `disclaimer` | No | Cambia el aviso gris del final. Déjalo vacío: ya hay uno por defecto |
 
 Cuidado con el formato: los dos puntos y los valores van en una sola línea, sin comillas. La lista `related` usa dos espacios y un guion.
@@ -73,7 +73,7 @@ Cuidado con el formato: los dos puntos y los valores van en una sola línea, sin
 - Se pueden usar: párrafos, **negrita**, *cursiva*, listas con `-` o `1.`, tablas, citas con `>` y enlaces `[texto](/ruta/)`.
 - No se pueden usar imágenes ni listas dentro de listas. El script no las entiende.
 - Cada título lleva una palabra clave real, la que escribiría una persona en Google: «Cada cuánto regar el romero», no «El agua».
-- Largo orientativo: entre **500 y 1.000 palabras**. Hoy los posts miden entre 515 y 998.
+- Largo orientativo: entre **400 y 1.000 palabras** de texto (sin contar la cabecera). Hoy los posts miden entre 407 y 900.
 
 ## 4. Estructura de una ficha de planta (`content/plantas/`)
 
@@ -123,7 +123,7 @@ Si la guía menciona una planta que tiene ficha, enlázala la primera vez que ap
 ### Enlaces «Te puede interesar» (`related`)
 
 - Formato: `tipo/slug|Texto del enlace`. El tipo es `plantas` o `guias`.
-- Entre 3 y 4 enlaces. Si el post no existe, el script lo ignora sin avisar, así que revisa que no haya erratas.
+- Entre 3 y 5 enlaces. Si el post no existe, el script lo ignora sin avisar, así que revisa que no haya erratas.
 - Que sea útil de verdad: la ficha de la misma planta, la guía de poda de esa planta, una guía de problemas habituales.
 - El texto del enlace suele ser el `h1` del post enlazado.
 
@@ -160,6 +160,13 @@ Desde la carpeta del proyecto:
 ```bash
 node tools/build-blog.mjs
 ```
+
+Antes de generar nada, el script **comprueba los posts** con las reglas de esta guía (`tools/check-blog.mjs`):
+
+- **Errores**: cosas que romperían la página (falta un campo, enlace roto, falta el `{{CTA}}`, no hay 4 preguntas frecuentes, secciones de una ficha fuera de orden…). Si hay alguno, no se genera nada hasta corregirlo.
+- **Avisos**: consejos que no bloquean (título de más de 60 caracteres, descripción corta o larga, texto muy corto o muy largo, demasiados enlaces en «Te puede interesar»).
+
+Para comprobar sin generar: `node tools/build-blog.mjs --check`. Si cambias una regla de esta guía, cambia también `tools/check-blog.mjs`.
 
 Genera o actualiza `es/plantas/<slug>/index.html`, `es/guias/<slug>/index.html`, los dos índices (`es/plantas/index.html`, `es/guias/index.html`) y `sitemap.xml`. Hay que subir al repositorio (commit) **tanto el `.md` como el HTML generado y el sitemap**. La web se publica desde GitHub Pages, que sirve los archivos tal cual, sin generarlos.
 
