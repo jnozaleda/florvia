@@ -14,6 +14,8 @@ related:
   - guias/cada-cuanto-regar-limonero-en-maceta|Cada cuánto regar un limonero en maceta
   - plantas/limonero|Limonero: cuidados, riego, poda y abonado
   - plantas/geranio|Geranio: cuidados, riego, poda y floración
+  - plantas/ficus|Ficus: cuidados, riego, luz y hojas que caen
+  - plantas/monstera|Monstera: cuidados, riego, luz y hojas con agujeros
 ---
 La causa más común de las hojas amarillas es el **exceso de riego** o un drenaje deficiente. Después, la falta de luz, la falta de nutrientes, el frío o los cambios bruscos. Para saber cuál es, fíjate en **qué hojas amarillean** (las viejas, las jóvenes, todas), **cómo está la tierra** y **si ha cambiado algo** recientemente.
 

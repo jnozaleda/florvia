@@ -14,6 +14,7 @@ related:
   - guias/plantas-terraza-mucho-sol|Plantas para una terraza con mucho sol
   - guias/hojas-amarillas-causas-y-solucion|Por qué las hojas se ponen amarillas
   - guias/proteger-plantas-heladas|Cómo proteger tus plantas de las heladas
+  - guias/como-cuidar-olivo-en-maceta|Cómo cuidar un olivo en maceta
 ---
 El olivo es una planta resistente: pide sol pleno, un suelo o sustrato que drene muy bien y riegos escasos una vez asentado. En maceta vive perfectamente, pero necesita un recipiente grande, algo más de riego que en suelo y atención al frío, porque las raíces quedan más expuestas.
 

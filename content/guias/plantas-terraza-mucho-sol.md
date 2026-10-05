@@ -17,6 +17,9 @@ related:
   - plantas/olivo|Olivo: cuidados, riego, poda y maceta
   - plantas/geranio|Geranio: cuidados, riego, poda y floración
   - plantas/limonero|Limonero: cuidados, riego, poda y abonado
+  - plantas/romero|Romero: cuidados, riego, poda y maceta
+  - guias/plantas-terraza-sombra|Plantas para una terraza con sombra
+  - guias/plantas-resistentes-al-calor|Plantas resistentes al calor
 ---
 Para una terraza con sol directo de verano, las mejores apuestas son plantas mediterráneas y de flor resistentes al calor y a la sequía: **lavanda, romero, tomillo, geranio, buganvilla, olivo en maceta, lantana y gazania**. Todas piden sol, buen drenaje y riegos moderados; lo que más cambia entre ellas es cuánto frío aguantan.
 

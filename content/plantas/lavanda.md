@@ -14,6 +14,7 @@ related:
   - guias/plantas-terraza-mucho-sol|Plantas para una terraza con mucho sol
   - guias/hojas-amarillas-causas-y-solucion|Por qué las hojas se ponen amarillas
   - plantas/olivo|Olivo: cuidados, riego, poda y maceta
+  - plantas/romero|Romero: cuidados, riego, poda y maceta
 ---
 La lavanda necesita sol pleno, un sustrato que drene muy bien y muy poco riego. Se muere más por exceso de agua que por falta. Se poda tras la floración, sin cortar la madera vieja, para que no se vuelva leñosa y se abra.
 
