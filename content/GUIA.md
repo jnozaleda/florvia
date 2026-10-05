@@ -166,7 +166,9 @@ Antes de generar nada, el script **comprueba los posts** con las reglas de esta 
 - **Errores**: cosas que romperían la página (falta un campo, enlace roto, falta el `{{CTA}}`, no hay 4 preguntas frecuentes, secciones de una ficha fuera de orden…). Si hay alguno, no se genera nada hasta corregirlo.
 - **Avisos**: consejos que no bloquean (título de más de 60 caracteres, descripción corta o larga, texto muy corto o muy largo, demasiados enlaces en «Te puede interesar»).
 
-Para comprobar sin generar: `node tools/build-blog.mjs --check`. Si cambias una regla de esta guía, cambia también `tools/check-blog.mjs`.
+Para comprobar sin generar: `node tools/build-blog.mjs --check`.
+
+La misma comprobación se ejecuta sola en GitHub (`.github/workflows/blog-check.yml`) cuando se sube algo de `content/`, `tools/` o `es/`. Además de las reglas, comprueba que el HTML generado coincide con los posts: si cambias un `.md` y olvidas ejecutar el script, falla. Si falla, se manda un correo de aviso. Si cambias una regla de esta guía, cambia también `tools/check-blog.mjs`.
 
 Genera o actualiza `es/plantas/<slug>/index.html`, `es/guias/<slug>/index.html`, los dos índices (`es/plantas/index.html`, `es/guias/index.html`) y `sitemap.xml`. Hay que subir al repositorio (commit) **tanto el `.md` como el HTML generado y el sitemap**. La web se publica desde GitHub Pages, que sirve los archivos tal cual, sin generarlos.
 

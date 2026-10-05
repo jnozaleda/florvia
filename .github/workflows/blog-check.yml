@@ -1,0 +1,42 @@
+# Comprueba los posts del blog (reglas de content/GUIA.md) y que el HTML generado esté al día.
+# Si falla, pide al Worker (POST /ci-alert) que mande un correo. Necesita el secreto de GitHub CI_ALERT_TOKEN
+# (el mismo valor que el secreto CI_ALERT_TOKEN del Worker). Sin él, la comprobación funciona igual pero no manda correo.
+name: Comprobar el blog
+
+on:
+  push:
+    branches: [main]
+    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", ".github/workflows/blog-check.yml"]
+  pull_request:
+    paths: ["content/**", "tools/**", "es/**", "sitemap.xml", ".github/workflows/blog-check.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      CI_ALERT_TOKEN: ${{ secrets.CI_ALERT_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Comprobar los posts y que el HTML esté al día
+        shell: bash
+        run: |
+          {
+            node tools/build-blog.mjs
+            if [ -n "$(git status --porcelain -- es sitemap.xml)" ]; then
+              echo
+              echo "El HTML generado no está al día con los posts. Ejecuta «node tools/build-blog.mjs» y sube los cambios de es/ y sitemap.xml:"
+              git status --short -- es sitemap.xml
+              exit 1
+            fi
+          } 2>&1 | tee blog-check.log
+      - name: Avisar por correo
+        if: failure() && env.CI_ALERT_TOKEN != ''
+        shell: bash
+        run: |
+          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          TEXT="$(printf 'Ha fallado la comprobación del blog.\n\nRama: %s\nCambio: %s\nVer la ejecución: %s\n\nÚltimas líneas:\n%s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" "$RUN_URL" "$(tail -n 40 blog-check.log 2>/dev/null)")"
+          jq -n --arg subject "Florvia · Falla la comprobación del blog" --arg text "$TEXT" '{subject: $subject, text: $text}' \
+            | curl -fsS -X POST https://api.florvia.app/ci-alert -H "Content-Type: application/json" -H "X-CI-Token: $CI_ALERT_TOKEN" --data @-
