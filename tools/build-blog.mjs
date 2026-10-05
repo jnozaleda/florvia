@@ -8,6 +8,22 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SITE = "https://florvia.app";
 const TYPES = { plantas: { label: "Plantas", hub: "Fichas de plantas", hubIntro: "Cuidados, riego, poda y ubicación de las plantas más habituales." }, guias: { label: "Guías", hub: "Guías de jardinería", hubIntro: "Respuestas concretas: cuándo podar, cada cuánto regar, qué plantas elegir." } };
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+// Simple line icons (same style as the app), decorative only: aria-hidden, no text of their own.
+const ICON_PATHS = {
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  droplet: '<path d="M7.5 19.4a7.2 7.2 0 0 0 9 0 6.5 6.5 0 0 0 1.6-8.5l-4.9-7.3a1.4 1.4 0 0 0-2.4 0l-4.9 7.3a6.5 6.5 0 0 0 1.6 8.5z"/>',
+  flask: '<path d="M9 3h6M10 9h4M10 3v6l-4 11a.7.7 0 0 0 .5 1h11a.7.7 0 0 0 .5-1l-4-11V3"/>',
+  scissors: '<circle cx="6" cy="7" r="3"/><circle cx="6" cy="17" r="3"/><path d="M8.6 8.6L19 19M8.6 15.4L19 5"/>',
+  snow: '<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.5 4.5 12 6l2.5-1.5M9.5 19.5 12 18l2.5 1.5"/>',
+  check: '<path d="M5 12l5 5L20 7"/>',
+  pot: '<path d="M5 10h14l-1.6 9.1a1 1 0 0 1-1 .9H7.6a1 1 0 0 1-1-.9z"/><path d="M12 10V6"/><path d="M12 6c0-2 1.5-3 3.5-3 0 2-1.5 3-3.5 3zM12 7.5C12 6 10.8 5 9 5c0 1.5 1.2 2.5 3 2.5z"/>',
+  leaf: '<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19l7-7"/>',
+  sprout: '<path d="M12 20v-8"/><path d="M12 12c0-3 2-5 5.5-5 0 3-2 5-5.5 5zM12 14c0-2.5-1.8-4-4.5-4 0 2.5 1.8 4 4.5 4z"/>',
+};
+const ico = (name) => (ICON_PATHS[name] ? `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON_PATHS[name]}</svg>` : "");
+const ROW_ICON = [[/^luz|^sol/i, "sun"], [/^riego/i, "droplet"], [/^abono/i, "flask"], [/^poda/i, "scissors"], [/^temperatura|^frío|^heladas/i, "snow"], [/^dificultad/i, "check"], [/^maceta/i, "pot"]];
+const SEASON_ICON = { primavera: "sprout", verano: "sun", otoño: "leaf", invierno: "snow" };
+const rowIcon = (label) => ico((ROW_ICON.find(([re]) => re.test(label.trim())) ?? [])[1]);
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const fmtMonth = (iso) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} de ${iso.slice(0, 4)}`;
 
@@ -36,6 +52,7 @@ function markdown(src, { cta }) {
   const out = [];
   let i = 0;
   let inFaq = false;
+  let inSeasons = false;
   const faq = [];
   const flushPara = (buf) => { if (buf.length) out.push(`<p>${inline(buf.join(" "))}</p>`); };
   let para = [];
@@ -47,7 +64,7 @@ function markdown(src, { cta }) {
     if (h) {
       flushPara(para); para = [];
       const level = h[1].length;
-      if (level === 2) inFaq = /^preguntas frecuentes$/i.test(h[2].trim());
+      if (level === 2) { inFaq = /^preguntas frecuentes$/i.test(h[2].trim()); inSeasons = /por estación/i.test(h[2]); }
       if (inFaq && level === 3) {
         const q = h[2].trim();
         const ans = [];
@@ -57,7 +74,7 @@ function markdown(src, { cta }) {
         continue;
       }
       if (inFaq && level === 2) { out.push(`<h2 id="${slugify(h[2])}">${inline(h[2])}</h2>`); out.push("%%FAQ%%"); i++; continue; }
-      out.push(`<h${level} id="${slugify(h[2])}">${inline(h[2])}</h${level}>`);
+      out.push(`<h${level} id="${slugify(h[2])}">${level === 3 && inSeasons ? ico(SEASON_ICON[h[2].trim().toLowerCase()]) : ""}${inline(h[2])}</h${level}>`);
       i++; continue;
     }
     if (/^\|/.test(line) && /^\|[\s:|-]+\|?\s*$/.test(lines[i + 1] ?? "")) {
@@ -67,7 +84,8 @@ function markdown(src, { cta }) {
       i += 2;
       const rows = [];
       while (i < lines.length && /^\|/.test(lines[i])) { rows.push(cells(lines[i])); i++; }
-      out.push(`<div class="tbl"><table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`);
+      const careTable = /^necesidad$/i.test(head[0]);
+      out.push(`<div class="tbl"><table><thead><tr>${head.map((c, ci) => `<th>${!careTable && ci > 0 ? rowIcon(c) : ""}${inline(c)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, ci) => `<${careTable && ci === 0 ? 'th scope="row"' : "td"}>${careTable && ci === 0 ? rowIcon(c) : ""}${inline(c)}</${careTable && ci === 0 ? "th" : "td"}>`).join("")}</tr>`).join("")}</tbody></table></div>`);
       continue;
     }
     if (/^\s*[-*]\s+/.test(line) || /^\s*\d+\.\s+/.test(line)) {
@@ -98,12 +116,14 @@ const CSS = `:root{--deep:#0f4628;--deep2:#0b3320;--leaf:#2f8f4e;--leaf-d:#23773
 *{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:18px/1.65 var(--sans);-webkit-text-size-adjust:100%}a{color:var(--leaf-d)}img{max-width:100%;height:auto}
 .wrap{max-width:980px;margin:0 auto;padding:0 22px}.top{background:var(--deep);color:var(--cream)}.nav{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 0}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;text-decoration:none;color:var(--cream)}.brand img{width:34px;height:34px;border-radius:9px}
 .nav nav{display:flex;align-items:center;gap:20px;font-size:15px}.nav nav a{color:#d6e6d3;text-decoration:none}.nav nav a.btn{color:var(--deep)}
-.btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 22px;border-radius:999px;background:var(--leaf);color:#fff;font:inherit;font-weight:700;font-size:16px;text-decoration:none;line-height:1.2}.btn.cream{background:var(--cream)}.btn.small{padding:9px 18px;font-size:15px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 22px;border-radius:999px;background:var(--leaf);color:#fff;font:inherit;font-weight:700;font-size:16px;text-decoration:none;line-height:1.2}.btn.cream{background:var(--cream);color:var(--deep)}.btn.small{padding:9px 18px;font-size:15px}
 .crumbs{font-size:14px;color:var(--mut);padding:22px 0 0}.crumbs a{color:var(--mut)}
 article{max-width:720px;padding-bottom:20px}h1{font-family:var(--serif);font-weight:600;letter-spacing:-.015em;font-size:clamp(32px,5.2vw,46px);line-height:1.1;margin:14px 0 16px}
 h2{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;font-size:clamp(25px,3.6vw,32px);line-height:1.2;margin:42px 0 10px}h3{font-size:20px;margin:26px 0 6px}
 .meta{color:var(--mut);font-size:14.5px;margin:0 0 22px}.lead{font-size:20px;color:#2b3b30}
-.tbl{overflow-x:auto;margin:16px 0}table{border-collapse:collapse;width:100%;font-size:16px;background:#fff;border:1px solid #e2e8de;border-radius:12px;overflow:hidden}th,td{padding:10px 14px;text-align:left;border-bottom:1px solid #e8ece4;vertical-align:top}th{background:var(--mist);font-size:14.5px}tr:last-child td{border-bottom:0}
+.tbl{overflow-x:auto;margin:16px 0}table{border-collapse:collapse;width:100%;font-size:16px;background:#fff;border:1px solid #e2e8de;border-radius:12px;overflow:hidden}th,td{padding:10px 14px;text-align:left;border-bottom:1px solid #e8ece4;vertical-align:top}thead th{background:var(--mist);font-size:14.5px}tbody th{font-weight:700;white-space:nowrap}tr:last-child td,tr:last-child th{border-bottom:0}
+.ic{width:19px;height:19px;stroke:var(--leaf);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;vertical-align:-4px;margin-right:8px;flex:none}h3 .ic{width:22px;height:22px;vertical-align:-4px}
+@media(max-width:600px){body{font-size:17px}table{font-size:14px}th,td{padding:9px 6px}thead th{font-size:12.5px;overflow-wrap:anywhere}.ic{width:16px;height:16px;margin-right:4px}thead .ic{display:block;margin:0 0 3px}.tbl{margin-left:-2px;margin-right:-2px}}
 ul,ol{padding-left:24px}li{margin:6px 0}blockquote{margin:18px 0;padding:14px 18px;border-left:4px solid var(--leaf);background:var(--mist);border-radius:0 12px 12px 0;color:#2b3b30}
 .cta{margin:30px 0;padding:24px;border-radius:22px;background:var(--deep);color:var(--cream)}.cta b{display:block;font-family:var(--serif);font-size:24px;line-height:1.2;margin-bottom:8px}.cta p{margin:0 0 16px;color:#cfe0cc}
 details{border-bottom:1px solid #dfe5da;padding:2px 0}summary{cursor:pointer;font-weight:700;padding:14px 0;list-style:none;display:flex;justify-content:space-between;gap:12px}summary::-webkit-details-marker{display:none}summary:after{content:"+";color:var(--leaf);font-size:24px;line-height:1}details[open] summary:after{content:"–"}details p{margin:0 0 14px;color:var(--mut)}
