@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS events (
   name TEXT NOT NULL,           -- app_open, plant_add_ai… | care, care_hit, calendar, place, error, limit…
   device TEXT NOT NULL DEFAULT '',
   garden TEXT NOT NULL DEFAULT '',
-  ms INTEGER NOT NULL DEFAULT 0
+  ms INTEGER NOT NULL DEFAULT 0,
+  tin INTEGER NOT NULL DEFAULT 0,   -- model input tokens of an AI call
+  tout INTEGER NOT NULL DEFAULT 0   -- model output tokens (incl. thinking)
 );
 CREATE INDEX IF NOT EXISTS idx_events_day ON events(day);
 CREATE INDEX IF NOT EXISTS idx_events_device ON events(device);

@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005c";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005d";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005c";
-import { buildICS } from "./calendar.js?v=20261005c";
-import { scrubPlant } from "./clean.js?v=20261005c";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005c";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005d";
+import { buildICS } from "./calendar.js?v=20261005d";
+import { scrubPlant } from "./clean.js?v=20261005d";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005d";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -602,7 +602,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005c";
+      sc.src = "vendor/qrcode.min.js?v=20261005d";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1453,8 +1453,16 @@ function diagSheet() {
     const r = dg.res;
     const LV = { alta: "Muy probable", media: "Probable", baja: "Posible" };
     const URG = { alta: ["warn", "Conviene actuar ya"], media: ["", "Conviene actuar esta semana"], baja: ["ok", "No es urgente"] };
+    // The photo is not of this plant (or not of a plant): no diagnosis, and it doesn't use up one of the monthly diagnoses.
+    if (r.photo === "otra_planta" || r.photo === "no_es_planta") {
+      const other = r.photo === "otra_planta";
+      return openSheet(`${head}<section class="card"><b>${other ? `La foto no parece ser de «${esc(plantLabel(p))}»` : "No parece que la foto muestre una planta"}</b>
+        <p class="muted small">${other && r.photoSeen ? `Parece ${esc(r.photoSeen)}. ` : ""}Para no darte un consejo equivocado, no he hecho el diagnóstico, y esta consulta no gasta uno de tus diagnósticos del mes. ${other ? "Si es otra planta, abre su ficha y diagnostícala desde allí." : ""}</p></section>
+        <button type="button" class="btn block secondary" data-action="dg-back">Probar con otra foto</button>
+        <button type="button" class="btn block secondary" style="margin-top:8px" data-action="dg-dropphoto">Diagnosticar sin foto</button>`, "diag");
+    }
     if (!r.isPlant || !r.causes.length) {
-      return openSheet(`${head}<section class="card"><b>${r.isPlant ? "No he podido sacar una causa clara" : "No parece que la foto muestre una planta"}</b>
+      return openSheet(`${head}<section class="card"><b>No he podido sacar una causa clara</b>
         <p class="muted small">${esc(r.needMore || r.summary || "Prueba con otra foto, más cerca del problema y con luz natural.")}</p></section>
         <button type="button" class="btn block secondary" data-action="dg-back">Volver a intentarlo</button>`, "diag");
     }
@@ -1462,6 +1470,7 @@ function diagSheet() {
     return openSheet(`${head}
       <p class="ai-status ${uc}">${esc(ut)}</p>
       ${r.summary ? `<p>${esc(r.summary)}</p>` : ""}
+      ${r.photo === "dudosa" ? `<p class="muted small">La foto no se ve con claridad${r.photoSeen ? ` (parece ${esc(r.photoSeen)})` : ""}: el diagnóstico se apoya sobre todo en lo que has marcado.</p>` : ""}
       ${r.causes.map((c) => `<section class="card"><b>${esc(c.title)} <span class="ai-mark">✦</span> <span class="conf ${c.likelihood}">${LV[c.likelihood]}</span></b>
         <p class="muted small">${esc(c.why)}</p>
         ${c.check ? `<div class="sec start">Cómo comprobarlo</div><p class="small">${esc(c.check)}</p>` : ""}
@@ -1513,7 +1522,7 @@ async function diagGo() {
     if (diag !== dg) return;
     dg.res = body;
     dg.state = "done";
-    track("plant_diagnose");
+    if (body.causes?.length) track("plant_diagnose");
     loadMe();
     diagSheet();
   } catch (err) {
@@ -2747,6 +2756,7 @@ const actions = {
   "dg-nophoto": () => { diagRead(); diag.photo = null; diagSheet(); },
   "dg-go": () => diagGo(),
   "dg-back": () => { diag.state = "idle"; diag.res = null; diag.saved = false; diagSheet(); },
+  "dg-dropphoto": () => { diag.photo = null; diag.state = "idle"; diag.res = null; diag.saved = false; diagSheet(); },
   "dg-save": () => {
     const r = diag?.res;
     if (!r?.causes?.length || diag.saved) return;
