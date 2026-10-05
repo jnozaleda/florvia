@@ -189,4 +189,8 @@ ${foot}`;
 }
 const urls = ["/", "/privacidad/", "/es/plantas/", "/es/guias/", ...pages.map((p) => p.path)];
 writeFileSync(join(ROOT, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${SITE}${u}</loc>${byKey[u.replace(/^\/es\/|\/$/g, "")] ? "" : ""}</url>`).join("\n")}\n</urlset>\n`);
+// Títulos legibles para «Uso de la app» (Procedencia y Páginas más leídas): ref de ?ref= y ruta → h1 de la página.
+const titles = { "/": "Inicio (landing)", "/es/plantas/": "Fichas de plantas (índice)", "/es/guias/": "Guías (índice)" };
+for (const p of pages) { titles[p.path] = p.meta.h1; titles[`${p.type === "plantas" ? "planta" : "guia"}-${p.slug}`] = p.meta.h1; }
+writeFileSync(join(ROOT, "app", "pages.json"), JSON.stringify(titles, null, 1) + "\n");
 console.log(`${pages.length} páginas + 2 índices · sitemap con ${urls.length} URL`);

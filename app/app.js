@@ -971,7 +971,8 @@ function tokensCard() {
   return `<section class="card"><div class="sec">Tokens de la IA <span class="meta">30 días · ${fmt(totIn)} entrada · ${fmt(totOut)} salida</span></div>
     ${rows.map(([name, v]) => `<div class="u-row"><span>${esc(KIND_LABEL[name] ?? name)}</span><b>${v.n}<small>media ${fmt(Math.round(v.tin / v.n))} ent. · ${fmt(Math.round(v.tout / v.n))} sal.</small></b></div>`).join("")}</section>`;
 }
-const REF_LABEL = (ref) => ref.replace(/^planta-/, "Planta: ").replace(/^guia-/, "Guía: ").replace(/-/g, " ");
+let pageTitles = null; // app/pages.json (generated with the blog): ref or path → real page title; falls back to the slug
+const REF_LABEL = (ref) => pageTitles?.[ref] ?? ref.replace(/^planta-/, "Planta: ").replace(/^guia-/, "Guía: ").replace(/-/g, " ");
 // Where people came from (links from the blog): who opened the app and who added a plant.
 function refsCard() {
   const refs = usage?.refs ?? [];
@@ -980,7 +981,7 @@ function refsCard() {
 }
 const WEB_SRC = { direct: "Directo (sin origen)", google: "Google", search: "Otros buscadores", social: "Redes sociales", ai: "Asistentes de IA", other: "Otras webs" };
 const WEB_BOTS = [["search", "Buscadores (Googlebot, Bingbot…)"], ["ai", "Robots de IA (GPTBot, ClaudeBot…)"], ["preview", "Previsualizaciones de enlaces (WhatsApp…)"], ["bot", "Otros robots"]];
-const WEB_PAGE = (path) => path === "/" ? "Inicio (landing)" : path === "/es/plantas/" ? "Fichas de plantas (índice)" : path === "/es/guias/" ? "Guías (índice)" : REF_LABEL(path.replace(/^\/es\/(plantas|guias)\/([^/]+)\/$/, (_, t, s) => `${t === "plantas" ? "planta" : "guia"}-${s}`));
+const WEB_PAGE = (path) => pageTitles?.[path] ?? (path === "/" ? "Inicio (landing)" : path === "/es/plantas/" ? "Fichas de plantas (índice)" : path === "/es/guias/" ? "Guías (índice)" : REF_LABEL(path.replace(/^\/es\/(plantas|guias)\/([^/]+)\/$/, (_, t, s) => `${t === "plantas" ? "planta" : "guia"}-${s}`)));
 function webCard() {
   const w = usageWeb;
   if (!w) return "";
@@ -1027,7 +1028,7 @@ let usage = null; // null = loading · { error } · the /stats2 report
 let usageWeb = null; // the /stats/web report (visits to the landing and the blog) · { error }
 async function loadUsage() {
   try {
-    const [res, webRes] = await Promise.all([fetch(`${API}/stats2?days=30`, { headers: aiHeaders() }), fetch(`${API}/stats/web?days=30`, { headers: aiHeaders() }).catch(() => null)]);
+    const [res, webRes] = await Promise.all([fetch(`${API}/stats2?days=30`, { headers: aiHeaders() }), fetch(`${API}/stats/web?days=30`, { headers: aiHeaders() }).catch(() => null), pageTitles ? null : fetch("pages.json").then((r) => r.ok ? r.json() : null).then((t) => { pageTitles = t; }).catch(() => {})]);
     usage = res.ok ? await res.json() : { error: res.status === 401 ? "code" : "ai" };
     usageWeb = webRes?.ok ? await webRes.json() : { error: webRes?.status === 404 ? "missing" : "ai" };
   } catch { usage = { error: "network" }; }
