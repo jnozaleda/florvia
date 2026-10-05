@@ -1,8 +1,9 @@
 // Builds the evergreen pages (content/**/*.md → es/<tipo>/<slug>/index.html), the two hubs and sitemap.xml.
-// No dependencies: `node tools/build-blog.mjs`. Content rules: see the SEO guide (answer first, contextual CTA, FAQs that help).
+// No dependencies: `node tools/build-blog.mjs` (`--check`: only checks the posts, see tools/check-blog.mjs). Rules for writing posts: content/GUIA.md
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkPages, report } from "./check-blog.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SITE = "https://florvia.app";
@@ -152,6 +153,8 @@ for (const type of Object.keys(TYPES)) {
   }
 }
 const byKey = Object.fromEntries(pages.map((p) => [`${p.type}/${p.slug}`, p]));
+if (report(checkPages(pages)) > 0) { console.log("No se ha generado nada: corrige los errores y vuelve a ejecutar."); process.exit(1); }
+if (process.argv.includes("--check")) process.exit(0);
 for (const p of pages) {
   const m = p.meta;
   const ref = `${p.type === "plantas" ? "planta" : "guia"}-${p.slug}`;

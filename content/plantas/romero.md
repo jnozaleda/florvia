@@ -1,7 +1,7 @@
 ---
 title: Romero: cuidados, riego, poda y maceta | Florvia
 h1: Romero: cuidados, riego, poda y maceta
-description: Cómo cuidar el romero: sol, poco riego, poda, frío y por qué se seca o se pone amarillo.
+description: Cómo cuidar el romero: sol, poco riego, poda, frío y qué hacer si se seca o se pone amarillo.
 updated: 2026-10-05
 published: 2026-10-05
 plant: Romero

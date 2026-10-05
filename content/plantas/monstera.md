@@ -1,5 +1,5 @@
 ---
-title: Monstera: cuidados, riego, luz y hojas con agujeros | Florvia
+title: Monstera: cuidados, riego, luz y agujeros | Florvia
 h1: Monstera: cuidados, riego, luz y hojas con agujeros
 description: Cómo cuidar una monstera: luz, riego, humedad, abono, soporte y por qué no le salen agujeros en las hojas.
 updated: 2026-10-05
