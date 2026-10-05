@@ -952,7 +952,7 @@ async function handlePolarCheckout(request, env, headers) {
   const email = /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(clean(body.email, 80)) ? clean(body.email, 80) : undefined;
   try {
     const out = await polarCall(env, "/checkouts/", {
-      products: [productId], external_customer_id: p.garden, customer_email: email,
+      products: [productId], external_customer_id: p.garden, customer_email: email, allow_trial: false, // the free month is ours (planOf), not Polar's
       success_url: "https://florvia.app/app/?premium=ok", return_url: "https://florvia.app/app/",
       metadata: { garden: p.garden, choice },
     });
