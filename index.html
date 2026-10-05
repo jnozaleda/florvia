@@ -60,19 +60,26 @@ input,textarea{font:inherit;color:var(--ink);background:#fff;border:1.5px solid 
 .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}.msg{margin:0;padding:12px 14px;border-radius:12px;font-size:15px}.msg.ok{background:#dff2e3;color:#1f5f33}.msg.err{background:#fbdfdb;color:#8c1f17}
 footer{background:var(--deep2);color:#b9d1b6;margin-top:80px;padding:34px 0;font-size:15px}footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}footer a{color:#d6e6d3}
 section[id]{scroll-margin-top:12px}
+
+.plans{display:grid;gap:16px;margin-top:28px}.plan{padding:26px;border-radius:22px;background:#fff;border:1px solid #e8ece4}.plan.best{background:var(--deep);border-color:var(--deep);color:var(--cream)}
+.plan h3{margin:0;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--leaf-d)}.plan.best h3{color:var(--sage)}.plan .price{font-family:var(--serif);font-size:34px;line-height:1.1;margin:8px 0 14px}
+.plan ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}.plan li{padding-left:26px;position:relative;font-size:16px}.plan li:before{content:"";position:absolute;left:3px;top:.45em;width:7px;height:12px;border:solid var(--leaf);border-width:0 2.5px 2.5px 0;transform:rotate(40deg) scale(.8)}.plan.best li:before{border-color:var(--sage)}
+.opts{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}.opts span{padding:8px 14px;border-radius:999px;background:#ffffff1f;font-size:15px;font-weight:700}
+.plans-note{color:var(--mut);max-width:44em;margin:18px 0 0;font-size:16px}
+@media(min-width:800px){.plans{grid-template-columns:1fr 1fr}}
 </style></head><body>
 
 <section class="hero">
 <svg class="leaf" style="left:-60px;top:80px;width:300px" viewBox="0 0 100 100" fill="none" stroke="#fff" stroke-width="1.2" aria-hidden="true"><path d="M20 90C20 50 45 20 85 12c0 40-25 70-65 78z"/><path d="M20 90C40 62 58 42 85 12"/></svg>
 <div class="wrap">
- <div class="nav"><a class="brand" href="./"><img src="app/icon-rounded.png" width="38" height="38" alt="">Florvia</a><nav><a class="l" href="#como">Cómo funciona</a><a class="l g" href="/es/guias/">Guías</a><a class="l" href="#preguntas">Preguntas</a><a class="l" href="#contacto">Contacto</a><a class="btn cream small" href="app/">Abrir</a></nav></div>
+ <div class="nav"><a class="brand" href="./"><img src="app/icon-rounded.png" width="38" height="38" alt="">Florvia</a><nav><a class="l" href="#como">Cómo funciona</a><a class="l g" href="/es/guias/">Guías</a><a class="l" href="#precios">Precios</a><a class="l" href="#preguntas">Preguntas</a><a class="l" href="#contacto">Contacto</a><a class="btn cream small" href="app/">Abrir</a></nav></div>
  <div class="hero-grid">
   <div>
    <p class="eyebrow">Tu jardín, al día</p>
    <h1 class="serif">Tu jardín, sin tener que <em>acordarte de todo.</em></h1>
    <p class="lead">Dime qué plantas tienes y te digo qué toca esta semana: regar, abonar, podar o proteger del frío, según tu clima.</p>
    <div class="cta"><a class="btn cream" href="app/">Abrir Florvia</a><a class="btn ghost" href="#instalar">Cómo instalarla</a></div>
-   <div class="trust"><span>Gratis mientras la probamos</span><span>Sin cuenta obligatoria</span><span>Móvil y ordenador</span></div>
+   <div class="trust"><span>Empieza gratis</span><span>Sin cuenta obligatoria</span><span>Móvil y ordenador</span></div>
   </div>
   <div class="phones" aria-label="Capturas de la app"><div class="ph b"><img src="img/ficha.jpg" width="540" height="1169" alt="Ficha de una lavanda con su riego, abono y floración" loading="eager"></div><div class="ph a"><img src="img/hoy.jpg" width="540" height="1169" alt="Pantalla Hoy: el tiempo y las tareas de riego de hoy" loading="eager"></div></div>
  </div>
@@ -125,9 +132,27 @@ section[id]{scroll-margin-top:12px}
 </div>
 <p class="more"><a href="/es/guias/">Ver todas las guías →</a><a href="/es/plantas/">Fichas de plantas →</a></p></section>
 
+<section class="sec" id="precios"><h2 class="serif">Gratis para empezar. Premium si quieres más.</h2>
+<p style="color:var(--mut);max-width:38em;margin:0">Cuidar tu jardín con Florvia es gratis. Premium es para quien tiene muchas plantas o usa mucho la IA.</p>
+<div class="plans">
+<div class="plan"><h3>Gratis</h3><p class="price">0 €</p><ul>
+<li>Hasta 8 plantas</li>
+<li>3 búsquedas de «Qué planto aquí» al mes</li>
+<li>3 identificaciones por foto al mes</li>
+<li>Fichas de cuidados, aviso diario, Explorar, «¿Dónde está mejor?», compartir y sincronizar</li></ul></div>
+<div class="plan best"><h3>Premium</h3><p class="price">desde 1 € al mes</p><ul>
+<li>Plantas ilimitadas</li>
+<li>30 búsquedas de «Qué planto aquí» al mes</li>
+<li>30 identificaciones por foto al mes</li>
+<li>Todo lo del plan gratuito</li></ul>
+<p class="opts"><span>1 € al mes</span><span>9,99 € al año</span><span>10 € de por vida · plazas limitadas</span></p></div>
+</div>
+<p class="plans-note">Desde el 19 de octubre habrá plan gratuito y Premium. Hasta entonces todo es gratis, y quien ya use Florvia antes de esa fecha tendrá Premium gratis como fundador/a. Los pagos se abrirán en cuanto estén listos y te avisaremos.</p>
+<p class="more"><a href="app/">Probarla gratis →</a><a href="#contacto">¿Dudas sobre los planes?</a></p></section>
+
 <section class="sec" id="preguntas"><div class="faq"><div><h2 class="serif">Preguntas frecuentes</h2><p style="color:var(--mut)">¿No está la tuya? <a href="#contacto">Escríbenos</a>.</p></div>
 <div>
-<details><summary>¿Es gratis?</summary><p>Ahora mismo sí, mientras la probamos. Si algún día hubiera funciones de pago, lo anunciaríamos antes.</p></details>
+<details><summary>¿Es gratis?</summary><p>Sí, hay un plan gratuito para cuidar hasta 8 plantas. Premium (desde 1 € al mes) quita el límite de plantas y da más consultas con IA. Mira los <a href="#precios">precios</a>. Hasta el 19 de octubre todo es gratis.</p></details>
 <details><summary>¿Necesito crear una cuenta?</summary><p>No. Funciona sin cuenta. Si quieres tus plantas en varios móviles o una copia de seguridad, puedes sincronizar con Google o con una clave.</p></details>
 <details><summary>¿Dónde se guardan mis plantas?</summary><p>En tu móvil. Solo se suben a nuestro servidor si activas la sincronización, y puedes borrarlas desde Ajustes → «Borrar mis datos del servidor».</p></details>
 <details><summary>¿Cómo sabe lo que toca hacer?</summary><p>Con la ficha de cada planta (riego y abono por estación, propuestos por una IA y que puedes ajustar) y la previsión del tiempo de tu zona.</p></details>

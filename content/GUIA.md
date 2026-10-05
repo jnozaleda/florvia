@@ -189,3 +189,14 @@ Si cambias la plantilla (colores, iconos, cabecera) hay que editar `tools/build-
 - Corrección pequeña (una errata): no cambies `updated`.
 - Cambio de contenido (nuevo dato, nueva sección, revisión de un consejo): actualiza `updated` a la fecha de hoy.
 - Si añades un post nuevo que merece enlace desde otros, añádelo a `related` de las fichas o guías relacionadas, y vuelve a ejecutar el script.
+
+## 12. Medición de visitas (`track.js`)
+
+Las páginas del blog y la landing cargan `track.js` (el generador lo añade al pie de cada página). Es un contador de visitas **sin cookies y sin identificadores**:
+
+- Manda al Worker (`POST https://api.florvia.app/hit`) solo la ruta de la página y el **dominio** de procedencia (nunca la dirección completa). El Worker clasifica la visita por el navegador (persona, buscador, robot de IA, previsualización de enlaces u otro robot) y guarda solo recuentos por día, página y procedencia. Una persona cuenta una vez por página y día; para eso se guarda 2 días un hash irreversible, y luego se borra.
+- No cuenta a quien tenga activado «no rastrear» (Do Not Track o Global Privacy Control), ni lo que se abra desde un dominio que no sea florvia.app.
+- Solo cuenta estas rutas: la landing, los dos índices y cada página de `es/plantas/` y `es/guias/`. Si añades un tipo nuevo de página (otra carpeta), hay que ampliar `HIT_PATH` en `worker/src/worker.js` y la prueba `tools/test-hit.mjs`, o no se medirá.
+- Los datos se ven en la app: Ajustes → Uso de la app → «Visitas a la web». Los títulos de las páginas salen de `app/pages.json` (se regenera con el script).
+- `privacidad/` **no se mide a propósito**: saber cuánta gente lee la política de privacidad aporta poco y obligaría a abrir su política de seguridad de contenido a la API.
+- Lo que se mide está descrito en `privacidad/index.html` («Visitas a la web»). Si cambia lo que se guarda, actualiza también ese texto.
