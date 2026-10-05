@@ -835,3 +835,8 @@ label.link-btn { cursor: pointer; }
 .chev.plus .icon { transform: none; }
 .pf .more { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 600; color: var(--accent); }
 .pf[open] .more { display: none; }
+/* Inside the plant sheet's folds the rows must read one step below the fold's own title (15px / 600). */
+.pf-body .fit-row b { font-size: 14px; font-weight: 600; }
+.pf-body .fit-row span { font-size: 13px; }
+.pf-body .mstrip-label { font-size: 14px; }
+.pf-body .mstrip-row small { font-size: 13px; }
