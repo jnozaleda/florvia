@@ -605,6 +605,18 @@ async function sendAdminEmail(env, subject, bodyText, replyTo = "") {
   const lines = [`From: Florvia <${from}>`, `To: ${env.NOTIFY_EMAIL}`, ...(replyTo ? [`Reply-To: ${replyTo}`] : []), `Subject: =?UTF-8?B?${b64text(subject)}?=`, `Date: ${new Date().toUTCString()}`, `Message-ID: <${crypto.randomUUID()}@florvia.app>`, "MIME-Version: 1.0", "Content-Type: text/plain; charset=utf-8", "Content-Transfer-Encoding: base64", "", (b64text(bodyText).match(/.{1,76}/g) ?? []).join("\r\n")];
   await env.EMAIL.send(new EmailMessage(from, env.NOTIFY_EMAIL, lines.join("\r\n")));
 }
+// GitHub Action → email when the blog check fails (.github/workflows/blog-check.yml). Not the app's code: its own secret CI_ALERT_TOKEN.
+async function handleCiAlert(request, env, headers) {
+  if (!env.CI_ALERT_TOKEN || request.headers.get("X-CI-Token") !== env.CI_ALERT_TOKEN) return json({ error: "token" }, 401, headers);
+  if (!env.EMAIL || !env.NOTIFY_EMAIL) return json({ error: "email" }, 500, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const subject = clean(body.subject, 150).replace(/[\r\n]+/g, " ");
+  const text = clean(body.text, 6000);
+  if (!subject || !text) return json({ error: "input" }, 400, headers);
+  await sendAdminEmail(env, subject, text);
+  return json({ ok: true }, 200, headers);
+}
 async function pushAdmin(env, title, body) {
   const names = [];
   let cursor;
@@ -1519,6 +1531,7 @@ export default {
     if (pathname === "/feedback" && request.method === "GET") return handleFeedbackList(request, env, headers);
     if (pathname === "/feedback/status" && request.method === "POST") return handleFeedbackStatus(request, env, headers);
     if (pathname === "/error" && request.method === "POST") return handleError(request, env, headers, ctx);
+    if (pathname === "/ci-alert" && request.method === "POST") return handleCiAlert(request, env, headers);
     if (pathname === "/internal" && request.method === "POST") return handleInternal(request, env, headers);
     if (pathname === "/usage/label" && request.method === "POST") return handleUsageLabel(request, env, headers);
     if (pathname === "/usage/delete" && request.method === "POST") return handleUsageDelete(request, env, headers);
