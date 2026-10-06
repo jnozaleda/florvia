@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006l";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006m";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006l";
-import { buildICS } from "./calendar.js?v=20261006l";
-import { scrubPlant } from "./clean.js?v=20261006l";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006l";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006m";
+import { buildICS } from "./calendar.js?v=20261006m";
+import { scrubPlant } from "./clean.js?v=20261006m";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006m";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006l";
+      sc.src = "vendor/qrcode.min.js?v=20261006m";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -2281,8 +2281,15 @@ function placeSheet() {
   openSheet(`
     <div class="sheet-head"><h2>Ubicación</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>
     <button class="btn block" data-action="locate">📍 Usar mi ubicación</button>
-    <label class="field">O busca una ciudad<input id="placeQuery" type="search" placeholder="Valencia, Sevilla…" autocomplete="off" /></label>
-    <div class="results" id="placeResults"></div>`);
+    <label class="field">O busca tu ciudad, barrio o código postal<input id="placeQuery" type="search" placeholder="Valencia, Pedregalejo, 29001…" autocomplete="off" /></label>
+    <div class="results" id="placeResults"></div>
+    <details class="pf-plain"><summary>Escribir las coordenadas exactas</summary>
+      <label class="field">Latitud y longitud<input id="placeCoords" type="text" inputmode="text" placeholder="36.7213, -4.4214" autocomplete="off" autocapitalize="off" spellcheck="false" /></label>
+      <p class="muted small">Cópialas de Google Maps o Apple Maps: mantén pulsado el punto de tu jardín y copia los dos números.</p>
+      <label class="field">Nombre del sitio (opcional)<input id="placeCoordName" type="text" maxlength="40" placeholder="Mi jardín" autocomplete="off" /></label>
+      <p class="ai-status warn" id="placeCoordsErr" hidden></p>
+      <button type="button" class="btn block secondary" data-action="coords-save">Usar estas coordenadas</button>
+    </details>`);
   let timer;
   $("placeQuery").addEventListener("input", (e) => {
     clearTimeout(timer);
@@ -3195,6 +3202,11 @@ const actions = {
   "retry-weather": loadWeather,
   "open-place": placeSheet,
   "keep-madrid": () => setLoc({ ...DEFAULT_LOC }),
+  "coords-save": () => {
+    const c = parseCoords($("placeCoords").value);
+    if (!c) { const e = $("placeCoordsErr"); e.textContent = "No entiendo esas coordenadas. Escribe latitud y longitud, por ejemplo 36.7213, -4.4214."; e.hidden = false; return; }
+    setLoc({ name: $("placeCoordName").value.trim().slice(0, 40) || `${c.lat.toFixed(3)}, ${c.lon.toFixed(3)}`, ...c });
+  },
   "zone-open": (d) => zoneSheet(d.zone ?? ""),
   "welcome-install": installSheet,
   "welcome-hide": () => { store.set("mj_welcome", "off"); render(); },

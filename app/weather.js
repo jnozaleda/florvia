@@ -30,6 +30,22 @@ export async function fetchWeather(loc) {
   return { days, today: 7 };
 }
 
+// Coordinates typed or pasted by hand: «36.7213, -4.4214», «36,7213; -4,4214», «36.72°N 4.42°W» (Google Maps, WhatsApp…).
+// Returns { lat, lon } rounded to 3 decimals (~100 m), or null when it isn't a valid pair.
+export function parseCoords(text) {
+  const t = String(text ?? "").trim().replace(/[°º]/g, " ");
+  if (!t) return null;
+  const num = String.raw`(-?\d{1,3}(?:[.,]\d+)?)`;
+  const m = t.match(new RegExp(`^${num}\\s*([NSns])?\\s*[,;\\s]\\s*${num}\\s*([EWOewo])?$`));
+  if (!m) return null;
+  let lat = Number(m[1].replace(",", ".")), lon = Number(m[3].replace(",", "."));
+  if (/s/i.test(m[2] ?? "")) lat = -Math.abs(lat);
+  if (/[wo]/i.test(m[4] ?? "")) lon = -Math.abs(lon);
+  if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) return null;
+  const r = (x) => Math.round(x * 1e3) / 1e3;
+  return { lat: r(lat), lon: r(lon) };
+}
+
 export async function searchCities(query) {
   if (!query.trim()) return [];
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=6&language=es&format=json`;
