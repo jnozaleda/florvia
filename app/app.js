@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006n";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006o";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006n";
-import { buildICS } from "./calendar.js?v=20261006n";
-import { scrubPlant } from "./clean.js?v=20261006n";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006n";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006o";
+import { buildICS } from "./calendar.js?v=20261006o";
+import { scrubPlant } from "./clean.js?v=20261006o";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006o";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006n";
+      sc.src = "vendor/qrcode.min.js?v=20261006o";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -2886,13 +2886,13 @@ function renderWizard() {
       ${head(`<button class="btn small secondary" data-action="close">Cancelar</button>`)}
       <form id="wizName" class="sheet-in" style="padding:0">
         <h3 class="q">¿Qué planta es?</h3>
-        <input name="name" class="big-input" required placeholder="Olivo, limonero, geranio…" autocomplete="off" value="${esc(wiz.name)}" />
+        <input name="name" class="big-input" required placeholder="Olivo, limonero, geranio…" autocomplete="off" data-1p-ignore data-lpignore="true" data-form-type="other" value="${esc(wiz.name)}" />
         <p class="muted">${hasCode ? `<span class="ai-mark">✦</span> Con el nombre, la IA propondrá sus cuidados por estación para tu zona.` : (aiOff() ? "La IA está apagada: rellena los cuidados a mano." : "Activa el asistente IA en Ajustes para que proponga los cuidados.")}</p>
-        ${wiz.identify?.state === "loading"
-          ? `<button class="btn block" type="submit" disabled aria-busy="true"><span class="spinner" aria-hidden="true"></span> Mirando la foto…</button>`
-          : `<button class="btn block" type="submit">Siguiente</button>`}
       </form>
-      ${hasCode ? identifyBlock() : ""}`);
+      ${hasCode ? identifyBlock() : ""}
+      <div class="sheet-actions">${wiz.identify?.state === "loading"
+        ? `<button class="btn block" type="submit" form="wizName" disabled aria-busy="true"><span class="spinner" aria-hidden="true"></span> Mirando la foto…</button>`
+        : `<button class="btn block" type="submit" form="wizName">Siguiente</button>`}</div>`);
     setTimeout(() => $("wizName")?.elements.name.focus(), 50);
     return;
   }
@@ -2922,7 +2922,7 @@ function renderWizard() {
     </section>
     ${wiz.ai === "done" ? speciesCheck() : ""}
     <h3 class="q">Nombre propio <span class="muted small">(opcional)</span></h3>
-    <input id="wizNick" class="big-input" placeholder="Para distinguirla: «${esc(wiz.name)} del patio»…" autocomplete="off" value="${esc(wiz.nick ?? "")}" />
+    <input id="wizNick" class="big-input" data-1p-ignore data-lpignore="true" data-form-type="other" placeholder="Para distinguirla: «${esc(wiz.name)} del patio»…" autocomplete="off" value="${esc(wiz.nick ?? "")}" />
     ${wiz.care?.confidence === "baja" ? `<p class="ai-status warn">⚠️ La IA no está segura de qué planta es. Revisa los días o vuelve atrás y prueba con otro nombre.</p>` : ""}
     <h3 class="q">¿Dónde está?</h3>
     <div class="chips">
