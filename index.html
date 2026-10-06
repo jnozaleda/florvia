@@ -59,7 +59,7 @@ form{display:grid;gap:12px}label{font-weight:600;font-size:15px;display:grid;gap
 input,textarea{font:inherit;color:var(--ink);background:#fff;border:1.5px solid #d6dfd2;border-radius:14px;padding:13px 15px;width:100%}input:focus,textarea:focus{outline:2px solid var(--leaf);outline-offset:1px}textarea{min-height:130px;resize:vertical}
 .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}.msg{margin:0;padding:12px 14px;border-radius:12px;font-size:15px}.msg.ok{background:#dff2e3;color:#1f5f33}.msg.err{background:#fbdfdb;color:#8c1f17}
 footer{background:var(--deep2);color:#b9d1b6;margin-top:80px;padding:34px 0;font-size:15px}footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}footer a{color:#d6e6d3}
-section[id]{scroll-margin-top:12px}
+section[id]{scroll-margin-top:84px}.site-nav{position:sticky;top:0;z-index:50;background:var(--deep);box-shadow:0 1px 0 #ffffff14}.site-nav .nav{padding:12px 0}
 
 .plans{display:grid;gap:16px;margin-top:28px}.plan{padding:26px;border-radius:22px;background:#fff;border:1px solid #e8ece4}.plan.best{background:var(--deep);border-color:var(--deep);color:var(--cream)}
 .plan h3{margin:0;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--leaf-d)}.plan.best h3{color:var(--sage)}.plan .price{font-family:var(--serif);font-size:34px;line-height:1.1;margin:8px 0 14px}
@@ -70,10 +70,13 @@ section[id]{scroll-margin-top:12px}
 .free-badge{display:inline-block;margin-left:8px;padding:3px 10px;border-radius:999px;background:var(--sage);color:var(--deep);font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;vertical-align:2px}
 </style></head><body>
 
+<header class="site-nav"><div class="wrap">
+ <div class="nav"><a class="brand" href="./"><img src="app/icon-rounded.png" width="38" height="38" alt="">Florvia</a><nav><a class="l" href="#como">Cómo funciona</a><a class="l g" href="/es/guias/">Guías</a><a class="l" href="#precios">Precios</a><a class="l" href="#preguntas">Preguntas</a><a class="l" href="#contacto">Contacto</a><a class="btn cream small" href="app/">Abrir</a></nav></div>
+</div></header>
+
 <section class="hero">
 <svg class="leaf" style="left:-60px;top:80px;width:300px" viewBox="0 0 100 100" fill="none" stroke="#fff" stroke-width="1.2" aria-hidden="true"><path d="M20 90C20 50 45 20 85 12c0 40-25 70-65 78z"/><path d="M20 90C40 62 58 42 85 12"/></svg>
 <div class="wrap">
- <div class="nav"><a class="brand" href="./"><img src="app/icon-rounded.png" width="38" height="38" alt="">Florvia</a><nav><a class="l" href="#como">Cómo funciona</a><a class="l g" href="/es/guias/">Guías</a><a class="l" href="#precios">Precios</a><a class="l" href="#preguntas">Preguntas</a><a class="l" href="#contacto">Contacto</a><a class="btn cream small" href="app/">Abrir</a></nav></div>
  <div class="hero-grid">
   <div>
    <p class="eyebrow">Tu jardín, al día</p>
@@ -150,7 +153,7 @@ section[id]{scroll-margin-top:12px}
 <li>Todo lo del plan gratuito</li></ul>
 <p class="opts"><span>1 € al mes</span><span>9,99 € al año</span><span>20 € de por vida · plazas limitadas</span></p></div>
 </div>
-<p class="plans-note">Sin tarjeta ni registro: empiezas con todo incluido. Pasado el primer mes sigues con el plan gratuito o eliges Premium. Los pagos se abrirán en cuanto estén listos y te avisaremos. ¿Eres de amigos y familia o la estás probando? <a href="mailto:hello@florvia.app?subject=C%C3%B3digo%20de%20uso%20gratuito%20de%20Florvia">Escríbenos</a> y te damos un código de uso gratuito.</p>
+<p class="plans-note">Sin tarjeta ni registro: empiezas con todo incluido. Pasado el primer mes sigues con el plan gratuito o eliges Premium. ¿Eres de amigos y familia o la estás probando? <a href="mailto:hello@florvia.app?subject=C%C3%B3digo%20de%20uso%20gratuito%20de%20Florvia">Escríbenos</a> y te damos un código de uso gratuito.</p>
 <p class="more"><a href="app/">Empezar mi mes gratis →</a><a href="#contacto">¿Dudas sobre los planes?</a></p></section>
 
 <section class="sec" id="preguntas"><div class="faq"><div><h2 class="serif">Preguntas frecuentes</h2><p style="color:var(--mut)">¿No está la tuya? <a href="#contacto">Escríbenos</a>.</p></div>
