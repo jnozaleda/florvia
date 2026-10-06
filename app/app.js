@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006e";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006f";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006e";
-import { buildICS } from "./calendar.js?v=20261006e";
-import { scrubPlant } from "./clean.js?v=20261006e";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006e";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006f";
+import { buildICS } from "./calendar.js?v=20261006f";
+import { scrubPlant } from "./clean.js?v=20261006f";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006f";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006e";
+      sc.src = "vendor/qrcode.min.js?v=20261006f";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -969,7 +969,7 @@ function invitesCard() {
     const people = uses.filter((u) => u.code === c.code);
     const rows = people.length ? people.map((u) => `<div class="inv-use ${u.revoked ? "off" : ""}"><span><b>${esc(u.email)}</b><small>${u.revoked ? "Retirado" : `Activado el ${day(u.ts)}${c.access_days ? ` · hasta el ${day(u.ts + c.access_days * 86400000)}` : " · sin fecha de fin"}`}</small></span>${u.revoked ? "" : `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="${esc(u.email)}">Retirar</button>`}</div>`).join("")
       : `<div class="inv-use"><span><small>${c.active ? "Sin usar todavía" : "Apagado"}</small></span></div>`;
-    return `<div class="inv ${c.active ? "" : "off"}"><div class="inv-head"><span><b>${esc(c.label || "Sin nombre")}</b><small><span class="code">${esc(c.code)}</span> · ${c.uses} de ${c.max_uses} ${c.max_uses === 1 ? "uso" : "usos"} · ${c.access_days ? `${c.access_days} días` : "sin fin"}</small></span>${c.active ? `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="">Apagar</button>` : ""}</div>${rows}</div>`;
+    return `<div class="inv ${c.active ? "" : "off"}"><div class="inv-head"><span><b>${esc(c.label || "Sin nombre")}</b><small><span class="code">${esc(c.code)}</span> · ${c.uses} de ${c.max_uses} ${c.max_uses === 1 ? "uso" : "usos"} · ${c.access_days ? `${c.access_days} días` : "sin fin"}</small></span><span class="inv-acts"><button type="button" class="link-btn" data-action="invite-edit" data-code="${esc(c.code)}">Editar</button>${c.active ? `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="">Apagar</button>` : ""}</span></div>${rows}</div>`;
   };
   return `<section class="card"><div class="sec">Amigos y familia <span class="meta">${live} ${live === 1 ? "persona" : "personas"}</span></div>
     ${codes.length ? codes.map(block).join("") : `<p class="muted small">Aún no hay códigos.</p>`}
@@ -979,6 +979,46 @@ async function inviteAdmin(path, body) {
   const res = await fetch(`${API}${path}`, { method: "POST", headers: aiHeaders(), body: JSON.stringify(body) });
   if (!res.ok) throw new Error("x");
   return res.json();
+}
+// Edit a code (Uso de la app → Amigos y familia → Editar).
+let inviteEdit = null; // { code, label, maxUses, days, active, uses, error, busy }
+function inviteEditSheet() {
+  const e = inviteEdit;
+  const head = `<div class="sheet-head"><h2>Editar código</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>`;
+  openSheet(`${head}
+    <p class="muted small">Código <b style="font-family:ui-monospace,Menlo,monospace">${esc(e.code)}</b> · lo usan ${e.uses} ${e.uses === 1 ? "persona" : "personas"}.</p>
+    <label class="seg-label" for="ieLabel">Nombre (para quién es)</label>
+    <input id="ieLabel" class="big-input" maxlength="60" value="${esc(e.label)}" />
+    <label class="seg-label" for="ieMax">Cuántas personas pueden usarlo</label>
+    <input id="ieMax" class="big-input" type="number" inputmode="numeric" min="${Math.max(1, e.uses)}" max="500" value="${esc(e.maxUses)}" />
+    <label class="seg-label" for="ieDays">Días de Premium (vacío = sin fecha de fin)</label>
+    <input id="ieDays" class="big-input" type="number" inputmode="numeric" min="1" max="3650" placeholder="Sin fin" value="${esc(e.days)}" />
+    <p class="muted small">Si cambias los días, se aplica también a quien ya lo usa, contando desde el día que lo activó.</p>
+    <div class="seg" role="radiogroup" aria-label="Estado del código"><button type="button" role="radio" aria-checked="${e.active}" data-action="invite-edit-active" data-on="1">Activo</button><button type="button" role="radio" aria-checked="${!e.active}" data-action="invite-edit-active" data-on="0">Apagado</button></div>
+    ${e.error ? `<p class="ai-status warn">${esc(e.error)}</p>` : ""}
+    <button type="button" class="btn block" data-action="invite-edit-save" ${e.busy ? "disabled" : ""}>${e.busy ? "Guardando…" : "Guardar"}</button>`, "inviteEdit");
+}
+function inviteEditRead() {
+  if (!inviteEdit) return;
+  inviteEdit.label = $("ieLabel")?.value ?? inviteEdit.label;
+  inviteEdit.maxUses = $("ieMax")?.value ?? inviteEdit.maxUses;
+  inviteEdit.days = $("ieDays")?.value ?? inviteEdit.days;
+}
+async function inviteEditSave() {
+  inviteEditRead();
+  const e = inviteEdit;
+  e.error = "";
+  e.busy = true;
+  inviteEditSheet();
+  try {
+    await inviteAdmin("/invites/update", { code: e.code, label: e.label.trim(), maxUses: Number(e.maxUses), accessDays: String(e.days).trim() === "" ? null : Number(e.days), active: e.active });
+    usageInvites = await fetch(`${API}/invites`, { headers: aiHeaders() }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    inviteEdit = null;
+    usageSheet();
+    return;
+  } catch { e.error = `No se ha podido guardar. Los usos máximos no pueden ser menos de los que ya hay (${e.uses}).`; }
+  e.busy = false;
+  inviteEditSheet();
 }
 async function inviteNew() {
   const label = prompt("¿Para quién es? (por ejemplo, el nombre)", "");
@@ -3002,6 +3042,9 @@ const actions = {
   "invite-open": () => { inviteUi = { code: "", email: premiumUi.email || "", error: "", done: false, busy: false }; inviteSheet(); },
   "invite-go": () => inviteGo(),
   "invite-leave": () => inviteLeave(),
+  "invite-edit": (d) => { const c = usageInvites?.codes.find((x) => x.code === d.code); if (!c) return; inviteEdit = { code: c.code, label: c.label, maxUses: c.max_uses, days: c.access_days ?? "", active: Boolean(c.active), uses: c.uses, error: "", busy: false }; inviteEditSheet(); },
+  "invite-edit-active": (d) => { inviteEditRead(); inviteEdit.active = d.on === "1"; inviteEditSheet(); },
+  "invite-edit-save": () => inviteEditSave(),
   "invite-new": () => inviteNew(),
   "invite-revoke": (d) => inviteRevoke(d.code, d.email),
   "premium-portal": () => premiumPortal(),

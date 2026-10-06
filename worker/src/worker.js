@@ -1083,6 +1083,29 @@ async function handleInviteLeave(request, env, headers) {
   if (batch.length) await env.DB.batch(batch);
   return json({ ok: true, left: used.length }, 200, headers);
 }
+// Noza edits a code: name, how many people can use it, how long the access lasts (empty = no end), on/off. A new duration is applied to the
+// people who already use it (counted from the day each one activated it).
+async function handleInviteUpdate(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const code = String(body.code ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+  const inv = code && (await env.DB.prepare("SELECT code, uses, access_days FROM invites WHERE code = ?").bind(code).first());
+  if (!inv) return json({ error: "not_found" }, 404, headers);
+  const label = body.label === undefined ? null : clean(body.label, 60);
+  const max = body.maxUses === undefined ? null : vInt(body.maxUses, 1, 500, 1);
+  if (max !== null && max < inv.uses) return json({ error: "max_uses" }, 400, headers); // can't go below the people already using it
+  const daysGiven = body.accessDays !== undefined;
+  const days = !daysGiven || body.accessDays === null || body.accessDays === "" ? null : vInt(body.accessDays, 1, 3650, 365);
+  const active = body.active === undefined ? null : body.active ? 1 : 0;
+  const batch = [env.DB.prepare("UPDATE invites SET label = COALESCE(?, label), max_uses = COALESCE(?, max_uses), active = COALESCE(?, active)" + (daysGiven ? ", access_days = ?" : "") + " WHERE code = ?").bind(...[label, max, active, ...(daysGiven ? [days] : []), code])];
+  if (daysGiven) {
+    const people = (await env.DB.prepare("SELECT who, ts FROM invite_uses WHERE code = ? AND revoked = 0").bind(code).all()).results ?? [];
+    for (const u of people) batch.push(env.DB.prepare("UPDATE entitlements SET until = ? WHERE garden = ? AND source = 'invite' AND note = ?").bind(days ? u.ts + days * 86400000 : null, u.who, `invite:${code}`));
+  }
+  await env.DB.batch(batch);
+  return json({ ok: true }, 200, headers);
+}
 async function handleInvitesList(request, env, headers) {
   if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
   const codes = (await env.DB.prepare("SELECT code, label, max_uses, uses, access_days, expires, active, created FROM invites ORDER BY created DESC LIMIT 100").all()).results ?? [];
@@ -1971,6 +1994,7 @@ export default {
     if (pathname === "/invite/leave" && request.method === "POST") return handleInviteLeave(request, env, headers);
     if (pathname === "/invites" && request.method === "GET") return handleInvitesList(request, env, headers);
     if (pathname === "/invites" && request.method === "POST") return handleInviteCreate(request, env, headers);
+    if (pathname === "/invites/update" && request.method === "POST") return handleInviteUpdate(request, env, headers);
     if (pathname === "/invites/revoke" && request.method === "POST") return handleInviteRevoke(request, env, headers);
     if (pathname === "/polar/checkout" && request.method === "POST") return handlePolarCheckout(request, env, headers);
     if (pathname === "/polar/portal" && request.method === "POST") return handlePolarPortal(request, env, headers);

@@ -884,3 +884,5 @@ label.link-btn { cursor: pointer; }
 .inv-use.off b { text-decoration: line-through; }
 .inv .link-btn { margin-top: 0; font-size: 13px; font-weight: 600; color: var(--text-3); padding: 6px 2px; }
 .inv .link-btn:active { color: #c93b30; }
+
+.inv-acts { display: flex; gap: 10px; flex: none; }

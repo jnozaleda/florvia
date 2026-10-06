@@ -154,6 +154,24 @@ await test("la persona puede dejar el código: vuelve a gratis y el código recu
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM invite_uses WHERE code = ?").get(c).n, 0);
   assert.equal((await call("/invite/redeem", { code: c, email: "otra@example.com" }, { device: "otro-movil" })).status, 200);
 });
+await test("el dueño edita un código: nombre, usos, duración (también a quien ya lo usa) y apagado", async () => {
+  const c = (await call("/invites", { label: "Editable", maxUses: 2, accessDays: 30 }, { admin: true })).body.code;
+  seen("editado", 90);
+  await call("/invite/redeem", { code: c, email: "e@example.com" }, { device: "editado" });
+  const until0 = sqlite.prepare("SELECT until FROM entitlements WHERE note = ?").get(`invite:${c}`).until;
+  assert.equal((await call("/invites/update", { code: c, label: "Nuevo", accessDays: 100 })).status, 401);
+  assert.equal((await call("/invites/update", { code: c, label: "Nuevo", maxUses: 5, accessDays: 100 }, { admin: true })).status, 200);
+  const row = sqlite.prepare("SELECT label, max_uses, access_days FROM invites WHERE code = ?").get(c);
+  assert.deepEqual({ ...row }, { label: "Nuevo", max_uses: 5, access_days: 100 });
+  assert.ok(sqlite.prepare("SELECT until FROM entitlements WHERE note = ?").get(`invite:${c}`).until > until0 + 60 * 86400000);
+  assert.equal((await call("/invites/update", { code: c, accessDays: null }, { admin: true })).status, 200);
+  assert.equal(sqlite.prepare("SELECT until FROM entitlements WHERE note = ?").get(`invite:${c}`).until, null);
+  assert.equal((await call("/invites/update", { code: c, active: false }, { admin: true })).status, 200);
+  assert.equal((await call("/invite/redeem", { code: c, email: "x@example.com" }, { device: "otro-x" })).status, 404);
+  assert.equal((await call("/invites/update", { code: c, active: true }, { admin: true })).status, 200);
+  assert.equal((await call("/invite/redeem", { code: c, email: "x@example.com" }, { device: "otro-x" })).status, 200);
+  assert.equal((await call("/invites/update", { code: c, maxUses: 1 }, { admin: true })).status, 400); // ya lo usan 2
+});
 
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
 console.log("\nTodas las pruebas de planes pasan");
