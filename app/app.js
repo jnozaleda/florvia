@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005r";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006a";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005r";
-import { buildICS } from "./calendar.js?v=20261005r";
-import { scrubPlant } from "./clean.js?v=20261005r";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005r";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006a";
+import { buildICS } from "./calendar.js?v=20261006a";
+import { scrubPlant } from "./clean.js?v=20261006a";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006a";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -143,7 +143,7 @@ function welcomeCard() {
   return `<section class="card list-card settings welcome"><div class="sec">Te damos la bienvenida a Florvia <span class="meta">${done} de ${steps.length}</span></div>
     <p class="muted small" style="padding:0 16px 8px">${steps.length} pasos para empezar. Puedes hacerlos en el orden que quieras; todos son opcionales.</p>
     ${steps.map(row).join("")}
-    <div class="two-btns" style="padding:8px 16px 12px">${state.data.plants.length ? "" : `<button class="btn secondary" data-action="open-sync">Ya tengo un jardín</button>`}<button class="btn secondary" data-action="welcome-hide">Ocultar</button></div></section>`;
+    <div class="two-btns" style="padding:8px 16px 12px">${state.data.plants.length ? "" : `<button class="btn secondary" data-action="open-sync">Ya tengo un jardín</button>`}<button class="btn secondary" data-action="invite-open">Tengo un código</button><button class="btn secondary" data-action="welcome-hide">Ocultar</button></div></section>`;
 }
 function installSheet() {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005r";
+      sc.src = "vendor/qrcode.min.js?v=20261006a";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -872,8 +872,8 @@ function premiumSheet(reason = "", keep = false) {
   };
   if (me.premium && me.plan !== "trial") {
     return openSheet(`${head}
-      <section class="card"><b>Tienes Premium${me.plan === "lifetime" ? " · de por vida" : ""}</b>
-        <p class="muted">Gracias por apoyar Florvia.</p></section>
+      <section class="card"><b>Tienes Premium${me.plan === "lifetime" ? " · de por vida" : me.source === "invite" ? " · amigos y familia" : ""}</b>
+        <p class="muted">${me.source === "invite" ? "Gracias por probar Florvia: tienes todo incluido, sin pagar." : "Gracias por apoyar Florvia."}</p></section>
       <section class="card"><div class="sec">Este mes</div>${row("Qué planto aquí", `${used.suggest ?? 0} de ${L.suggest}`)}${row("Identificar por foto", `${used.identify ?? 0} de ${L.identify}`)}${row("¿Qué le pasa?", `${used.diagnose ?? 0} de ${L.diagnose}`)}${L.plants ? "" : row("Plantas", "ilimitadas")}</section>
       <p class="muted small">Las consultas guardadas en memoria no cuentan. El contador se reinicia el día 1.</p>
       ${me.paid ? `<section class="card"><div class="sec">Tu suscripción</div><p class="muted small">${me.paid.plan === "lifetime" ? "Pago único «de por vida»." : me.paid.until ? `Cancelada: sigue activa hasta el ${fmtDate(new Date(me.paid.until).toISOString().slice(0, 10))}.` : "Activa."}</p>
@@ -910,9 +910,80 @@ function premiumSheet(reason = "", keep = false) {
       ${sent ? `<p class="ai-status ok">¡Apuntado! Todavía no se puede pagar: te avisamos en cuanto esté abierto.</p>` : ""}
       ${premiumUi.error ? `<p class="ai-status warn">${esc(premiumUi.error)}</p>` : ""}
       <p class="muted small">${me.payments ? "" : "Los pagos aún no están abiertos. Al pulsar solo apuntamos tu interés."}</p></section>
-    <p class="muted small">¿Probando Florvia o eres de amigos y familia? <a href="${mailto}">Escríbenos a hello@florvia.app</a> y pídenos un código de uso gratuito.</p>`, "premium");
+    <p class="muted small">¿Probando Florvia o eres de amigos y familia? <a href="${mailto}">Escríbenos a hello@florvia.app</a> y pídenos un código de uso gratuito.</p>
+    <button type="button" class="btn block secondary" data-action="invite-open">Ya tengo un código</button>`, "premium");
 }
 const PLAN_PREMIUM = { suggest: 30, identify: 30, diagnose: 30 };
+// Friends and family: a code + an email gives Premium without paying (Worker /invite/redeem); the email is kept so Noza knows who uses it.
+let inviteUi = { code: "", email: "", error: "", done: false, busy: false };
+const INVITE_ERRORS = { email: "Escribe un correo válido.", code: "Ese código no es válido o ya no está activo.", used: "Ese código ya se ha usado todas las veces posibles.", limit: "Demasiados intentos hoy. Prueba mañana o escribe a hello@florvia.app." };
+function inviteSheet() {
+  const head = `<div class="sheet-head"><h2>Código de amigos y familia</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>`;
+  if (inviteUi.done) return openSheet(`${head}<p class="ai-status ok">¡Listo! Ya tienes Premium con todo incluido. Gracias por probar Florvia.</p><button type="button" class="btn block" data-action="close">Cerrar</button>`, "invite");
+  openSheet(`${head}
+    <p class="muted small">Si alguien te ha dado un código para probar Florvia, escríbelo aquí junto con tu correo. Tendrás Premium sin pagar.</p>
+    <label class="seg-label" for="invCode">Código</label>
+    <input id="invCode" class="big-input" maxlength="16" autocomplete="off" autocapitalize="characters" placeholder="ABCD2345" value="${esc(inviteUi.code)}" />
+    <label class="seg-label" for="invEmail">Tu correo</label>
+    <input id="invEmail" type="email" class="big-input" inputmode="email" autocomplete="email" maxlength="80" placeholder="nombre@correo.com" value="${esc(inviteUi.email)}" />
+    <p class="muted small">Guardamos tu correo para saber quién usa este acceso. Solo lo vemos nosotros y lo borramos si lo pides en hello@florvia.app o desde Ajustes → «Borrar mis datos del servidor».</p>
+    ${inviteUi.error ? `<p class="ai-status warn">${esc(inviteUi.error)}</p>` : ""}
+    <button type="button" class="btn block" data-action="invite-go" ${inviteUi.busy ? "disabled" : ""}>${inviteUi.busy ? "Comprobando…" : "Activar Premium"}</button>`, "invite");
+}
+async function inviteGo() {
+  inviteUi.code = $("invCode")?.value.trim() ?? inviteUi.code;
+  inviteUi.email = $("invEmail")?.value.trim() ?? inviteUi.email;
+  inviteUi.error = "";
+  inviteUi.busy = true;
+  inviteSheet();
+  try {
+    const res = await fetch(`${API}/invite/redeem`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ code: inviteUi.code, email: inviteUi.email }) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error in INVITE_ERRORS ? body.error : "x");
+    inviteUi.done = true;
+    me = null;
+    loadMe();
+  } catch (err) { inviteUi.error = INVITE_ERRORS[err.message] ?? "No se ha podido comprobar el código. Prueba otra vez."; }
+  inviteUi.busy = false;
+  inviteSheet();
+}
+// «Amigos y familia» for Noza (Uso de la app): create codes, see who used them, take access away.
+let usageInvites = null; // { codes, uses } from /invites
+function invitesCard() {
+  if (!usageInvites) return "";
+  const { codes, uses } = usageInvites;
+  const people = (code) => uses.filter((u) => u.code === code);
+  return `<section class="card"><div class="sec">Amigos y familia <span class="meta">${uses.filter((u) => !u.revoked).length} personas</span></div>
+    ${codes.length ? codes.map((c) => `<div class="u-row"><span><b>${esc(c.code)}</b>${c.label ? ` · ${esc(c.label)}` : ""}${c.active ? "" : " · apagado"}</span><b>${c.uses}/${c.max_uses}<small>${c.access_days ? `${c.access_days} días` : "sin fin"}</small></b></div>
+      ${people(c.code).map((u) => `<div class="u-row"><span class="muted small">${esc(u.email)}${u.revoked ? " · retirado" : ""}</span>${u.revoked ? "" : `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="${esc(u.email)}">Retirar</button>`}</div>`).join("")}
+      ${c.active ? `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="">Apagar el código y retirar a todos</button>` : ""}`).join("") : `<p class="muted small">Aún no hay códigos.</p>`}
+    <div style="margin-top:10px"><button type="button" class="btn small secondary" data-action="invite-new">Crear código</button></div></section>`;
+}
+async function inviteAdmin(path, body) {
+  const res = await fetch(`${API}${path}`, { method: "POST", headers: aiHeaders(), body: JSON.stringify(body) });
+  if (!res.ok) throw new Error("x");
+  return res.json();
+}
+async function inviteNew() {
+  const label = prompt("¿Para quién es? (por ejemplo, el nombre)", "");
+  if (label === null) return;
+  const max = Number(prompt("¿Cuántas personas pueden usarlo?", "1"));
+  if (!Number.isFinite(max) || max < 1) return;
+  const days = prompt("¿Cuántos días de Premium da? (vacío = hasta que lo retires)", "");
+  if (days === null) return;
+  try {
+    const out = await inviteAdmin("/invites", { label, maxUses: max, accessDays: days.trim() || null });
+    prompt("Código creado. Cópialo y pásaselo:", out.code);
+  } catch { alert("No se ha podido crear el código."); }
+  usageInvites = await fetch(`${API}/invites`, { headers: aiHeaders() }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (sheet.open && sheet.dataset.view === "usage") usageSheet();
+}
+async function inviteRevoke(code, email) {
+  if (!confirm(email ? `¿Retirar el acceso de ${email}?` : `¿Apagar el código ${code} y retirar el acceso a todos los que lo usaron?`)) return;
+  try { await inviteAdmin("/invites/revoke", { code, email }); } catch { alert("No se ha podido retirar."); }
+  usageInvites = await fetch(`${API}/invites`, { headers: aiHeaders() }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (sheet.open && sheet.dataset.view === "usage") usageSheet();
+}
 // Polar checkout / customer portal: the Worker makes the session, the person pays on Polar's page and comes back to ?premium=ok.
 const PAY_ERRORS = { sync: "Para pagar, activa antes la sincronización (Ajustes → Sincronizar): tu plan te sigue así a todos tus móviles.", soldout: "Las plazas «de por vida» se han agotado. Elige otro plan.", closed: "Los pagos aún no están abiertos.", none: "No hay ninguna suscripción que gestionar." };
 async function polarGo(path, body) {
@@ -1140,6 +1211,7 @@ async function loadUsage() {
     const [res, webRes] = await Promise.all([fetch(`${API}/stats2?days=30`, { headers: aiHeaders() }), fetch(`${API}/stats/web?days=30`, { headers: aiHeaders() }).catch(() => null), pageTitles ? null : fetch("pages.json").then((r) => r.ok ? r.json() : null).then((t) => { pageTitles = t; }).catch(() => {})]);
     usage = res.ok ? await res.json() : { error: res.status === 401 ? "code" : "ai" };
     usageWeb = webRes?.ok ? await webRes.json() : { error: webRes?.status === 404 ? "missing" : "ai" };
+    usageInvites = await fetch(`${API}/invites`, { headers: aiHeaders() }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   } catch { usage = { error: "network" }; }
   if (sheet.open && sheet.dataset.view === "usage") usageSheet();
   loadFeedback(false);
@@ -1199,6 +1271,7 @@ function usageSheet() {
     ${tokensCard()}
     ${webCard()}
     ${topicsCard()}
+    ${invitesCard()}
     ${refsCard()}
     ${intentCard()}
     ${feedbackAdminCards()}
@@ -2904,6 +2977,10 @@ const actions = {
   "open-premium": () => premiumSheet(""),
   "premium-intent": (d) => premiumIntent(d.c),
   "premium-buy": (d) => premiumBuy(d.c),
+  "invite-open": () => { inviteUi = { code: "", email: premiumUi.email || "", error: "", done: false, busy: false }; inviteSheet(); },
+  "invite-go": () => inviteGo(),
+  "invite-new": () => inviteNew(),
+  "invite-revoke": (d) => inviteRevoke(d.code, d.email),
   "premium-portal": () => premiumPortal(),
   "open-feedback": () => { fb = null; feedbackSheet(); },
   "admin-push": async (d) => {

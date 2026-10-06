@@ -672,6 +672,7 @@ async function handleUsageDelete(request, env, headers) {
       env.DB.prepare("DELETE FROM events WHERE device = ? OR garden = ?").bind(who.device || "-", who.garden || "-"),
       env.DB.prepare("DELETE FROM feedback WHERE device = ? OR garden = ?").bind(who.device || "-", who.garden || "-"),
       env.DB.prepare("DELETE FROM errors WHERE device = ? OR garden = ?").bind(who.device || "-", who.garden || "-"),
+      ...ids.flatMap((id) => [env.DB.prepare("DELETE FROM invite_uses WHERE who = ?").bind(id), env.DB.prepare("DELETE FROM entitlements WHERE garden = ? AND source = 'invite'").bind(id)]),
       ...ids.flatMap((id) => [env.DB.prepare("DELETE FROM labels WHERE id = ?").bind(id), env.DB.prepare("DELETE FROM internal WHERE id = ?").bind(id)]),
     ]);
   }
@@ -869,9 +870,10 @@ async function planOf(env, request) {
   if (env.DB && ids.length) {
     const internal = await env.DB.prepare(`SELECT 1 AS x FROM internal WHERE id IN (${ids.map(() => "?").join(",")})`).bind(...ids).first();
     if (internal) { plan = "premium"; source = "internal"; }
-    if (plan === "free" && garden) {
-      const e = await env.DB.prepare("SELECT plan, until FROM entitlements WHERE garden = ?").bind(garden).first();
-      if (e && (!e.until || e.until > Date.now())) { plan = e.plan === "lifetime" ? "lifetime" : "premium"; source = "paid"; }
+    if (plan === "free") {
+      // entitlements.garden holds a garden hash (16 hex, paid) or a device hash (12 hex, an invite redeemed on a phone that isn't synced)
+      const e = await env.DB.prepare(`SELECT plan, until, source FROM entitlements WHERE garden IN (${["?", "?"].join(",")})`).bind(garden || "-", device || "-").first();
+      if (e && (!e.until || e.until > Date.now())) { plan = e.plan === "lifetime" ? "lifetime" : "premium"; source = e.source === "invite" ? "invite" : "paid"; }
     }
     if (plan === "free") {
       const first = await env.DB.prepare("SELECT MIN(day) AS d FROM events WHERE (garden <> '' AND garden = ?) OR (device <> '' AND device = ?)").bind(garden || "-", device || "-").first();
@@ -1022,6 +1024,80 @@ async function handlePolarWebhook(request, env, headers) {
     await revoke();
   }
   return json({ ok: true }, 200, headers);
+}
+
+// ---------- Friends and family: invite codes ----------
+// Noza creates codes (POST /invites, access code) and gives them out; whoever types one plus an email gets Premium without paying.
+// The email is kept (invite_uses) so Noza knows who uses the access; revoking a code (POST /invites/revoke) removes the plans it gave.
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const newInviteCode = () => { const b = crypto.getRandomValues(new Uint8Array(8)); return [...b].map((x) => CODE_ALPHABET[x % CODE_ALPHABET.length]).join(""); };
+async function handleInviteRedeem(request, env, headers, ctx) {
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const code = String(body.code ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+  const email = clean(body.email, 80).toLowerCase();
+  if (!/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(email)) return json({ error: "email" }, 400, headers);
+  if (code.length < 6) return json({ error: "code" }, 400, headers);
+  // Guessing codes: at most 15 tries per connection and day.
+  if (env.CACHE) {
+    const k = `invtry:${await hashId(request.headers.get("CF-Connecting-IP") ?? "unknown")}:${new Date().toISOString().slice(0, 10)}`;
+    const n = Number(await env.CACHE.get(k)) || 0;
+    if (n >= 15) return json({ error: "limit" }, 429, headers);
+    await env.CACHE.put(k, String(n + 1), { expirationTtl: 172800 });
+  }
+  const who = await usageWho(request);
+  const garden = (await keyGarden(request)) || "";
+  const id = garden || who.device;
+  if (!id) return json({ error: "input" }, 400, headers);
+  const inv = await env.DB.prepare("SELECT code, label, max_uses, uses, access_days, expires, active FROM invites WHERE code = ?").bind(code).first();
+  if (!inv || !inv.active || (inv.expires && inv.expires < Date.now())) return json({ error: "code" }, 404, headers);
+  const already = await env.DB.prepare("SELECT id FROM invite_uses WHERE code = ? AND who = ? AND revoked = 0").bind(code, id).first();
+  if (!already) {
+    if (inv.uses >= inv.max_uses) return json({ error: "used" }, 409, headers);
+    const now = Date.now();
+    const until = inv.access_days ? now + inv.access_days * 86400000 : null;
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO invite_uses (ts, code, email, who) VALUES (?, ?, ?, ?)").bind(now, code, email, id),
+      env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ?").bind(code),
+      env.DB.prepare("INSERT INTO entitlements (garden, plan, source, since, until, note) VALUES (?, 'premium', 'invite', ?, ?, ?) ON CONFLICT (garden) DO UPDATE SET plan = CASE WHEN entitlements.plan = 'lifetime' THEN 'lifetime' ELSE 'premium' END, source = CASE WHEN entitlements.plan = 'lifetime' THEN entitlements.source ELSE 'invite' END, until = CASE WHEN entitlements.plan = 'lifetime' THEN entitlements.until ELSE excluded.until END, note = excluded.note").bind(id, now, until, `invite:${code}`),
+    ]);
+    ctx.waitUntil(sendAdminEmail(env, "Florvia · Nuevo acceso de amigos y familia", `${email} ha usado el código ${code}${inv.label ? ` (${inv.label})` : ""}.\nUsos: ${inv.uses + 1} de ${inv.max_uses}.`, email).catch(() => {}));
+  }
+  return json({ ok: true, until: inv.access_days ? Date.now() + inv.access_days * 86400000 : null }, 200, headers);
+}
+async function handleInvitesList(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  const codes = (await env.DB.prepare("SELECT code, label, max_uses, uses, access_days, expires, active, created FROM invites ORDER BY created DESC LIMIT 100").all()).results ?? [];
+  const uses = (await env.DB.prepare("SELECT code, email, ts, revoked FROM invite_uses ORDER BY ts DESC LIMIT 300").all()).results ?? [];
+  return json({ codes, uses }, 200, headers);
+}
+async function handleInviteCreate(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const code = newInviteCode();
+  const label = clean(body.label, 60);
+  const max = vInt(body.maxUses, 1, 500, 1);
+  const days = body.accessDays == null || body.accessDays === "" ? null : vInt(body.accessDays, 1, 3650, 365);
+  const exp = body.expiresDays == null || body.expiresDays === "" ? null : Date.now() + vInt(body.expiresDays, 1, 3650, 30) * 86400000;
+  await env.DB.prepare("INSERT INTO invites (code, label, max_uses, access_days, expires, created) VALUES (?, ?, ?, ?, ?, ?)").bind(code, label, max, days, exp, Date.now()).run();
+  return json({ code }, 200, headers);
+}
+async function handleInviteRevoke(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const code = String(body.code ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+  if (!code) return json({ error: "input" }, 400, headers);
+  const email = clean(body.email, 80).toLowerCase();
+  // With an email: only that person loses the access; without it: the code is turned off and everyone it gave access to loses it.
+  const people = (await env.DB.prepare(`SELECT who FROM invite_uses WHERE code = ? AND revoked = 0${email ? " AND email = ?" : ""}`).bind(...(email ? [code, email] : [code])).all()).results ?? [];
+  const batch = people.flatMap((r) => [env.DB.prepare("DELETE FROM entitlements WHERE garden = ? AND source = 'invite' AND note = ?").bind(r.who, `invite:${code}`)]);
+  batch.push(env.DB.prepare(`UPDATE invite_uses SET revoked = 1 WHERE code = ?${email ? " AND email = ?" : ""}`).bind(...(email ? [code, email] : [code])));
+  if (!email) batch.push(env.DB.prepare("UPDATE invites SET active = 0 WHERE code = ?").bind(code));
+  await env.DB.batch(batch);
+  return json({ ok: true, removed: people.length }, 200, headers);
 }
 // «Quiero Premium»: records interest (no payments yet) and tells Noza by email and push.
 async function handlePremiumIntent(request, env, headers, ctx) {
@@ -1874,6 +1950,10 @@ export default {
     if (pathname === "/push/admin" && request.method === "POST") return handleAdminPush(request, env, headers);
     if (pathname === "/me" && request.method === "GET") return handleMe(request, env, headers);
     if (pathname === "/premium/intent" && request.method === "POST") return handlePremiumIntent(request, env, headers, ctx);
+    if (pathname === "/invite/redeem" && request.method === "POST") return handleInviteRedeem(request, env, headers, ctx);
+    if (pathname === "/invites" && request.method === "GET") return handleInvitesList(request, env, headers);
+    if (pathname === "/invites" && request.method === "POST") return handleInviteCreate(request, env, headers);
+    if (pathname === "/invites/revoke" && request.method === "POST") return handleInviteRevoke(request, env, headers);
     if (pathname === "/polar/checkout" && request.method === "POST") return handlePolarCheckout(request, env, headers);
     if (pathname === "/polar/portal" && request.method === "POST") return handlePolarPortal(request, env, headers);
     if (pathname === "/polar/webhook" && request.method === "POST") return handlePolarWebhook(request, env, headers);

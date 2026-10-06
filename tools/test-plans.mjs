@@ -18,7 +18,7 @@ const stmt = (sql, args = []) => ({
   all: async () => ({ results: sqlite.prepare(sql).all(...args) }),
   first: async () => sqlite.prepare(sql).get(...args) ?? null,
 });
-const env = { DB: { prepare: (sql) => stmt(sql), batch: async (l) => Promise.all(l.map((s) => s.run())) }, ALLOWED_ORIGINS: "https://florvia.app" };
+const env = { DB: { prepare: (sql) => stmt(sql), batch: async (l) => Promise.all(l.map((s) => s.run())) }, ALLOWED_ORIGINS: "https://florvia.app", ACCESS_CODE: "adm" };
 const ctx = { waitUntil: () => {} };
 
 const sha = (t) => createHash("sha256").update(t).digest("hex");
@@ -75,6 +75,71 @@ await test("un dispositivo marcado como tuyo es Premium aunque la prueba haya ca
 await test("el plan gratuito se ofrece también como freeLimits a quien está en prueba", async () => {
   const m = await me("a-mitad");
   assert.deepEqual({ ...m.freeLimits }, { plants: 8, suggest: 5, identify: 5, diagnose: 5 });
+});
+
+// ---- códigos de amigos y familia
+const call = async (path, body, { device = "d-x", key, admin = false, method = "POST" } = {}) => {
+  const headers = { Origin: "https://florvia.app", "Content-Type": "application/json", "X-Device": device };
+  if (key) headers["X-Key"] = key;
+  if (admin) headers["X-Access-Code"] = "adm";
+  const r = await worker.fetch(new Request(`https://api.florvia.app${path}`, { method, headers, body: method === "GET" ? undefined : JSON.stringify(body ?? {}) }), env, ctx);
+  return { status: r.status, body: await r.json() };
+};
+let CODE = "";
+await test("sin el código de acceso no se pueden crear ni listar códigos", async () => {
+  assert.equal((await call("/invites", { label: "x" })).status, 401);
+  assert.equal((await call("/invites", null, { method: "GET" })).status, 401);
+});
+await test("se crea un código de 8 letras para 1 persona", async () => {
+  const r = await call("/invites", { label: "Ana", maxUses: 1 }, { admin: true });
+  assert.equal(r.status, 200); CODE = r.body.code; assert.match(CODE, /^[A-Z2-9]{8}$/);
+});
+await test("canjear necesita un email válido y un código que exista", async () => {
+  assert.equal((await call("/invite/redeem", { code: CODE, email: "no-es-email" }, { device: "amiga" })).status, 400);
+  assert.equal((await call("/invite/redeem", { code: "ZZZZZZZZ", email: "ana@example.com" }, { device: "amiga" })).status, 404);
+});
+await test("canjear da Premium sin pagar y guarda el email", async () => {
+  seen("amiga", 90);
+  const r = await call("/invite/redeem", { code: CODE.toLowerCase(), email: "Ana@Example.com" }, { device: "amiga" });
+  assert.equal(r.status, 200);
+  const m = await me("amiga");
+  assert.equal(m.plan, "premium"); assert.equal(m.source, "invite");
+  assert.equal(sqlite.prepare("SELECT email FROM invite_uses WHERE code = ?").get(CODE).email, "ana@example.com");
+});
+await test("canjear dos veces en el mismo dispositivo no gasta otro uso", async () => {
+  assert.equal((await call("/invite/redeem", { code: CODE, email: "ana@example.com" }, { device: "amiga" })).status, 200);
+  assert.equal(sqlite.prepare("SELECT uses FROM invites WHERE code = ?").get(CODE).uses, 1);
+});
+await test("un código de 1 uso no sirve a otra persona", async () => {
+  assert.equal((await call("/invite/redeem", { code: CODE, email: "otro@example.com" }, { device: "otra" })).status, 409);
+});
+await test("si luego sincroniza el jardín, sigue siendo Premium", async () => {
+  const m = await me("amiga", "QRSTUVWXYZABCDEF");
+  assert.equal(m.plan, "premium");
+});
+await test("el listado enseña el código y quién lo usó", async () => {
+  const r = await call("/invites", null, { admin: true, method: "GET" });
+  assert.equal(r.body.codes[0].code, CODE); assert.equal(r.body.uses[0].email, "ana@example.com");
+});
+await test("retirar el acceso de una persona la devuelve a gratis (tras la prueba)", async () => {
+  const r = await call("/invites/revoke", { code: CODE, email: "ana@example.com" }, { admin: true });
+  assert.equal(r.body.removed, 1);
+  assert.equal((await me("amiga")).plan, "free");
+});
+await test("retirar un código lo apaga: ya no se puede canjear", async () => {
+  const r2 = await call("/invites", { label: "Grupo", maxUses: 5 }, { admin: true });
+  const c2 = r2.body.code;
+  await call("/invite/redeem", { code: c2, email: "b@example.com" }, { device: "b" });
+  await call("/invite/redeem", { code: c2, email: "c@example.com" }, { device: "c" });
+  assert.equal((await call("/invites/revoke", { code: c2 }, { admin: true })).body.removed, 2);
+  assert.equal((await call("/invite/redeem", { code: c2, email: "d@example.com" }, { device: "d" })).status, 404);
+});
+await test("un código con duración limitada da Premium hasta esa fecha", async () => {
+  const c = (await call("/invites", { label: "Mes", maxUses: 1, accessDays: 30 }, { admin: true })).body.code;
+  seen("temporal", 90);
+  const r = await call("/invite/redeem", { code: c, email: "t@example.com" }, { device: "temporal" });
+  assert.ok(r.body.until > Date.now() && r.body.until < Date.now() + 31 * 86400000);
+  assert.equal((await me("temporal")).plan, "premium");
 });
 
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }

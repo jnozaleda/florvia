@@ -94,3 +94,18 @@ CREATE TABLE IF NOT EXISTS pv_site (day TEXT NOT NULL, kind TEXT NOT NULL, n INT
 -- kind: care (ficha al añadir), explore, identify (species recognised from a photo), added (plant added to the garden), diagnose (plant), symptom,
 -- place («¿Dónde está mejor?», plant), suggest_pref and suggest_pick («Qué planto aquí»). internal = 1 when it came from a device marked as Noza's.
 CREATE TABLE IF NOT EXISTS topics (day TEXT NOT NULL, kind TEXT NOT NULL, key TEXT NOT NULL, src TEXT NOT NULL, internal INTEGER NOT NULL DEFAULT 0, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, key, src, internal));
+
+-- Friends-and-family access: codes Noza creates (invites) and who used them (invite_uses, with the email they gave).
+-- A use grants an entitlement (source = 'invite', note = 'invite:CODE'); revoking a code removes those entitlements.
+CREATE TABLE IF NOT EXISTS invites (
+  code TEXT PRIMARY KEY, label TEXT NOT NULL DEFAULT '', max_uses INTEGER NOT NULL DEFAULT 1, uses INTEGER NOT NULL DEFAULT 0,
+  access_days INTEGER,            -- NULL = Premium until revoked
+  expires INTEGER,                -- the code stops working after this time (ms), NULL = never
+  active INTEGER NOT NULL DEFAULT 1, created INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS invite_uses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, code TEXT NOT NULL, email TEXT NOT NULL,
+  who TEXT NOT NULL,              -- garden hash or device hash the plan was given to
+  revoked INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_invite_uses_code ON invite_uses(code);
