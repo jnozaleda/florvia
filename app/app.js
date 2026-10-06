@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006g";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006h";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006g";
-import { buildICS } from "./calendar.js?v=20261006g";
-import { scrubPlant } from "./clean.js?v=20261006g";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006g";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006h";
+import { buildICS } from "./calendar.js?v=20261006h";
+import { scrubPlant } from "./clean.js?v=20261006h";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006h";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -636,7 +636,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006g";
+      sc.src = "vendor/qrcode.min.js?v=20261006h";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1207,6 +1207,20 @@ function topicsCard() {
     ${kinds.length ? kinds.map((k) => `<details class="pf-plain"><summary>${TOPIC_LABEL[k]} <span class="meta">${set[k].reduce((a, [, n]) => a + n, 0)}</span></summary>${set[k].map(([key, n]) => `<div class="u-row"><span>${esc(topicName(k, key))}</span><b>${n}</b></div>`).join("")}</details>`).join("") : `<p class="muted small">${topicsMine ? "Todavía no hay datos de tus dispositivos." : "Todavía no hay datos de uso real. Se cuenta desde que se activó esta tarjeta."}</p>`}
     <div style="margin-top:10px">${toggle}</div></section>`;
 }
+// «Retención»: of the real people whose first day is old enough, how many came back (next day, within the week, later in the month).
+function retentionCard() {
+  const r = usage?.retention;
+  if (!r || !r.overall.people) return "";
+  const pct = (m) => (m.n ? `${Math.round((m.back / m.n) * 100)} %` : "—");
+  const frac = (m) => (m.n ? `${m.back} de ${m.n}` : "aún pronto");
+  const o = r.overall;
+  const rows = [["Al día siguiente (D1)", o.d1], ["Esa primera semana (días 1–7)", o.w1], ["Más adelante (días 8–30)", o.m1]];
+  return `<section class="card"><div class="sec">Retención <span class="meta">personas reales</span></div>
+    ${rows.map(([label, m]) => `<div class="u-row"><span>${label}</span><b>${pct(m)}<small>${frac(m)}</small></b></div>`).join("")}
+    <details class="pf-plain"><summary>Por semana de alta <span class="meta">${r.cohorts.length}</span></summary>
+      ${r.cohorts.map((c) => `<div class="u-row"><span>Semana del ${fmtDate(c.week, { day: "numeric", month: "short" })}<small>${c.people} ${c.people === 1 ? "persona" : "personas"}</small></span><b>D1 ${pct(c.d1)} · sem. ${pct(c.w1)} · mes ${pct(c.m1)}</b></div>`).join("")}</details>
+    <p class="muted small">Solo cuenta a quien ya ha tenido tiempo de volver. Con pocas personas los porcentajes bailan mucho: mira también «de cuántas».</p></section>`;
+}
 function tokensCard() {
   const k = usage?.aiKinds ?? {};
   const rows = Object.entries(k).sort((a, b) => b[1].tin + b[1].tout - (a[1].tin + a[1].tout));
@@ -1333,6 +1347,7 @@ function usageSheet() {
     <section class="card"><div class="sec">Pruebas y dispositivos tuyos</div>
       <p class="muted small">${buckets ? `Fuera de las cifras: ${esc(buckets)}.` : "Nada fuera de las cifras por ahora."}</p>
       <button type="button" class="btn block secondary" data-action="usage-mine" data-on="${usage.me.internal ? "0" : "1"}">${usage.me.internal ? "Este dispositivo está marcado como tuyo · quitar la marca" : "Marcar este dispositivo como mío"}</button></section>
+    ${retentionCard()}
     ${tokensCard()}
     ${webCard()}
     ${topicsCard()}

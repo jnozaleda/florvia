@@ -628,6 +628,25 @@ async function handleStats2(request, env, headers) {
     else if (r.name === "limit") d.ai.limits += r.n;
     else d.ai.errors += r.n;
   }
+  // Retention: of the people whose first real day is old enough, how many came back. D1 = the next day exactly; week = any day 1–7 after
+  // the first; month = any day 8–30. A person only counts for a window once it has fully elapsed, so recent cohorts never drag the rate down.
+  const addDays = (d, k) => new Date(Date.parse(`${d}T00:00:00Z`) + k * 86400000).toISOString().slice(0, 10);
+  const WINDOWS = { d1: [1, 1], w1: [1, 7], m1: [8, 30] };
+  const weekStart = (d) => addDays(d, -((new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7));
+  const bucketOf = () => ({ people: 0, d1: { n: 0, back: 0 }, w1: { n: 0, back: 0 }, m1: { n: 0, back: 0 } });
+  const retention = { overall: bucketOf(), cohorts: {} };
+  for (const p of Object.values(people)) {
+    const week = weekStart(p.first);
+    for (const b of [retention.overall, (retention.cohorts[week] ??= bucketOf())]) {
+      b.people += 1;
+      for (const [k, [from, to]] of Object.entries(WINDOWS)) {
+        if (addDays(p.first, to) > today) continue;
+        b[k].n += 1;
+        for (let i = from; i <= to; i++) if (p.days.has(addDays(p.first, i))) { b[k].back += 1; break; }
+      }
+    }
+  }
+  retention.cohorts = Object.entries(retention.cohorts).sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 8).map(([week, b]) => ({ week, ...b }));
   const kindOf = (id) => (id === "anon" ? "anon" : id.length === 16 ? "garden" : "device");
   const list = Object.values(people).map((p) => ({ id: p.id, code: p.id.slice(0, 4).toUpperCase(), kind: kindOf(p.id), label: labels[p.id] ?? "", first: p.first, last: p.last, activeDays: p.days.size, opens: p.opens, aiCalls: p.aiCalls }))
     .sort((a, b) => (b.last > a.last ? 1 : b.last < a.last ? -1 : b.activeDays - a.activeDays));
@@ -642,7 +661,7 @@ async function handleStats2(request, env, headers) {
   }
   const refRows = (await env.DB.prepare("SELECT r.ref AS ref, COUNT(*) AS people, SUM(EXISTS (SELECT 1 FROM events e WHERE e.device = r.device AND e.kind = 'event' AND e.name IN ('plant_add_ai', 'plant_add_manual'))) AS planted FROM referrals r WHERE r.src IN ('prod', 'old') AND r.device NOT IN (SELECT id FROM internal) GROUP BY r.ref ORDER BY people DESC LIMIT 30").all()).results ?? [];
   return json({
-    cleanStart, today, aiKinds, intent, refs: refRows,
+    cleanStart, today, aiKinds, intent, refs: refRows, retention,
     me: { internal: (mine.results ?? []).length > 0, code: (who.garden || who.device || "").slice(0, 4).toUpperCase() },
     days: dayList.map((d) => ({ ...days[d], people: days[d].people.size })),
     people: list,
