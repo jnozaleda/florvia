@@ -206,15 +206,17 @@ const providers = {
 const chain = (env) => String(env.PROVIDER).split(",").map((p) => p.trim()).filter((p) => providers[p.split(":")[0]]);
 async function askAI(env, messages, schema, name) {
   let last;
+  const quotaHit = [];
   for (const p of chain(env)) {
     const [kind, model] = p.split(":");
     const usage = {};
-    try { return { from: p, out: await providers[kind](env, messages, schema, name, model || undefined, usage), usage }; } catch (err) {
+    try { return { from: p, out: await providers[kind](env, messages, schema, name, model || undefined, usage), usage, quotaHit }; } catch (err) {
       console.error("provider failed", p, err?.message);
+      if (isQuotaError(err)) quotaHit.push(p);
       last = err;
     }
   }
-  throw last ?? new Error("no provider");
+  throw Object.assign(last ?? new Error("no provider"), { quotaHit });
 }
 
 // Models overrun length hints: keep whole sentences up to `max` characters.
@@ -345,7 +347,7 @@ const authorized = (request, env) => !codeRequired(env) || (Boolean(env.ACCESS_C
 
 // Counts one AI call against today's limits: global (DAILY_LIMIT) and per connection
 // (IP_DAILY_LIMIT, IP hashed so it isn't stored). Returns false when either is used up.
-async function takeQuota(request, env) {
+async function takeQuota(request, env, ctx = null) {
   const today = new Date().toISOString().slice(0, 10);
   const ip = request.headers.get("CF-Connecting-IP") ?? "local";
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${today}:${ip}`));
@@ -357,6 +359,13 @@ async function takeQuota(request, env) {
     env.CACHE.put(countKey, String(used + 1), { expirationTtl: 2 * 86400 }),
     env.CACHE.put(ipKey, String(usedByIp + 1), { expirationTtl: 2 * 86400 }),
   ]);
+  // Telling Noza before the cap runs out (80 %) and when it does (100 %). Once a day each; the cap is DAILY_LIMIT in wrangler.toml.
+  const limit = Number(env.DAILY_LIMIT), total = used + 1;
+  if (limit > 0 && total >= Math.ceil(limit * 0.8)) {
+    const hit = total >= limit;
+    await alertOnce(env, ctx, hit ? "cap100" : "cap80", hit ? "Florvia · La IA ha llegado al tope diario" : "Florvia · La IA lleva el 80 % del tope diario",
+      `Hoy se han hecho ${total} consultas de IA de las ${limit} permitidas (DAILY_LIMIT).\n${hit ? "A partir de ahora la app dice «Se ha alcanzado el límite de hoy» hasta mañana." : "Al llegar al tope, la app dirá «Se ha alcanzado el límite de hoy»."}\nPara subirlo: DAILY_LIMIT en worker/wrangler.toml y «npx wrangler deploy». Aviso único por día.`);
+  }
   return true;
 }
 
@@ -382,19 +391,19 @@ async function handleCare(request, env, headers, ctx) {
 
   const blocked = await paywallCheck(env, request, "total");
   if (blocked) return json(blocked, 402, headers);
-  if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, kind); return json({ error: "limit" }, 429, headers); }
+  if (!(await takeQuota(request, env, ctx))) { recordAi(env, ctx, "limit", 0, request, kind); return json({ error: "limit" }, 429, headers); }
 
   if (!chain(env).length) return json({ error: "provider" }, 500, headers);
   let care, aiUsage;
   const t0 = Date.now();
   try {
-    const { from, out, usage } = await askAI(env, careMessages({ name, place, lat, lon }));
+    const { from, out, usage, quotaHit } = await askAI(env, careMessages({ name, place, lat, lon }));
+    noteQuota(env, ctx, quotaHit);
     aiUsage = usage;
     care = { ...sanitize(out), provider: from };
   } catch (err) {
     console.error("care failed", env.PROVIDER, err?.message);
-    recordAi(env, ctx, "error", 0, request, kind);
-    return json({ error: "ai" }, 502, headers);
+    return aiFail(env, ctx, request, kind, err, headers);
   }
   recordAi(env, ctx, "call", Date.now() - t0, request, kind, aiUsage);
   if (!care.isPlant) { recordAi(env, ctx, "not_plant"); return json({ error: "not_plant" }, 422, headers); }
@@ -452,9 +461,37 @@ async function logUsage(env, request, rows, rawDevice = null, gardenOverride = "
 }
 const recordAi = (env, ctx, what, ms = 0, request = null, kind = "", usage = null) => {
   if (!request) return;
-  const name = { cached: `${kind}_hit`, error: "error", limit: "limit", call: kind, not_plant: "not_plant" }[what];
+  const name = { cached: `${kind}_hit`, error: "error", limit: "limit", call: kind, not_plant: "not_plant", quota: "quota" }[what];
   if (name) ctx.waitUntil(logUsage(env, request, [{ kind: "ai", name, ms, tin: usage?.tin ?? 0, tout: usage?.tout ?? 0 }]).catch((err) => console.error("usage log", err?.message)));
 };
+
+// ---------- Why an AI call failed, and telling Noza ----------
+// «quota» = a provider's free allowance is used up (Gemini 429 / RESOURCE_EXHAUSTED, Workers AI «daily free allocation»); anything else is «ai».
+// «limit» is our own daily cap (DAILY_LIMIT). Failures are counted apart in «Uso de la app», and Noza gets an email + push, once per kind and day.
+const isQuotaError = (err) => /\b429\b|RESOURCE_EXHAUSTED|quota|rate.?limit|too many requests|daily free allocation|neurons|\b4006\b/i.test(String(err?.message ?? ""));
+async function alertOnce(env, ctx, kind, subject, text) {
+  if (!env.CACHE) return;
+  const key = `alert:${kind}:${new Date().toISOString().slice(0, 10)}`;
+  try {
+    if (await env.CACHE.get(key)) return;
+    await env.CACHE.put(key, "1", { expirationTtl: 2 * 86400 });
+  } catch { return; }
+  const job = Promise.allSettled([sendAdminEmail(env, subject, text), pushAdmin(env, subject.replace(/^Florvia · /, ""), text.split("\n")[0])])
+    .then((rs) => rs.forEach((r) => r.status === "rejected" && console.error("alert", kind, r.reason?.message)));
+  if (ctx) ctx.waitUntil(job); else await job;
+}
+const QUOTA_HELP = "Revisa la cuota en Google AI Studio (Gemini) y en el panel de Cloudflare (Workers AI).";
+// Every provider failed: record why, alert if it was the quota, and answer with the right error (503 quota / 502 anything else).
+function aiFail(env, ctx, request, kind, err, headers, quotaHit = err?.quotaHit ?? []) {
+  const quota = quotaHit.length > 0 || isQuotaError(err);
+  recordAi(env, ctx, quota ? "quota" : "error", 0, request, kind);
+  if (quota) ctx.waitUntil(alertOnce(env, null, "quota-all", "Florvia · La IA no responde: cuota agotada", `Ningún modelo de IA ha podido responder por falta de cuota (última consulta: ${kind}).\nLas personas ven «La IA está saturada o ha llegado a su límite por hoy».\n${QUOTA_HELP}\nAviso único por día.`));
+  return quota ? json({ error: "quota" }, 503, headers) : json({ error: "ai" }, 502, headers);
+}
+// A call worked, but only after a model ran out of quota: the next one in the list answered (maybe worse, or without photos).
+function noteQuota(env, ctx, quotaHit = []) {
+  for (const model of quotaHit) ctx.waitUntil(alertOnce(env, null, `quota-model:${model}`, "Florvia · Un modelo de IA ha agotado su cuota", `El modelo ${model} ha dado error de cuota. La app sigue funcionando con el siguiente de la lista, que puede dar peores resultados o no admitir fotos.\n${QUOTA_HELP}\nAviso único por modelo y día.`));
+}
 // «What is asked for»: anonymous counts of plants, symptoms and preferences (table topics). Called with ctx so it never slows an answer.
 const TOPIC_KINDS = ["care", "explore", "identify", "added", "diagnose", "symptom", "place", "suggest_pref", "suggest_pick"];
 function recordTopics(env, ctx, request, kind, keys) {
@@ -581,7 +618,7 @@ const USAGE_SQL = `
     MAX(CASE WHEN e.garden IN (SELECT id FROM internal) OR e.device IN (SELECT id FROM internal) OR dg.garden IN (SELECT id FROM internal) THEN 1 ELSE 0 END) AS internal
   FROM events e LEFT JOIN dg ON dg.device = e.device
   GROUP BY e.day, person, e.src, e.kind, e.name`;
-const AI_NOT_CALL = ["error", "limit", "not_plant"];
+const AI_NOT_CALL = ["error", "limit", "not_plant", "quota"];
 async function handleStats2(request, env, headers) {
   if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
   if (!env.DB) return json({ error: "db" }, 500, headers);
@@ -604,7 +641,7 @@ async function handleStats2(request, env, headers) {
   const isCall = (r) => r.kind === "ai" && !r.name.endsWith("_hit") && !AI_NOT_CALL.includes(r.name);
 
   const aiKinds = {};
-  const days = Object.fromEntries(dayList.map((d) => [d, { date: d, opens: 0, people: new Set(), events: {}, ai: { calls: 0, hits: 0, errors: 0, limits: 0, ms: 0 } }]));
+  const days = Object.fromEntries(dayList.map((d) => [d, { date: d, opens: 0, people: new Set(), events: {}, ai: { calls: 0, hits: 0, errors: 0, limits: 0, quota: 0, notPlant: 0, ms: 0 } }]));
   const people = {};
   const tests = { events: 0, ai: 0, byBucket: {}, people: new Set() };
   for (const r of rows) {
@@ -626,6 +663,8 @@ async function handleStats2(request, env, headers) {
     else if (isCall(r)) { d.ai.calls += r.n; d.ai.ms += r.ms ?? 0; const k = (aiKinds[r.name] ??= { n: 0, tin: 0, tout: 0 }); k.n += r.n; k.tin += r.tin ?? 0; k.tout += r.tout ?? 0; }
     else if (r.name.endsWith("_hit")) d.ai.hits += r.n;
     else if (r.name === "limit") d.ai.limits += r.n;
+    else if (r.name === "quota") d.ai.quota += r.n;
+    else if (r.name === "not_plant") d.ai.notPlant += r.n;
     else d.ai.errors += r.n;
   }
   // Retention: of the people whose first real day is old enough, how many came back. D1 = the next day exactly; week = any day 1–7 after
@@ -662,6 +701,7 @@ async function handleStats2(request, env, headers) {
   const refRows = (await env.DB.prepare("SELECT r.ref AS ref, COUNT(*) AS people, SUM(EXISTS (SELECT 1 FROM events e WHERE e.device = r.device AND e.kind = 'event' AND e.name IN ('plant_add_ai', 'plant_add_manual'))) AS planted FROM referrals r WHERE r.src IN ('prod', 'old') AND r.device NOT IN (SELECT id FROM internal) GROUP BY r.ref ORDER BY people DESC LIMIT 30").all()).results ?? [];
   return json({
     cleanStart, today, aiKinds, intent, refs: refRows, retention,
+    cap: { used: env.CACHE ? Number(await env.CACHE.get(`count:${today}`)) || 0 : 0, limit: Number(env.DAILY_LIMIT) || 0 },
     me: { internal: (mine.results ?? []).length > 0, code: (who.garden || who.device || "").slice(0, 4).toUpperCase() },
     days: dayList.map((d) => ({ ...days[d], people: days[d].people.size })),
     people: list,
@@ -1205,19 +1245,19 @@ async function handleCalendar(request, env, headers, ctx) {
   const cached = await env.CACHE.get(cacheKey, "json");
   if (cached) { recordAi(env, ctx, "cached", 0, request, "calendar"); return json({ ...cached, cached: true }, 200, headers); }
 
-  if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, "calendar"); return json({ error: "limit" }, 429, headers); }
+  if (!(await takeQuota(request, env, ctx))) { recordAi(env, ctx, "limit", 0, request, "calendar"); return json({ error: "limit" }, 429, headers); }
 
   if (!chain(env).length) return json({ error: "provider" }, 500, headers);
   let cal, aiUsage;
   const t0 = Date.now();
   try {
-    const { from, out, usage } = await askAI(env, calendarMessages({ name: subject, species: "", place, lat }), CALENDAR_SCHEMA, "calendario");
+    const { from, out, usage, quotaHit } = await askAI(env, calendarMessages({ name: subject, species: "", place, lat }), CALENDAR_SCHEMA, "calendario");
+    noteQuota(env, ctx, quotaHit);
     aiUsage = usage;
     cal = { ...sanitizeCalendar(out), provider: from };
   } catch (err) {
     console.error("calendar failed", env.PROVIDER, err?.message);
-    recordAi(env, ctx, "error", 0, request, "calendar");
-    return json({ error: "ai" }, 502, headers);
+    return aiFail(env, ctx, request, "calendar", err, headers);
   }
   recordAi(env, ctx, "call", Date.now() - t0, request, "calendar", aiUsage);
   if (cal.tasks.length) await env.CACHE.put(cacheKey, JSON.stringify(cal), { expirationTtl: CACHE_TTL });
@@ -1324,18 +1364,18 @@ async function handlePlace(request, env, headers, ctx) {
   const names = zones.map((z) => z.name);
   const cached = await env.CACHE.get(cacheKey, "json");
   if (cached) { recordAi(env, ctx, "cached", 0, request, "place"); return json({ ...cached, cached: true }, 200, headers); }
-  if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, "place"); return json({ error: "limit" }, 429, headers); }
+  if (!(await takeQuota(request, env, ctx))) { recordAi(env, ctx, "limit", 0, request, "place"); return json({ error: "limit" }, 429, headers); }
   if (!chain(env).length) return json({ error: "provider" }, 500, headers);
   let res, aiUsage;
   const t0 = Date.now();
   try {
-    const { from, out, usage } = await askAI(env, placeMessages(input), PLACE_SCHEMA, "ubicacion");
+    const { from, out, usage, quotaHit } = await askAI(env, placeMessages(input), PLACE_SCHEMA, "ubicacion");
+    noteQuota(env, ctx, quotaHit);
     aiUsage = usage;
     res = { ...sanitizePlace(out, names), provider: from };
   } catch (err) {
     console.error("place failed", env.PROVIDER, err?.message);
-    recordAi(env, ctx, "error", 0, request, "place");
-    return json({ error: "ai" }, 502, headers);
+    return aiFail(env, ctx, request, "place", err, headers);
   }
   recordAi(env, ctx, "call", Date.now() - t0, request, "place", aiUsage);
   if (res.zones.length) await env.CACHE.put(cacheKey, JSON.stringify(res), { expirationTtl: CACHE_TTL });
@@ -1430,18 +1470,18 @@ async function handleSuggest(request, env, headers, ctx) {
   if (cached) { recordAi(env, ctx, "cached", 0, request, "suggest"); recordTopics(env, ctx, request, "suggest_pick", (cached.picks ?? []).map((x) => x.commonName)); return json({ ...cached, cached: true }, 200, headers); }
   const blocked = await paywallCheck(env, request, "suggest");
   if (blocked) return json(blocked, 402, headers);
-  if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, "suggest"); return json({ error: "limit" }, 429, headers); }
+  if (!(await takeQuota(request, env, ctx))) { recordAi(env, ctx, "limit", 0, request, "suggest"); return json({ error: "limit" }, 429, headers); }
   if (!chain(env).length) return json({ error: "provider" }, 500, headers);
   let res, aiUsage;
   const t0 = Date.now();
   try {
-    const { from, out, usage } = await askAI(env, suggestMessages(input), SUGGEST_SCHEMA, "sugerencias");
+    const { from, out, usage, quotaHit } = await askAI(env, suggestMessages(input), SUGGEST_SCHEMA, "sugerencias");
+    noteQuota(env, ctx, quotaHit);
     aiUsage = usage;
     res = { ...sanitizeSuggest(out, owned), provider: from };
   } catch (err) {
     console.error("suggest failed", env.PROVIDER, err?.message);
-    recordAi(env, ctx, "error", 0, request, "suggest");
-    return json({ error: "ai" }, 502, headers);
+    return aiFail(env, ctx, request, "suggest", err, headers);
   }
   recordAi(env, ctx, "call", Date.now() - t0, request, "suggest", aiUsage);
   if (res.picks.length) await env.CACHE.put(cacheKey, JSON.stringify(res), { expirationTtl: CACHE_TTL });
@@ -1731,9 +1771,11 @@ async function handleIdentify(request, env, headers, ctx) {
   const place = String(body.place ?? "").slice(0, 60);
   const blocked = await paywallCheck(env, request, "identify");
   if (blocked) return json(blocked, 402, headers);
-  if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, "identify"); return json({ error: "limit" }, 429, headers); }
+  if (!(await takeQuota(request, env, ctx))) { recordAi(env, ctx, "limit", 0, request, "identify"); return json({ error: "limit" }, 429, headers); }
   const prompt = `Identifica la planta de esta foto. Responde en español. Da de 1 a 3 candidatos, del más al menos probable, con su nombre común en español y su nombre científico, y tu seguridad (alta, media o baja). La persona vive en ${place || "España"} (clima mediterráneo): si dudas entre especies, prefiere las comunes en jardines y terrazas de la zona. Si la foto no muestra una planta o no se puede distinguir cuál es, pon isPlant en false o devuelve confianza "baja".`;
   const t0 = Date.now();
+  const quotaHit = [];
+  let lastErr;
   for (const spec of chain(env).filter((c) => c.startsWith("gemini"))) {
     const model = spec.split(":")[1] || env.GEMINI_MODEL;
     try {
@@ -1755,15 +1797,17 @@ async function handleIdentify(request, env, headers, ctx) {
         confidence: ["alta", "media", "baja"].includes(c.confidence) ? c.confidence : "baja",
       })).filter((c) => c.commonName && c.species);
       recordAi(env, ctx, "call", Date.now() - t0, request, "identify", { tin: Number(out?.usageMetadata?.promptTokenCount) || 0, tout: (Number(out?.usageMetadata?.candidatesTokenCount) || 0) + (Number(out?.usageMetadata?.thoughtsTokenCount) || 0) });
+      noteQuota(env, ctx, quotaHit);
       console.log("identify ok", spec, Date.now() - t0, "ms");
       if (candidates.length && parsed.isPlant !== false) recordTopics(env, ctx, request, "identify", candidates[0].commonName);
       return json({ isPlant: parsed.isPlant !== false && candidates.length > 0, candidates }, 200, headers);
     } catch (err) {
       console.error("identify failed", spec, err?.message);
+      lastErr = err;
+      if (isQuotaError(err)) quotaHit.push(spec);
     }
   }
-  recordAi(env, ctx, "error", 0, request, "identify");
-  return json({ error: "ai" }, 502, headers);
+  return aiFail(env, ctx, request, "identify", lastErr, headers, quotaHit);
 }
 
 // ---------- «¿Qué le pasa?»: diagnosis of one plant (POST /diagnose) ----------
@@ -1828,7 +1872,7 @@ async function handleDiagnose(request, env, headers, ctx) {
   recordTopics(env, ctx, request, "symptom", symptoms);
   const blocked = await paywallCheck(env, request, "diagnose");
   if (blocked) return json(blocked, 402, headers);
-  if (!(await takeQuota(request, env))) { recordAi(env, ctx, "limit", 0, request, "diagnose"); return json({ error: "limit" }, 429, headers); }
+  if (!(await takeQuota(request, env, ctx))) { recordAi(env, ctx, "limit", 0, request, "diagnose"); return json({ error: "limit" }, 429, headers); }
   const facts = [
     `Planta: ${plant.name}${plant.species ? ` (${plant.species})` : ""}.`,
     plant.zone ? `Zona: ${plant.zone}${plant.sun ? ` (${{ sun: "sol", partial: "media sombra", shade: "sombra" }[plant.sun]})` : ""}.` : "",
@@ -1847,6 +1891,8 @@ ${image ? "Adjunta una foto: úsala para afinar el diagnóstico." : "No hay foto
 Da de 1 a 3 causas probables, de más a menos probable. Para cada una: un título corto, su probabilidad (alta, media o baja), por qué encaja con lo que se sabe de esta planta y su cuidado, cómo comprobarlo (algo que pueda mirar o tocar hoy) y qué hacer (pasos concretos y poco agresivos; no des dosis de productos ni recomiendes nada peligroso). Ten en cuenta lo que se sabe del riego, la época y el sitio, y no inventes datos que no tengas. Si lo marcado no basta para decidir, dilo en "needMore" (qué foto o dato ayudaría; si no hace falta, cadena vacía). En "watch" di qué señales indicarían que va a peor o cuándo conviene pedir ayuda a un vivero (cadena vacía si no hace falta). "urgency": alta solo si la planta puede morir en pocos días. "summary": una o dos frases con la conclusión. Si la foto no muestra ninguna planta, pon isPlant en false.
 ${image ? `La persona dice que su planta es «${plant.name.replace(/[«»]/g, "")}»${plant.species ? ` (${plant.species.replace(/[«»]/g, "")})` : ""}, pero puede haberse equivocado de foto. ANTES de diagnosticar, mira qué se ve y compáralo con esa planta; no des por hecho que coinciden. En "photoSeen" escribe en pocas palabras qué crees que se ve (por ejemplo «aspidistra» o «captura de pantalla»). En "photo" pon: "coincide" si se ve esa planta o es plausible que lo sea; "otra_planta" si se ve claramente una especie distinta (hojas, porte o flores que no corresponden); "no_es_planta" si no se ve ninguna planta; "dudosa" si no se distingue bien (foto borrosa, solo un trozo pequeño). Marca "otra_planta" solo si estás bastante seguro. Si "photo" es "otra_planta" o "no_es_planta", deja "causes" vacío y no diagnostiques: nunca apliques los cuidados de una planta a otra.` : `No hay foto: pon "photo" en "sin_foto" y "photoSeen" en cadena vacía.`}`;
   const t0 = Date.now();
+  const quotaHit = [];
+  let lastErr;
   for (const spec of chain(env).filter((c) => c.startsWith("gemini"))) {
     const model = spec.split(":")[1] || env.GEMINI_MODEL;
     try {
@@ -1864,6 +1910,7 @@ ${image ? `La persona dice que su planta es «${plant.name.replace(/[«»]/g, ""
         title: clip(c.title, 80), likelihood: ["alta", "media", "baja"].includes(c.likelihood) ? c.likelihood : "media",
         why: clip(c.why, 400), check: clip(c.check, 300), action: clip(c.action, 500),
       })).filter((c) => c.title && c.action);
+      noteQuota(env, ctx, quotaHit);
       const tokens = { tin: Number(out?.usageMetadata?.promptTokenCount) || 0, tout: (Number(out?.usageMetadata?.candidatesTokenCount) || 0) + (Number(out?.usageMetadata?.thoughtsTokenCount) || 0) };
       const photo = !image ? "sin_foto" : PHOTO_KINDS.includes(parsed.photo) ? parsed.photo : "coincide";
       const photoSeen = image ? clip(parsed.photoSeen, 80) : "";
@@ -1882,10 +1929,11 @@ ${image ? `La persona dice que su planta es «${plant.name.replace(/[«»]/g, ""
       }, 200, headers);
     } catch (err) {
       console.error("diagnose failed", spec, err?.message);
+      lastErr = err;
+      if (isQuotaError(err)) quotaHit.push(spec);
     }
   }
-  recordAi(env, ctx, "error", 0, request, "diagnose");
-  return json({ error: "ai" }, 502, headers);
+  return aiFail(env, ctx, request, "diagnose", lastErr, headers, quotaHit);
 }
 
 // Strict validators for anything that comes from a client and is shown to someone else (shared copies).

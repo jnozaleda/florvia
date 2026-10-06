@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006o";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006p";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006o";
-import { buildICS } from "./calendar.js?v=20261006o";
-import { scrubPlant } from "./clean.js?v=20261006o";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006o";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006p";
+import { buildICS } from "./calendar.js?v=20261006p";
+import { scrubPlant } from "./clean.js?v=20261006p";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006p";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006o";
+      sc.src = "vendor/qrcode.min.js?v=20261006p";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1358,7 +1358,11 @@ function usageSheet() {
   const days = usage.days;
   const activeSince = (n) => { const from = days[Math.max(0, days.length - n)].date; return usage.people.filter((p) => p.last >= from).length; };
   const sum = (key) => days.reduce((a, d) => a + (d.events[key] ?? 0), 0);
-  const ai = days.reduce((a, d) => ({ calls: a.calls + d.ai.calls, hits: a.hits + d.ai.hits, errors: a.errors + d.ai.errors, limits: a.limits + d.ai.limits, ms: a.ms + d.ai.ms }), { calls: 0, hits: 0, errors: 0, limits: 0, ms: 0 });
+  const ai = days.reduce((a, d) => ({ calls: a.calls + d.ai.calls, hits: a.hits + d.ai.hits, errors: a.errors + d.ai.errors, limits: a.limits + d.ai.limits, quota: a.quota + (d.ai.quota ?? 0), notPlant: a.notPlant + (d.ai.notPlant ?? 0), ms: a.ms + d.ai.ms }), { calls: 0, hits: 0, errors: 0, limits: 0, quota: 0, notPlant: 0, ms: 0 });
+  // Last day with a given kind of problem, and whether something went wrong today (shown as a warning at the top of the AI card).
+  const lastAiDay = (key) => { const d = [...days].reverse().find((x) => (x.ai[key] ?? 0) > 0); return d ? `última vez: ${fmtDate(d.date)}` : "ninguna vez"; };
+  const todayAi = days[days.length - 1]?.ai ?? {};
+  const todayWarn = (todayAi.quota ?? 0) > 0 ? "Hoy la IA ha agotado su cuota: las personas ven «La IA está saturada»." : (todayAi.limits ?? 0) > 0 ? "Hoy se ha llegado al tope diario de consultas de IA." : (todayAi.errors ?? 0) > 0 ? `Hoy la IA ha fallado ${todayAi.errors} ${todayAi.errors === 1 ? "vez" : "veces"}.` : "";
   const opens = days.map((d) => d.opens);
   const max = Math.max(4, ...opens);
   const bars = days.map((d, i) => {
@@ -1392,10 +1396,16 @@ function usageSheet() {
       ${row("check", "Tareas del checklist", sum("task_done"))}
       ${row("refresh", "Fichas actualizadas", sum("upgrade_done"))}</section>
     <section class="card"><div class="sec">Inteligencia artificial <span class="meta ai-mark">✦ 30 días</span></div>
+      ${todayWarn ? `<p class="ai-status warn">${esc(todayWarn)}</p>` : ""}
+      ${usage.cap?.limit ? row("sparkle", "Consultas de hoy", usage.cap.used, `de ${usage.cap.limit} permitidas`) : ""}
       ${row("sparkle", "Consultas", total)}
       ${row("database", "Desde la memoria (gratis)", ai.hits, total ? `${Math.round((ai.hits / total) * 100)} %` : "")}
       ${row("clock", "Tiempo medio de respuesta", ai.calls ? `${Math.round(ai.ms / ai.calls / 1000)} s` : "—")}
-      ${row("alert", "Errores y límites", ai.errors + ai.limits, ai.limits ? `${ai.limits} por límite diario` : "")}</section>
+      ${row("alert", "Tope diario alcanzado", ai.limits, lastAiDay("limits"))}
+      ${row("alert", "Cuota de la IA agotada", ai.quota, lastAiDay("quota"))}
+      ${row("alert", "Otros fallos de la IA", ai.errors, lastAiDay("errors"))}
+      ${row("check", "No era una planta", ai.notPlant, "no cuenta como consulta")}
+      <p class="muted small">«Tope diario» es el límite propio de la app (se avisa por correo al 80 % y al 100 %). «Cuota» es que Google o Cloudflare se han quedado sin consultas gratis. «Otros fallos» son errores del modelo o de la conexión.</p></section>
     <section class="card"><div class="sec">Personas</div>
       ${people.length ? people.map((p) => `<button type="button" class="u-person" data-action="usage-label" data-id="${esc(p.id)}" data-name="${esc(p.label)}"><span class="u-garden">${nameOf(p)}</span><b>${p.activeDays} ${p.activeDays === 1 ? "día" : "días"}<small>desde ${fmtDate(p.first)} · última ${fmtDate(p.last)} · ${p.opens} aperturas · ${p.aiCalls} consultas IA</small></b></button>`).join("") : `<p class="muted small">Todavía no hay uso real desde la fecha limpia.</p>`}
       <p class="muted small">Toca una persona para ponerle nombre. Cada persona ve su «Código de uso» al final de Ajustes: así sabes quién es quién.</p></section>
@@ -2329,6 +2339,7 @@ const AI_ERRORS = {
   off: "La IA está apagada. Puedes volver a encenderla en Ajustes → Asistente IA.",
   code: "Código de acceso incorrecto o sin poner: revísalo en Ajustes.",
   limit: "Se ha alcanzado el límite de hoy. Rellénalo a mano o prueba mañana.",
+  quota: "La IA está saturada o ha llegado a su límite por hoy. Prueba dentro de un rato o mañana, o rellénalo a mano: tus plantas no se pierden.",
   not_plant: "No parece el nombre de una planta. Si es un apodo, prueba con su nombre común (por ejemplo «poto»), o rellena los cuidados a mano.",
 };
 
