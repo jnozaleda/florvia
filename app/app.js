@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005q";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261005r";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005q";
-import { buildICS } from "./calendar.js?v=20261005q";
-import { scrubPlant } from "./clean.js?v=20261005q";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005q";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261005r";
+import { buildICS } from "./calendar.js?v=20261005r";
+import { scrubPlant } from "./clean.js?v=20261005r";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261005r";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261005q";
+      sc.src = "vendor/qrcode.min.js?v=20261005r";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1903,21 +1903,39 @@ function plantForm(id) {
         <button type="button" class="chip" data-action="edit-new-zone">+ Nueva zona</button>
       </div>
       <input name="zone" id="editZone" class="big-input" placeholder="Terraza sur, jardín delantero…" autocomplete="off" value="${esc(p.zone)}" hidden />
+      <h3 class="q">Tu sitio <span class="muted small">(lo ves tú)</span></h3>
       ${radioSeg("inPot", "Plantada en", p.inPot, [[true, "pot", "Maceta"], [false, "ground", "Suelo"]])}
       ${radioSeg("rainReaches", "La lluvia", p.rainReaches, [[true, "rain", "Le llega"], [false, "umbrella", "A cubierto"]])}
-      ${radioSeg("sun", "Sol que recibe", p.sun ?? "", SUN_CHOICES)}
-      ${radioSeg("sunNeed", "Luz que pide la planta", p.sunNeed ?? "", SUN_NEED_CHOICES)}
-      <label class="switch-row">
-        <span>${ICONS.sun}Muy sensible al sol directo</span>
-        <input type="checkbox" role="switch" name="sunSensitive" class="switch-input" ${p.sunSensitive ? "checked" : ""} />
-        <span class="switch" aria-hidden="true"></span>
-      </label>
-      ${radioSeg("size", "Tamaño de la planta", p.size ?? "", SIZE_CHOICES)}
-      <label class="switch-row">
-        <span>${ICONS.snow}Sensible a heladas</span>
-        <input type="checkbox" role="switch" name="frostSensitive" class="switch-input" ${p.frostSensitive ? "checked" : ""} />
-        <span class="switch" aria-hidden="true"></span>
-      </label>
+      ${radioSeg("sun", "Sol que recibe", p.sun ?? "", SUN_CHOICES, "El sol que le da el sitio donde está.")}
+      ${radioSeg("size", "Tamaño que tiene ahora", p.size ?? "", SIZE_CHOICES, SIZE_HINT)}
+      <h3 class="q">Sobre esta planta ${p.ai ? `<span class="ai-pill sp-pill">✦ propuesto por la IA</span>` : ""}</h3>
+      <section class="card sp-card ${p.sunNeed || p.sunSensitive || p.frostSensitive || p.ai ? "" : "empty"}" id="speciesCard">
+        <div class="sp-view">
+          <div id="spFacts">${speciesFacts(p)}</div>
+          <p class="muted small">No hace falta tocarlo. Si no lo sabes, déjalo así.</p>
+          <button type="button" class="btn small secondary" data-action="sp-toggle">Cambiar</button>
+        </div>
+        <div class="sp-empty">
+          <b>Aún no sabemos qué luz le gusta ni si aguanta el frío.</b>
+          <p class="muted small">La IA lo propone en unos segundos; tú solo lo revisas si quieres.</p>
+          <button type="button" class="btn small sp-ai-btn" data-action="ai-fill">✦ Rellenar con IA</button>
+          <p class="muted small">¿Prefieres ponerlo tú? <button type="button" class="link-btn" data-action="sp-toggle">Rellenar a mano</button></p>
+        </div>
+        <div class="sp-edit">
+          ${radioSeg("sunNeed", "¿Cuánta luz le gusta?", p.sunNeed ?? "", SUN_NEED_CHOICES, LIGHT_HINT)}
+          <label class="switch-row">
+            <span>${ICONS.sun}<span>Se le queman las hojas con el sol fuerte<small class="sub">${SP_SUN_SUB}</small></span></span>
+            <input type="checkbox" role="switch" name="sunSensitive" class="switch-input" ${p.sunSensitive ? "checked" : ""} />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <label class="switch-row">
+            <span>${ICONS.snow}<span>Sensible a las heladas<small class="sub">${SP_FROST_SUB}</small></span></span>
+            <input type="checkbox" role="switch" name="frostSensitive" class="switch-input" ${p.frostSensitive ? "checked" : ""} />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <button type="button" class="btn small secondary sp-done" data-action="sp-toggle">Hecho</button>
+        </div>
+      </section>
       <label class="switch-row">
         <span>${ICONS.drip}Riego automático</span>
         <input type="checkbox" role="switch" name="autoWater" class="switch-input" ${p.autoWater ? "checked" : ""} />
@@ -1933,17 +1951,27 @@ function plantForm(id) {
       <div class="sheet-actions"><button class="btn block" type="submit">${id ? "Guardar cambios" : "Guardar"}</button></div>
     </form>`);
   $("plantForm").dataset.id = id ?? "";
+  $("plantForm").dataset.hasAi = p.ai ? "1" : "";
   autogrow($("plantForm").elements.notes);
 }
 
 // Same segmented look as the new-plant step 2, but with real radio inputs so the edit form
 // reads them through FormData without redrawing.
-function radioSeg(name, label, current, options) {
+// Redraws the summary of «Sobre esta planta» from the form's inputs (after «Hecho» or after the AI filled the form).
+function refreshSpeciesCard() {
+  const form = $("plantForm"), card = $("speciesCard");
+  if (!form || !card) return;
+  const sunNeed = form.querySelector('input[name="sunNeed"]:checked')?.value ?? "";
+  const sunSensitive = Boolean(form.elements.sunSensitive?.checked), frostSensitive = Boolean(form.elements.frostSensitive?.checked);
+  $("spFacts").innerHTML = speciesFacts({ sunNeed, sunSensitive, frostSensitive });
+  card.classList.toggle("empty", !(sunNeed || sunSensitive || frostSensitive || form.dataset.hasAi || form.dataset.aiFilled));
+}
+function radioSeg(name, label, current, options, hint = "") {
   return `
     <div class="seg-label" id="eseg-${name}">${label}</div>
     <div class="seg" role="radiogroup" aria-labelledby="eseg-${name}">
-      ${options.map(([value, icon, text]) => `<label><input type="radio" name="${name}" value="${value}" ${current === value ? "checked" : ""} />${ICONS[icon]}${text}</label>`).join("")}
-    </div>`;
+      ${options.map(([value, icon, text]) => `<label><input type="radio" name="${name}" value="${value}" ${current === value ? "checked" : ""} />${ICONS[icon] ?? ""}${text}</label>`).join("")}
+    </div>${hint ? `<div class="seg-hint">${hint}</div>` : ""}`;
 }
 
 // waterEvery/feedEvery mirror today's season so exports and older readers stay meaningful.
@@ -2216,6 +2244,8 @@ async function aiFill(query) {
     const need = form.querySelector(`input[name="sunNeed"][value="${care.sunNeed}"]`);
     if (need) need.checked = true;
     if (f.sunSensitive) f.sunSensitive.checked = Boolean(care.sunSensitive);
+    form.dataset.hasAi = "1";
+    refreshSpeciesCard();
     // Replace the notes if they're empty or still the AI's previous text (e.g. for another plant).
     if (!f.notes.value.trim() || f.notes.value === form.dataset.aiNotes) f.notes.value = care.notes;
     form.dataset.aiNotes = care.notes;
@@ -2605,9 +2635,25 @@ async function exploreFromFile(file) {
 
 // «Zona» = the sun set for its zone in Ajustes.
 const SUN_CHOICES = [["", "pin", "Zona"], ["sun", "sun", "Sol"], ["partial", "cloud", "Media"], ["shade", "umbrella", "Sombra"]];
-const SUN_NEED_CHOICES = [["sun", "sun", "Sol"], ["partial", "cloud", "Media"], ["shade", "umbrella", "Sombra"]];
+const SUN_NEED_CHOICES = [["sun", "sun", "Sol"], ["partial", "cloud", "Media"], ["shade", "umbrella", "Sombra"], ["", null, "No lo sé"]]; // «No lo sé» = empty: the AI decides
 // Same icons everywhere light is shown (selector, list, sheet).
 var LIGHT_ICON = { sun: "sun", partial: "cloud", shade: "umbrella" };
+// «Sobre esta planta»: what the AI proposes about the species (the light it likes, sun and frost sensitivity). Most people don't know it,
+// so it's shown as a short summary with «Cambiar»; in the edit form the real inputs stay in the form (hidden) so saving reads them as before.
+const SUN_NEED_FACT = { sun: ["sun", "Le gusta el sol directo"], partial: ["cloud", "Le gusta la luz media"], shade: ["umbrella", "Le gusta la sombra"] };
+const LIGHT_HINT = "<b>Sol:</b> sol directo casi todo el día · <b>Media:</b> luz clara, sin sol fuerte · <b>Sombra:</b> poca luz";
+const SIZE_HINT = "El de tu planta hoy, no el que llegará a tener.";
+function speciesFacts({ sunNeed, sunSensitive, frostSensitive }) {
+  const need = sunNeed || (sunSensitive ? "partial" : ""); // sensitivity needs a light need to work, so saving falls back to «media»
+  const rows = [
+    SUN_NEED_FACT[need] ?? ["cloud", "Luz que pide: la decide la IA"],
+    sunSensitive ? ["sun", "Se le queman las hojas con el sol fuerte"] : null,
+    ["snow", frostSensitive ? "Sensible a las heladas" : "No es sensible a las heladas"],
+  ].filter(Boolean);
+  return `<ul class="sp-facts">${rows.map(([icon, text]) => `<li>${ICONS[icon]}${text}</li>`).join("")}</ul>`;
+}
+const SP_SUN_SUB = "Actívalo si has visto hojas secas o marrones tras el sol";
+const SP_FROST_SUB = "Si no lo sabes, déjalo como está";
 const SIZE_CHOICES = [["small", "sprout", "Pequeña"], ["medium", "sprout", "Mediana"], ["large", "sprout", "Grande"]];
 const SIZE_LABEL = { small: "Pequeña", medium: "Mediana", large: "Grande" };
 
@@ -2637,11 +2683,11 @@ function renderWizard() {
   const busy = wiz.ai === "loading";
   const lock = busy ? "disabled" : "";
   // Two mutually exclusive options → one segmented control per question.
-  const segmented = (key, label, options) => `
+  const segmented = (key, label, options, hint = "") => `
     <div class="seg-label" id="seg-${key}">${label}</div>
     <div class="seg" role="radiogroup" aria-labelledby="seg-${key}">
-      ${options.map(([value, icon, text]) => `<button type="button" role="radio" aria-checked="${wiz[key] === value}" data-action="wiz-set" data-key="${key}" data-value="${value}">${ICONS[icon]}${text}</button>`).join("")}
-    </div>`;
+      ${options.map(([value, icon, text]) => `<button type="button" role="radio" aria-checked="${wiz[key] === value}" data-action="wiz-set" data-key="${key}" data-value="${value}">${ICONS[icon] ?? ""}${text}</button>`).join("")}
+    </div>${hint ? `<div class="seg-hint">${hint}</div>` : ""}`;
   const aiLine = {
     loading: `<span class="ai-step"><span class="spinner" aria-hidden="true"></span><span id="wizAiStep">${AI_STEPS[wiz.aiStep ?? 0]}</span>…</span>`,
     done: `<span class="muted">${esc(wiz.species || "Especie sin identificar")}</span><span class="ai-pill">✦ Rellenado con IA · revisa los datos</span>`,
@@ -2666,17 +2712,30 @@ function renderWizard() {
       <button type="button" class="chip ${wiz.newZone ? "on" : ""}" data-action="wiz-new-zone">+ Nueva zona</button>
     </div>
     ${wiz.newZone ? `<input id="wizZone" class="big-input" placeholder="Terraza sur, jardín delantero…" autocomplete="off" value="${esc(wiz.zone)}" />` : ""}
+    <h3 class="q">Tu sitio <span class="muted small">(lo ves tú)</span></h3>
     ${segmented("inPot", "Plantada en", [[true, "pot", "Maceta"], [false, "ground", "Suelo"]])}
     ${segmented("rainReaches", "La lluvia", [[true, "rain", "Le llega"], [false, "umbrella", "A cubierto"]])}
-    ${segmented("sun", "Sol que recibe", SUN_CHOICES)}
-    ${segmented("sunNeed", "Luz que pide la planta", SUN_NEED_CHOICES)}
-    <button type="button" class="switch-row" role="switch" aria-checked="${wiz.sunSensitive && !busy}" data-action="wiz-set" data-key="sunSensitive" ${lock}>
-      <span>${ICONS.sun}Muy sensible al sol directo</span><span class="switch" aria-hidden="true"></span>
-    </button>
-    ${segmented("size", "Tamaño de la planta", SIZE_CHOICES)}
-    <button type="button" class="switch-row" role="switch" aria-checked="${wiz.frostSensitive && !busy}" data-action="wiz-set" data-key="frostSensitive" ${lock}>
-      <span>${ICONS.snow}Sensible a heladas</span><span class="switch" aria-hidden="true"></span>
-    </button>
+    ${segmented("sun", "Sol que recibe", SUN_CHOICES, "El sol que le da el sitio donde está.")}
+    ${segmented("size", "Tamaño que tiene ahora", SIZE_CHOICES, SIZE_HINT)}
+    <h3 class="q">Sobre esta planta ${wiz.ai === "done" ? `<span class="ai-pill sp-pill">✦ propuesto por la IA</span>` : ""}</h3>
+    <section class="card sp-card">
+      ${wiz.spOpen ? `<div class="sp-edit-open">
+        ${segmented("sunNeed", "¿Cuánta luz le gusta?", SUN_NEED_CHOICES, LIGHT_HINT)}
+        <button type="button" class="switch-row" role="switch" aria-checked="${wiz.sunSensitive && !busy}" data-action="wiz-set" data-key="sunSensitive" ${lock}>
+          <span>${ICONS.sun}<span>Se le queman las hojas con el sol fuerte<small class="sub">${SP_SUN_SUB}</small></span></span><span class="switch" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="switch-row" role="switch" aria-checked="${wiz.frostSensitive && !busy}" data-action="wiz-set" data-key="frostSensitive" ${lock}>
+          <span>${ICONS.snow}<span>Sensible a las heladas<small class="sub">${SP_FROST_SUB}</small></span></span><span class="switch" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="btn small secondary sp-done" data-action="wiz-sp-toggle">Hecho</button>
+      </div>` : busy ? `<p class="muted small" style="margin:0">La IA está mirando qué luz le gusta y si aguanta el frío…</p>`
+      : wiz.ai === "done" || wiz.sunNeed || wiz.sunSensitive || wiz.frostSensitive ? `${speciesFacts(wiz)}
+        <p class="muted small">No hace falta tocarlo. Si no lo sabes, déjalo así.</p>
+        <button type="button" class="btn small secondary" data-action="wiz-sp-toggle">Cambiar</button>`
+      : `<b>Aún no tenemos estos datos.</b>
+        <p class="muted small">Ponlos tú si los sabes, o déjalos así: la IA los propondrá cuando pueda.</p>
+        <button type="button" class="btn small secondary" data-action="wiz-sp-toggle">Rellenar a mano</button>`}
+    </section>
     <button type="button" class="switch-row" role="switch" aria-checked="${wiz.autoWater}" data-action="wiz-set" data-key="autoWater">
       <span>${ICONS.drip}Riego automático</span><span class="switch" aria-hidden="true"></span>
     </button>
@@ -2833,9 +2892,11 @@ const actions = {
   "wiz-new-zone": () => { wiz.newZone = true; wiz.zone = ""; renderWizard(); },
   "wiz-set": (d) => {
     wiz[d.key] = ["sun", "size", "sunNeed"].includes(d.key) ? d.value : ["frostSensitive", "autoWater", "sunSensitive"].includes(d.key) ? !wiz[d.key] : d.value === "true";
-    wiz.touched[d.key] = true;
+    if (d.key === "sunNeed" && d.value === "") delete wiz.touched.sunNeed; // «No lo sé»: the AI may still fill it
+    else wiz.touched[d.key] = true;
     renderWizard();
   },
+  "wiz-sp-toggle": () => { wiz.spOpen = !wiz.spOpen; renderWizard(); },
   "wiz-save": wizSave,
   "wiz-notes": () => { wiz.notesOpen = !wiz.notesOpen; renderWizard(); },
   "edit-plant": (d) => plantForm(d.id),
@@ -3198,6 +3259,11 @@ const actions = {
   "export-json": () => download(`mi-jardin-${localToday()}.json`, JSON.stringify(state.data), "application/json"),
   "import-json": () => $("importFile").click(),
   "ai-fill": () => aiFill(),
+  "sp-toggle": () => {
+    const card = $("speciesCard");
+    if (!card) return;
+    if (card.classList.contains("open")) { refreshSpeciesCard(); card.classList.remove("open"); } else card.classList.add("open");
+  },
   "edit-zone": (d, el) => {
     $("editZone").value = d.zone;
     $("editZone").hidden = true;
@@ -3331,7 +3397,7 @@ document.addEventListener("submit", (e) => {
     sun: f.get("sun") ?? "",
     size: f.get("size") ?? "",
     notes: f.get("notes").trim(),
-    ...(f.get("sunNeed") || f.has("sunSensitive") ? { sunNeed: f.get("sunNeed") || "partial", sunSensitive: f.has("sunSensitive") } : {}),
+    ...(f.get("sunNeed") || f.has("sunSensitive") ? { sunNeed: f.get("sunNeed") || "partial", sunSensitive: f.has("sunSensitive") } : { sunNeed: "", sunSensitive: false }),
     photo: draftPhoto,
   };
   withCurrentIntervals(fields);
