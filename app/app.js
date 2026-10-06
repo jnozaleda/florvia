@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006q";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006s";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006q";
-import { buildICS } from "./calendar.js?v=20261006q";
-import { scrubPlant } from "./clean.js?v=20261006q";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006q";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006s";
+import { buildICS } from "./calendar.js?v=20261006s";
+import { scrubPlant } from "./clean.js?v=20261006s";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006s";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006q";
+      sc.src = "vendor/qrcode.min.js?v=20261006s";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1301,6 +1301,31 @@ function refsCard() {
 const WEB_SRC = { direct: "Directo (sin origen)", google: "Google", search: "Otros buscadores", social: "Redes sociales", ai: "Asistentes de IA", other: "Otras webs" };
 const WEB_BOTS = [["search", "Buscadores (Googlebot, Bingbot…)"], ["ai", "Robots de IA (GPTBot, ClaudeBot…)"], ["preview", "Previsualizaciones de enlaces (WhatsApp…)"], ["bot", "Otros robots"]];
 const WEB_PAGE = (path) => pageTitles?.[path] ?? (path === "/" ? "Inicio (landing)" : path === "/es/plantas/" ? "Fichas de plantas (índice)" : path === "/es/guias/" ? "Guías (índice)" : REF_LABEL(path.replace(/^\/es\/(plantas|guias)\/([^/]+)\/$/, (_, t, s) => `${t === "plantas" ? "planta" : "guia"}-${s}`)));
+// Chart range shared by «Aperturas» and «Visitas a la web»: the last 30 days, or the last 24 hours (hour by hour, local time).
+let chartRange = "30d";
+const rangeToggle = () => `<div class="seg" role="radiogroup" aria-label="Periodo del gráfico" style="margin:6px 0 10px">${[["30d", "30 días"], ["24h", "24 horas"]].map(([v, t]) =>
+  `<button type="button" role="radio" aria-checked="${chartRange === v}" data-action="chart-range" data-range="${v}">${t}</button>`).join("")}</div>`;
+// One bar per hour: `value(h)` is the height, `label(h)` the tooltip («hoy 14:00 · 3 aperturas»).
+function hourChart(hours, value, label, ariaLabel) {
+  const max = Math.max(4, ...hours.map(value));
+  const bars = hours.map((h) => {
+    const d = new Date(h.t);
+    const when = `${d.toDateString() === new Date().toDateString() ? "hoy" : "ayer"} ${d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`;
+    const text = `${when} · ${label(h)}`;
+    return `<span class="u-bar ${value(h) ? "" : "zero"}" style="height:${Math.max(3, (value(h) / max) * 100)}%" tabindex="0" title="${esc(text)}" aria-label="${esc(text)}"></span>`;
+  }).join("");
+  return `<div class="u-chart" role="img" aria-label="${esc(ariaLabel)}">${bars}</div><div class="u-axis"><span>hace 24 h</span><span>ahora</span></div><div class="u-tip" aria-live="polite"></div>`;
+}
+// Which emails Noza gets when someone adds a plant, identifies one from a photo or runs a diagnosis (Worker: meta «notify»).
+const NOTIFY_LABEL = { plant: ["Cuando alguien añade una planta", "El nombre y si se añadió con IA o a mano"], identify: ["Cuando alguien identifica una planta con una foto", "La especie más probable; nunca la foto"], diagnose: ["Cuando alguien hace un diagnóstico", "La planta y los síntomas marcados"] };
+const NOTIFY_ICON = { plant: "sprout", identify: "camera", diagnose: "alert" };
+function notifyCard() {
+  const n = usage?.notify;
+  if (!n) return "";
+  return `<section class="card"><div class="sec">Avisos por correo de actividad</div>
+    <p class="muted small">Un correo por cada vez, solo del uso real (no de tus dispositivos). Con un tope de 40 al día.</p>
+    ${Object.entries(NOTIFY_LABEL).map(([k, [t, sub]]) => `<button type="button" class="switch-row" role="switch" aria-checked="${n[k]}" data-action="notify-toggle" data-kind="${k}"><span>${ICONS[NOTIFY_ICON[k]]}<span>${t}<small class="sub">${sub}</small></span></span><span class="switch" aria-hidden="true"></span></button>`).join("")}</section>`;
+}
 function webCard() {
   const w = usageWeb;
   if (!w) return "";
@@ -1316,11 +1341,16 @@ function webCard() {
   const fromBlog = refs.reduce((a, r) => a + r.people, 0), planted = refs.reduce((a, r) => a + r.planted, 0);
   const robots = w.totals.search + w.totals.ai + w.totals.preview + w.totals.bot;
   const crawled = w.crawled.search || w.crawled.ai ? `Han visitado ${w.crawled.search} ${w.crawled.search === 1 ? "página" : "páginas"} los buscadores y ${w.crawled.ai} los robots de IA.` : "Ningún buscador ni robot de IA ha visitado todavía el blog.";
-  return `<section class="card"><div class="sec">Visitas a la web <span class="meta">landing y blog · 30 días</span></div>
-    <div class="u-tiles"><div><span>Hoy</span><b>${last(1)}</b></div><div><span>7 días</span><b>${last(7)}</b></div><div><span>30 días</span><b>${last(30)}</b></div></div>
-    <div class="u-chart" role="img" aria-label="Visitas de personas por día en los últimos 30 días">${bars}</div>
+  const hourly = chartRange === "24h";
+  const chart = !hourly ? `<div class="u-chart" role="img" aria-label="Visitas de personas por día en los últimos 30 días">${bars}</div>
     <div class="u-axis"><span>${fmtDate(w.days[0].date)}</span><span>hoy</span></div>
-    <div class="u-tip" aria-live="polite"></div>
+    <div class="u-tip" aria-live="polite"></div>`
+    : w.hours ? hourChart(w.hours, (h) => h.person, (h) => `${h.person} ${h.person === 1 ? "visita" : "visitas"}`, "Visitas de personas por hora en las últimas 24 horas")
+      : `<p class="muted small">Todavía no hay datos por horas: se empiezan a guardar tras publicar la última versión.</p>`;
+  return `<section class="card"><div class="sec">Visitas a la web <span class="meta">landing y blog · ${hourly ? "24 horas" : "30 días"}</span></div>
+    <div class="u-tiles"><div><span>Hoy</span><b>${last(1)}</b></div><div><span>7 días</span><b>${last(7)}</b></div><div><span>30 días</span><b>${last(30)}</b></div></div>
+    ${rangeToggle()}
+    ${chart}
     ${w.pages.length ? `<div class="sec" style="margin-top:14px">Páginas más leídas</div>${w.pages.map((p) => row("notes", esc(WEB_PAGE(p.path)), p.n)).join("")}` : `<p class="muted small">Aún no hay visitas de personas.</p>`}
     ${w.sources.length ? `<div class="sec" style="margin-top:14px">De dónde llegan</div>${w.sources.map((s) => row("search", WEB_SRC[s.src] ?? s.src, s.n)).join("")}` : ""}
     <div class="sec" style="margin-top:14px">Recorrido</div>
@@ -1390,10 +1420,13 @@ function usageSheet() {
       ${row("sprout", "Personas en total", people.length, `${synced} con sincronización · ${people.length - synced} sin sincronizar`)}
       ${row("check", "Nuevas esta semana", newWeek)}
       ${row("refresh", "Han vuelto (2 o más días)", returning)}</section>
-    <section class="card"><div class="sec">Aperturas por día <span class="meta">30 días · ${opens.reduce((a, b) => a + b, 0)}</span></div>
-      <div class="u-chart" role="img" aria-label="Aperturas por día en los últimos 30 días">${bars}</div>
+    <section class="card"><div class="sec">${chartRange === "24h" ? "Aperturas por hora" : "Aperturas por día"} <span class="meta">${chartRange === "24h" ? `24 horas · ${(usage.hours ?? []).reduce((a, h) => a + h.opens, 0)}` : `30 días · ${opens.reduce((a, b) => a + b, 0)}`}</span></div>
+      ${rangeToggle()}
+      ${chartRange === "24h" && usage.hours
+        ? hourChart(usage.hours, (h) => h.opens, (h) => `${h.opens} ${h.opens === 1 ? "apertura" : "aperturas"} · ${h.people} ${h.people === 1 ? "persona" : "personas"}`, "Aperturas por hora en las últimas 24 horas").replace('class="u-tip"', 'class="u-tip" id="usageTip"')
+        : `<div class="u-chart" role="img" aria-label="Aperturas por día en los últimos 30 días">${bars}</div>
       <div class="u-axis"><span>${fmtDate(days[0].date)}</span><span>hoy</span></div>
-      <div class="u-tip" id="usageTip" aria-live="polite"></div></section>
+      <div class="u-tip" id="usageTip" aria-live="polite"></div>`}</section>
     <section class="card"><div class="sec">Qué se hace <span class="meta">30 días</span></div>
       ${row("sprout", "Plantas añadidas", sum("plant_add_ai") + sum("plant_add_manual"), `${sum("plant_add_ai")} con IA · ${sum("plant_add_manual")} a mano`)}
       ${row("droplet", "Riegos marcados", sum("water_done") + sum("water_skip_rain"), sum("water_skip_rain") ? `${sum("water_skip_rain")} saltados por lluvia` : "")}
@@ -1425,13 +1458,14 @@ function usageSheet() {
     ${refsCard()}
     ${intentCard()}
     ${feedbackAdminCards()}
+    ${notifyCard()}
     <section class="card"><div class="sec">Avisos de comentarios nuevos</div>
       <p class="muted small">Te llega un correo cada vez que alguien manda un comentario. Aquí puedes recibir también un aviso en este dispositivo (en el iPhone, con la app instalada).</p>
       <button type="button" class="btn block secondary" data-action="admin-push" data-on="${store.get("mj_admin_push", false) ? "0" : "1"}">${store.get("mj_admin_push", false) ? "Avisos en este dispositivo activados · desactivar" : "Avisarme en este dispositivo"}</button>
       ${adminPushMsg ? `<p class="ai-status ${/No |Sin /.test(adminPushMsg) ? "warn" : "ok"}">${esc(adminPushMsg)}</p>` : ""}</section>
     <section class="card"><div class="sec">Cómo se cuenta</div>
       <p class="muted small">Una <b>persona</b> es un jardín sincronizado (con clave o Google, aunque tenga varios móviles) o, si no sincroniza, un móvil: si cambia de móvil o reinstala sin sincronizar, cuenta como otra. Las <b>aperturas</b> son veces que se abre la app. Solo se cuenta lo que llega de florvia.app (y de la dirección antigua), no de localhost ni de scripts, y tampoco lo de dispositivos marcados como tuyos.</p></section>
-    <p class="group-foot">Recuentos anónimos: sin nombres de plantas, notas, ubicación ni datos personales. Los nombres que pones a las personas solo los ves tú.</p>`, "usage");
+    <p class="group-foot">Los recuentos son anónimos: sin notas, ubicación ni datos personales. Los avisos por correo de actividad sí llevan el nombre de la planta y un código de la persona (nunca fotos ni correos). Los nombres que pones a las personas solo los ves tú.</p>`, "usage");
 }
 // Tap or hover a bar to read its day.
 document.addEventListener("focusin", (e) => { if (e.target.classList?.contains("select-on-focus")) e.target.select(); });
@@ -3486,6 +3520,18 @@ const actions = {
   "toggle-week-tasks": () => { weekAll = !weekAll; render(); },
   "toggle-done": () => { doneOpen = !doneOpen; render(); },
   "toggle-rain-skip": () => { rainSkipOpen = !rainSkipOpen; render(); },
+  "chart-range": (d) => { chartRange = d.range === "24h" ? "24h" : "30d"; usageSheet(); },
+  "notify-toggle": async (d) => {
+    const on = !usage?.notify?.[d.kind];
+    if (usage?.notify) usage.notify[d.kind] = on; // optimistic
+    usageSheet();
+    try {
+      const res = await fetch(`${API}/notify`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ kind: d.kind, on }) });
+      if (!res.ok) throw new Error();
+      usage.notify = (await res.json()).notify;
+    } catch { if (usage?.notify) usage.notify[d.kind] = !on; }
+    usageSheet();
+  },
   "toggle-week": () => { weekOpen = !weekOpen; render(); },
   "del-log": (d) => {
     state.data.log = state.data.log.filter((e) => e.id !== d.log);

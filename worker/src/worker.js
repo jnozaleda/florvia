@@ -525,10 +525,58 @@ async function handleEvent(request, env, headers, ctx) {
   const added = rawEvents.filter(([e, name]) => (e === "plant_add_ai" || e === "plant_add_manual") && name).map(([, name]) => name);
   if (added.length) recordTopics(env, ctx, request, "added", added);
   const garden = /^g:[a-f0-9]{16}$/.test(String(body.garden ?? "")) ? body.garden.slice(2) : "";
+  for (const [e, name] of rawEvents) if (e === "plant_add_ai" || e === "plant_add_manual") notifyActivity(env, ctx, request, "plant", { what: name || "(sin nombre)", extra: e === "plant_add_ai" ? "Añadida con los cuidados de la IA." : "Añadida a mano." }, { device, garden });
   const ref = /^[a-z0-9-]{1,60}$/.test(String(body.ref ?? "")) ? body.ref : "";
   if (ref && env.DB) ctx.waitUntil((async () => env.DB.prepare("INSERT OR IGNORE INTO referrals (device, ref, day, src) VALUES (?, ?, ?, ?)").bind(await hashId(device), ref, new Date().toISOString().slice(0, 10), originSrc(request)).run())().catch(() => {}));
   ctx.waitUntil(logUsage(env, request, events.map((name) => ({ kind: "event", name })), device, garden).catch((err) => console.error("usage log", err?.message)));
   return json({ ok: true }, 200, headers);
+}
+
+// ---------- Activity emails: a plant added, a photo identified, a diagnosis ----------
+// Noza chooses which of the three to receive (switches in «Uso de la app», stored in meta «notify»; all on by default).
+// Only real use counts: from florvia.app (or the old address) and not from a device Noza marked as theirs. A day cap keeps the
+// inbox from flooding if the app takes off (one final email says the cap was reached). The email says what, who (the name Noza
+// gave that person, else a 4-letter code) and when; never photos, notes or contact data.
+const NOTIFY_KINDS = ["plant", "identify", "diagnose"];
+const NOTIFY_DAILY_CAP = 40;
+async function notifySettings(env) {
+  let saved = {};
+  try { saved = JSON.parse((await env.DB.prepare("SELECT v FROM meta WHERE k = 'notify'").first())?.v ?? "{}"); } catch { /* defaults */ }
+  return Object.fromEntries(NOTIFY_KINDS.map((k) => [k, saved[k] !== false]));
+}
+function notifyActivity(env, ctx, request, kind, detail, opts = {}) {
+  if (!env.DB || !env.EMAIL || !env.NOTIFY_EMAIL || !request || !ctx) return;
+  const src = originSrc(request);
+  if (src !== "prod" && src !== "old") return;
+  ctx.waitUntil((async () => {
+    if (!(await notifySettings(env))[kind]) return;
+    const who = await usageWho(request, opts.device ?? null);
+    const garden = opts.garden || who.garden || (await keyGarden(request));
+    const ids = [who.device, garden].filter(Boolean);
+    if (ids.length && (await env.DB.prepare(`SELECT 1 AS x FROM internal WHERE id IN (${ids.map(() => "?").join(",")}) LIMIT 1`).bind(...ids).first())) return;
+    if (env.CACHE) {
+      const key = `notify:${new Date().toISOString().slice(0, 10)}`;
+      const n = Number(await env.CACHE.get(key)) || 0;
+      if (n > NOTIFY_DAILY_CAP) return;
+      await env.CACHE.put(key, String(n + 1), { expirationTtl: 2 * 86400 });
+      if (n === NOTIFY_DAILY_CAP) return sendAdminEmail(env, "Florvia · Límite diario de avisos de actividad", `Hoy ya te he mandado ${NOTIFY_DAILY_CAP} avisos de actividad (plantas añadidas, fotos y diagnósticos). Paro hasta mañana para no llenarte la bandeja.\nLo ves todo en «Uso de la app».`);
+    }
+    const id = garden || who.device;
+    const label = id ? (await env.DB.prepare("SELECT label FROM labels WHERE id = ?").bind(id).first())?.label : "";
+    const person = id ? `${label ? `${label} · ` : ""}código ${id.slice(0, 4).toUpperCase()}` : "persona sin identificar";
+    const title = { plant: "Nueva planta", identify: "Planta identificada por foto", diagnose: "Diagnóstico" }[kind];
+    const when = new Date().toLocaleString("es-ES", { timeZone: "Europe/Madrid", dateStyle: "medium", timeStyle: "short" });
+    await sendAdminEmail(env, `Florvia · ${title}: ${clean(detail.what, 60)}`, [`${title}: ${clean(detail.what, 100)}`, ...(detail.extra ? [clean(detail.extra, 200)] : []), "", `Quién: ${person}`, `Cuándo: ${when} (Madrid)`, "", "Puedes elegir qué avisos recibir en «Uso de la app»."].join("\n"));
+  })().catch((err) => console.error("notify", err?.message)));
+}
+async function handleNotify(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  const body = await request.json().catch(() => null);
+  if (!NOTIFY_KINDS.includes(body?.kind) || typeof body.on !== "boolean") return json({ error: "input" }, 400, headers);
+  const next = { ...(await notifySettings(env)), [body.kind]: body.on };
+  await env.DB.prepare("INSERT OR REPLACE INTO meta (k, v) VALUES ('notify', ?)").bind(JSON.stringify(next)).run();
+  return json({ ok: true, notify: next }, 200, headers);
 }
 
 // ---------- Web visits (POST /hit from track.js on the landing and the blog; GET /stats/web for «Uso de la app») ----------
@@ -565,6 +613,7 @@ async function recordHit(env, { day, path, kind, src, h }) {
   if (page.meta?.changes) await env.DB.prepare("INSERT INTO pv_page (day, path, src, kind, n) VALUES (?, ?, ?, ?, 1) ON CONFLICT (day, path, src, kind) DO UPDATE SET n = n + 1").bind(day, path, src, kind).run();
   const site = await env.DB.prepare("INSERT OR IGNORE INTO pv_seen_day (day, h) VALUES (?, ?)").bind(day, h).run();
   if (site.meta?.changes) await env.DB.prepare("INSERT INTO pv_site (day, kind, n) VALUES (?, ?, 1) ON CONFLICT (day, kind) DO UPDATE SET n = n + 1").bind(day, kind).run();
+  if (site.meta?.changes && kind === "person") await env.DB.prepare("INSERT INTO pv_hour (day, hr, n) VALUES (?, ?, 1) ON CONFLICT (day, hr) DO UPDATE SET n = n + 1").bind(day, new Date().getUTCHours()).run().catch(() => {});
 }
 async function handleHit(request, env, headers, ctx) {
   const none = () => new Response(null, { status: 204, headers });
@@ -584,6 +633,8 @@ async function handleWebStats(request, env, headers) {
   if (!env.DB) return json({ error: "db" }, 500, headers);
   const n = Math.min(90, Math.max(1, Number(new URL(request.url).searchParams.get("days")) || 30));
   const dayList = [...Array(n).keys()].map((i) => new Date(Date.now() - (n - 1 - i) * 86400000).toISOString().slice(0, 10));
+  const hourStart = Math.floor(Date.now() / 3600000) * 3600000 - 23 * 3600000;
+  const hourRes = await env.DB.prepare("SELECT day, hr, n FROM pv_hour WHERE day >= ?").bind(new Date(hourStart).toISOString().slice(0, 10)).all().catch(() => null);
   const [site, pages] = await Promise.all([
     env.DB.prepare("SELECT day, kind, n FROM pv_site WHERE day >= ?").bind(dayList[0]).all(),
     env.DB.prepare("SELECT day, path, src, kind, n FROM pv_page WHERE day >= ?").bind(dayList[0]).all(),
@@ -599,6 +650,7 @@ async function handleWebStats(request, env, headers) {
   const top = (o, k) => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, k);
   return json({
     days: dayList.map((d) => days[d]), totals,
+    hours: hourRes ? [...Array(24).keys()].map((i) => { const t = hourStart + i * 3600000; const d = new Date(t); const r = (hourRes.results ?? []).find((x) => x.day === d.toISOString().slice(0, 10) && x.hr === d.getUTCHours()); return { t, person: r?.n ?? 0 }; }) : null,
     pages: top(byPage, 8).map(([path, n]) => ({ path, n })),
     sources: Object.entries(bySrc).map(([src, n]) => ({ src, n })).sort((a, b) => b.n - a.n),
     crawled: { search: Object.keys(botPages).filter((k) => k.startsWith("search|")).length, ai: Object.keys(botPages).filter((k) => k.startsWith("ai|")).length },
@@ -689,6 +741,18 @@ async function handleStats2(request, env, headers) {
   const kindOf = (id) => (id === "anon" ? "anon" : id.length === 16 ? "garden" : "device");
   const list = Object.values(people).map((p) => ({ id: p.id, code: p.id.slice(0, 4).toUpperCase(), kind: kindOf(p.id), label: labels[p.id] ?? "", first: p.first, last: p.last, activeDays: p.days.size, opens: p.opens, aiCalls: p.aiCalls }))
     .sort((a, b) => (b.last > a.last ? 1 : b.last < a.last ? -1 : b.activeDays - a.activeDays));
+  // The last 24 hours (UTC hour starts, the app shows them in local time): opens and distinct people, real use only.
+  const hourStart = Math.floor(Date.now() / 3600000) * 3600000 - 23 * 3600000;
+  const hourRows = (await env.DB.prepare(`
+    WITH dg AS (SELECT device, MAX(garden) AS garden FROM events WHERE garden <> '' AND device <> '' GROUP BY device)
+    SELECT e.ts / 3600000 AS hr, COUNT(*) AS opens,
+      COUNT(DISTINCT CASE WHEN e.garden <> '' THEN e.garden WHEN dg.garden IS NOT NULL THEN dg.garden WHEN e.device <> '' THEN e.device ELSE 'anon' END) AS people
+    FROM events e LEFT JOIN dg ON dg.device = e.device
+    WHERE e.ts >= ? AND e.kind = 'event' AND e.name = 'app_open' AND e.src IN ('prod', 'old') AND e.day >= ?
+      AND NOT (e.garden IN (SELECT id FROM internal) OR e.device IN (SELECT id FROM internal) OR dg.garden IN (SELECT id FROM internal))
+    GROUP BY hr`).bind(hourStart, cleanStart).all().catch(() => ({ results: [] }))).results ?? [];
+  const byHour = Object.fromEntries(hourRows.map((r) => [r.hr, r]));
+  const hours = [...Array(24).keys()].map((i) => { const t = hourStart + i * 3600000; const r = byHour[t / 3600000]; return { t, opens: r?.opens ?? 0, people: r?.people ?? 0 }; });
   const who = await usageWho(request);
   const mine = await env.DB.prepare("SELECT id FROM internal WHERE id IN (?, ?)").bind(who.device || "-", who.garden || "-").all();
   const intentRows = (await env.DB.prepare("SELECT choice, contact, ts, device, garden FROM premium_intent ORDER BY id DESC LIMIT 100").all()).results ?? [];
@@ -700,7 +764,7 @@ async function handleStats2(request, env, headers) {
   }
   const refRows = (await env.DB.prepare("SELECT r.ref AS ref, COUNT(*) AS people, SUM(EXISTS (SELECT 1 FROM events e WHERE e.device = r.device AND e.kind = 'event' AND e.name IN ('plant_add_ai', 'plant_add_manual'))) AS planted FROM referrals r WHERE r.src IN ('prod', 'old') AND r.device NOT IN (SELECT id FROM internal) GROUP BY r.ref ORDER BY people DESC LIMIT 30").all()).results ?? [];
   return json({
-    cleanStart, today, aiKinds, intent, refs: refRows, retention,
+    cleanStart, today, aiKinds, intent, refs: refRows, retention, hours, notify: await notifySettings(env),
     cap: { used: env.CACHE ? Number(await env.CACHE.get(`count:${today}`)) || 0 : 0, limit: Number(env.DAILY_LIMIT) || 0 },
     me: { internal: (mine.results ?? []).length > 0, code: (who.garden || who.device || "").slice(0, 4).toUpperCase() },
     days: dayList.map((d) => ({ ...days[d], people: days[d].people.size })),
@@ -1800,6 +1864,7 @@ async function handleIdentify(request, env, headers, ctx) {
       noteQuota(env, ctx, quotaHit);
       console.log("identify ok", spec, Date.now() - t0, "ms");
       if (candidates.length && parsed.isPlant !== false) recordTopics(env, ctx, request, "identify", candidates[0].commonName);
+      if (candidates.length && parsed.isPlant !== false) notifyActivity(env, ctx, request, "identify", { what: candidates[0].commonName, extra: `${candidates[0].species} · confianza ${candidates[0].confidence}` });
       return json({ isPlant: parsed.isPlant !== false && candidates.length > 0, candidates }, 200, headers);
     } catch (err) {
       console.error("identify failed", spec, err?.message);
@@ -1923,6 +1988,7 @@ ${image ? `La persona dice que su planta es «${plant.name.replace(/[«»]/g, ""
       }
       recordAi(env, ctx, "call", Date.now() - t0, request, "diagnose", tokens);
       console.log("diagnose ok", spec, Date.now() - t0, "ms");
+      notifyActivity(env, ctx, request, "diagnose", { what: plant.name, extra: [symptoms.map((s) => SYMPTOMS[s]).filter(Boolean).join(", "), image ? "Con foto." : ""].filter(Boolean).join(" · ") });
       return json({
         isPlant: true, photo, photoSeen, urgency: ["baja", "media", "alta"].includes(parsed.urgency) ? parsed.urgency : "media",
         summary: clip(parsed.summary, 400), causes, watch: clip(parsed.watch, 400), needMore: clip(parsed.needMore, 300),
@@ -2073,6 +2139,7 @@ export default {
     if (pathname === "/error" && request.method === "POST") return handleError(request, env, headers, ctx);
     if (pathname === "/ci-alert" && request.method === "POST") return handleCiAlert(request, env, headers);
     if (pathname === "/internal" && request.method === "POST") return handleInternal(request, env, headers);
+    if (pathname === "/notify" && request.method === "POST") return handleNotify(request, env, headers);
     if (pathname === "/usage/label" && request.method === "POST") return handleUsageLabel(request, env, headers);
     if (pathname === "/usage/delete" && request.method === "POST") return handleUsageDelete(request, env, headers);
     if (pathname === "/identify" && request.method === "POST") return handleIdentify(request, env, headers, ctx);

@@ -63,6 +63,13 @@ jobs:
         if: always()
         shell: bash
         run: node tools/test-ai-alerts.mjs 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
+      - name: Probar lluvia, sol, coordenadas, retención y avisos de actividad
+        if: always()
+        shell: bash
+        run: |
+          fail=0
+          for t in test-rain test-sun test-coords test-retention test-notify; do node tools/$t.mjs 2>&1 | tee -a blog-check.log; [ "${PIPESTATUS[0]}" = 0 ] || fail=1; done
+          exit $fail
       - name: Avisar por correo
         if: failure() && env.CI_ALERT_TOKEN != ''
         shell: bash

@@ -89,6 +89,8 @@ CREATE TABLE IF NOT EXISTS pv_seen (day TEXT NOT NULL, h TEXT NOT NULL, path TEX
 CREATE TABLE IF NOT EXISTS pv_seen_day (day TEXT NOT NULL, h TEXT NOT NULL, PRIMARY KEY (day, h));
 CREATE TABLE IF NOT EXISTS pv_page (day TEXT NOT NULL, path TEXT NOT NULL, src TEXT NOT NULL, kind TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, path, src, kind));
 CREATE TABLE IF NOT EXISTS pv_site (day TEXT NOT NULL, kind TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind));
+-- People per UTC hour (first visit of the day of each person), for the 24-hour chart in «Uso de la app». Only counts; exists since 2026-10-06.
+CREATE TABLE IF NOT EXISTS pv_hour (day TEXT NOT NULL, hr INTEGER NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, hr));
 
 -- What people ask for, anonymous: only counts per day, kind and normalised name (a plant, a symptom, a preference). No device, no garden.
 -- kind: care (ficha al añadir), explore, identify (species recognised from a photo), added (plant added to the garden), diagnose (plant), symptom,

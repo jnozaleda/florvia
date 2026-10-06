@@ -46,6 +46,13 @@ await test("una visita de persona se cuenta y responde 204", async () => {
   assert.deepEqual(s.pages, [{ path: "/es/plantas/ficus/", n: 1 }]);
   assert.deepEqual(s.sources, [{ src: "google", n: 1 }]);
 });
+await test("la visita también se cuenta en las horas del día (24 cubos, la última con la visita)", async () => {
+  const res = await worker.fetch(new Request("https://api.florvia.app/stats/web?days=1", { headers: { "X-Access-Code": "test-code", Origin: "https://florvia.app" } }), env, ctx);
+  const { hours } = await res.json();
+  assert.equal(hours.length, 24);
+  assert.equal(hours.reduce((a, h) => a + h.person, 0), 1);
+  assert.equal(hours[23].person, 1);
+});
 await test("la misma persona, página y día no se cuenta dos veces", async () => {
   await hit({ path: "/es/plantas/ficus/" });
   assert.equal((await stats()).totals.person, 1);

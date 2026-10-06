@@ -63,6 +63,8 @@ const aiEvents = () => sqlite.prepare("SELECT name, COUNT(*) AS n FROM events WH
 let failed = 0;
 async function test(name, fn) {
   kv = new Map(); emails.length = 0; sqlite.exec("DELETE FROM events");
+  // Aquí solo se prueban los avisos de fallos de la IA: los avisos de actividad (planta, foto, diagnóstico) tienen su propia prueba (test-notify.mjs).
+  sqlite.prepare("INSERT OR REPLACE INTO meta (k, v) VALUES ('notify', ?)").run(JSON.stringify({ plant: false, identify: false, diagnose: false }));
   try { await fn(); console.log("ok   ", name); } catch (e) { failed++; console.log("FALLA", name, "\n     ", e.message); }
 }
 
