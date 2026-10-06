@@ -88,13 +88,13 @@ section[id]{scroll-margin-top:84px}.site-nav{position:sticky;top:0;z-index:50;ma
 @media(min-width:701px){.js .step.on .n{background:none;border:0;color:var(--leaf)}}
 /* Background plant: fixed, huge, faint; its stem and leaves grow with page scroll (--g 0..1 set by landing.js) */
 .bgplant{display:none}
-.js .bgplant{display:block;position:fixed;z-index:40;pointer-events:none;right:-22vw;bottom:0;height:96vh;width:130vw;max-width:560px;opacity:.13}
+.js .bgplant{display:block;position:fixed;z-index:-1;pointer-events:none;right:-22vw;bottom:0;height:96vh;width:130vw;max-width:560px;opacity:.2}
 .bgplant svg{width:100%;height:100%;overflow:visible}
 .bgplant .stem{fill:none;stroke:var(--leaf-d);stroke-width:5;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--g,0))}
 .bgplant .soil{fill:none;stroke:var(--leaf-d);stroke-width:5;stroke-linecap:round}
 .bgplant .lf{fill:var(--leaf);transform-box:fill-box;transform-origin:left center;transform:scale(clamp(0, calc((var(--g,0) - var(--t)) * 7), 1))}
 .bgplant .bud{fill:var(--leaf-d);transform-box:fill-box;transform-origin:center bottom;transform:scale(clamp(0, calc((var(--g,0) - .9) * 10), 1))}
-@media(min-width:900px){.js .bgplant{right:1vw;width:min(36vw,520px);opacity:.11}}
+@media(min-width:900px){.js .bgplant{right:1vw;width:min(36vw,520px);opacity:.16}}
 @media(prefers-reduced-motion:reduce){.js .reveal{opacity:1;transform:none;transition:none}.js .bgplant{display:none}}
 </style></head><body><div class="bgplant" aria-hidden="true"><svg viewBox="0 0 260 400" preserveAspectRatio="xMaxYMax meet"><path class="soil" d="M165 394h80"/><path class="stem" pathLength="1" d="M205 394C216 300 150 190 80 40"/><g transform="translate(206 365) rotate(-25) scale(0.7)"><path class="lf" style="--t:0.06" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(203 335) rotate(200) scale(1.0)"><path class="lf" style="--t:0.13" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(193 295) rotate(-20) scale(0.8)"><path class="lf" style="--t:0.24" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(178 252) rotate(195) scale(1.1)"><path class="lf" style="--t:0.36" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(157 202) rotate(-15) scale(0.8)"><path class="lf" style="--t:0.51" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(136 157) rotate(200) scale(1.0)"><path class="lf" style="--t:0.64" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(113 109) rotate(185) scale(0.8)"><path class="lf" style="--t:0.78" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(80 40) rotate(-20)"><path class="bud" d="M0 0C-16-6-18-30 0-44 18-30 16-6 0 0Z"/></g></svg></div>
 
@@ -207,6 +207,6 @@ section[id]{scroll-margin-top:84px}.site-nav{position:sticky;top:0;z-index:50;ma
 </div>
 </main>
 <footer><div class="wrap"><span>© Florvia</span><span><a href="/es/guias/">Guías</a> · <a href="/es/plantas/">Plantas</a> · <a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer>
-<script src="landing.js?v=20261006k"></script>
+<script src="landing.js?v=20261006l"></script>
 <script src="track.js" defer></script>
 </body></html>
