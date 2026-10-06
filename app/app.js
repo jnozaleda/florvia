@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006s";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006t";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006s";
-import { buildICS } from "./calendar.js?v=20261006s";
-import { scrubPlant } from "./clean.js?v=20261006s";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006s";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006t";
+import { buildICS } from "./calendar.js?v=20261006t";
+import { scrubPlant } from "./clean.js?v=20261006t";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006t";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006s";
+      sc.src = "vendor/qrcode.min.js?v=20261006t";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1415,6 +1415,10 @@ function usageSheet() {
   const nameOf = (p, i) => esc(p.label || `${p.kind === "garden" ? "Jardín" : p.kind === "device" ? "Móvil" : "Sin identificar"} ${p.code}`);
   openSheet(`${head}
     <p class="ai-status ok">Solo uso real desde el ${fmtDate(usage.cleanStart)}. Tus pruebas y tus dispositivos se cuentan aparte.</p>
+    <div class="group-title">Cómo llega la gente</div>
+    ${webCard()}
+    ${refsCard()}
+    <div class="group-title">Qué hacen</div>
     <section class="card"><div class="sec">Personas activas</div>
       <div class="u-tiles"><div><span>Hoy</span><b>${activeSince(1)}</b></div><div><span>7 días</span><b>${activeSince(7)}</b></div><div><span>30 días</span><b>${activeSince(30)}</b></div></div>
       ${row("sprout", "Personas en total", people.length, `${synced} con sincronización · ${people.length - synced} sin sincronizar`)}
@@ -1427,12 +1431,19 @@ function usageSheet() {
         : `<div class="u-chart" role="img" aria-label="Aperturas por día en los últimos 30 días">${bars}</div>
       <div class="u-axis"><span>${fmtDate(days[0].date)}</span><span>hoy</span></div>
       <div class="u-tip" id="usageTip" aria-live="polite"></div>`}</section>
+    ${retentionCard()}
     <section class="card"><div class="sec">Qué se hace <span class="meta">30 días</span></div>
       ${row("sprout", "Plantas añadidas", sum("plant_add_ai") + sum("plant_add_manual"), `${sum("plant_add_ai")} con IA · ${sum("plant_add_manual")} a mano`)}
       ${row("droplet", "Riegos marcados", sum("water_done") + sum("water_skip_rain"), sum("water_skip_rain") ? `${sum("water_skip_rain")} saltados por lluvia` : "")}
       ${row("flask", "Abonos marcados", sum("feed_done"))}
       ${row("check", "Tareas del checklist", sum("task_done"))}
       ${row("refresh", "Fichas actualizadas", sum("upgrade_done"))}</section>
+    <div class="group-title">Qué piden</div>
+    ${topicsCard()}
+    <div class="group-title">Premium y acceso</div>
+    ${intentCard()}
+    ${invitesCard()}
+    <div class="group-title">Inteligencia artificial</div>
     <section class="card"><div class="sec">Inteligencia artificial <span class="meta ai-mark">✦ 30 días</span></div>
       ${todayWarn ? `<p class="ai-status warn">${esc(todayWarn)}</p>` : ""}
       ${usage.cap?.limit ? row("sparkle", "Consultas de hoy", usage.cap.used, `de ${usage.cap.limit} permitidas`) : ""}
@@ -1444,25 +1455,21 @@ function usageSheet() {
       ${row("alert", "Otros fallos de la IA", ai.errors, lastAiDay("errors"))}
       ${row("check", "No era una planta", ai.notPlant, "no cuenta como consulta")}
       <p class="muted small">«Tope diario» es el límite propio de la app (se avisa por correo al 80 % y al 100 %). «Cuota» es que Google o Cloudflare se han quedado sin consultas gratis. «Otros fallos» son errores del modelo o de la conexión.</p></section>
-    <section class="card"><div class="sec">Personas</div>
-      ${people.length ? people.map((p) => `<button type="button" class="u-person" data-action="usage-label" data-id="${esc(p.id)}" data-name="${esc(p.label)}"><span class="u-garden">${nameOf(p)}</span><b>${p.activeDays} ${p.activeDays === 1 ? "día" : "días"}<small>desde ${fmtDate(p.first)} · última ${fmtDate(p.last)} · ${p.opens} aperturas · ${p.aiCalls} consultas IA</small></b></button>`).join("") : `<p class="muted small">Todavía no hay uso real desde la fecha limpia.</p>`}
-      <p class="muted small">Toca una persona para ponerle nombre. Cada persona ve su «Código de uso» al final de Ajustes: así sabes quién es quién.</p></section>
-    <section class="card"><div class="sec">Pruebas y dispositivos tuyos</div>
-      <p class="muted small">${buckets ? `Fuera de las cifras: ${esc(buckets)}.` : "Nada fuera de las cifras por ahora."}</p>
-      <button type="button" class="btn block secondary" data-action="usage-mine" data-on="${usage.me.internal ? "0" : "1"}">${usage.me.internal ? "Este dispositivo está marcado como tuyo · quitar la marca" : "Marcar este dispositivo como mío"}</button></section>
-    ${retentionCard()}
     ${tokensCard()}
-    ${webCard()}
-    ${topicsCard()}
-    ${invitesCard()}
-    ${refsCard()}
-    ${intentCard()}
+    <div class="group-title">Comentarios y avisos</div>
     ${feedbackAdminCards()}
     ${notifyCard()}
     <section class="card"><div class="sec">Avisos de comentarios nuevos</div>
       <p class="muted small">Te llega un correo cada vez que alguien manda un comentario. Aquí puedes recibir también un aviso en este dispositivo (en el iPhone, con la app instalada).</p>
       <button type="button" class="btn block secondary" data-action="admin-push" data-on="${store.get("mj_admin_push", false) ? "0" : "1"}">${store.get("mj_admin_push", false) ? "Avisos en este dispositivo activados · desactivar" : "Avisarme en este dispositivo"}</button>
       ${adminPushMsg ? `<p class="ai-status ${/No |Sin /.test(adminPushMsg) ? "warn" : "ok"}">${esc(adminPushMsg)}</p>` : ""}</section>
+    <div class="group-title">Detalle y ajustes</div>
+    <section class="card"><div class="sec">Personas</div>
+      ${people.length ? people.map((p) => `<button type="button" class="u-person" data-action="usage-label" data-id="${esc(p.id)}" data-name="${esc(p.label)}"><span class="u-garden">${nameOf(p)}</span><b>${p.activeDays} ${p.activeDays === 1 ? "día" : "días"}<small>desde ${fmtDate(p.first)} · última ${fmtDate(p.last)} · ${p.opens} aperturas · ${p.aiCalls} consultas IA</small></b></button>`).join("") : `<p class="muted small">Todavía no hay uso real desde la fecha limpia.</p>`}
+      <p class="muted small">Toca una persona para ponerle nombre. Cada persona ve su «Código de uso» al final de Ajustes: así sabes quién es quién.</p></section>
+    <section class="card"><div class="sec">Pruebas y dispositivos tuyos</div>
+      <p class="muted small">${buckets ? `Fuera de las cifras: ${esc(buckets)}.` : "Nada fuera de las cifras por ahora."}</p>
+      <button type="button" class="btn block secondary" data-action="usage-mine" data-on="${usage.me.internal ? "0" : "1"}">${usage.me.internal ? "Este dispositivo está marcado como tuyo · quitar la marca" : "Marcar este dispositivo como mío"}</button></section>
     <section class="card"><div class="sec">Cómo se cuenta</div>
       <p class="muted small">Una <b>persona</b> es un jardín sincronizado (con clave o Google, aunque tenga varios móviles) o, si no sincroniza, un móvil: si cambia de móvil o reinstala sin sincronizar, cuenta como otra. Las <b>aperturas</b> son veces que se abre la app. Solo se cuenta lo que llega de florvia.app (y de la dirección antigua), no de localhost ni de scripts, y tampoco lo de dispositivos marcados como tuyos.</p></section>
     <p class="group-foot">Los recuentos son anónimos: sin notas, ubicación ni datos personales. Los avisos por correo de actividad sí llevan el nombre de la planta y un código de la persona (nunca fotos ni correos). Los nombres que pones a las personas solo los ves tú.</p>`, "usage");
