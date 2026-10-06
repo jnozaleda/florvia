@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006a";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006b";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006a";
-import { buildICS } from "./calendar.js?v=20261006a";
-import { scrubPlant } from "./clean.js?v=20261006a";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006a";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006b";
+import { buildICS } from "./calendar.js?v=20261006b";
+import { scrubPlant } from "./clean.js?v=20261006b";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006b";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -143,7 +143,7 @@ function welcomeCard() {
   return `<section class="card list-card settings welcome"><div class="sec">Te damos la bienvenida a Florvia <span class="meta">${done} de ${steps.length}</span></div>
     <p class="muted small" style="padding:0 16px 8px">${steps.length} pasos para empezar. Puedes hacerlos en el orden que quieras; todos son opcionales.</p>
     ${steps.map(row).join("")}
-    <div class="two-btns" style="padding:8px 16px 12px">${state.data.plants.length ? "" : `<button class="btn secondary" data-action="open-sync">Ya tengo un jardín</button>`}<button class="btn secondary" data-action="invite-open">Tengo un código</button><button class="btn secondary" data-action="welcome-hide">Ocultar</button></div></section>`;
+    <div class="two-btns" style="padding:8px 16px 12px">${state.data.plants.length ? "" : `<button class="btn secondary" data-action="open-sync">Ya tengo un jardín</button>`}${me?.premium && me.plan !== "trial" ? "" : `<button class="btn secondary" data-action="invite-open">Tengo un código</button>`}<button class="btn secondary" data-action="welcome-hide">Ocultar</button></div></section>`;
 }
 function installSheet() {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006a";
+      sc.src = "vendor/qrcode.min.js?v=20261006b";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -856,7 +856,7 @@ async function loadMe() {
 }
 const plantLimitHit = () => Boolean(me && me.enforced && !me.premium && me.limits?.plants && state.data.plants.length >= me.limits.plants);
 const trialDaysLeft = () => (me?.plan === "trial" && me.trialEnds ? Math.max(0, daysBetween(localToday(), me.trialEnds)) : 0);
-const planLabel = () => (!me ? "" : me.plan === "trial" ? `Prueba gratuita · ${trialDaysLeft()} ${trialDaysLeft() === 1 ? "día" : "días"}` : me.premium ? "Premium" : me.enforced ? "Gratis" : "Próximamente");
+const planLabel = () => (!me ? "" : me.source === "invite" ? "Premium · amigos y familia" : me.plan === "lifetime" ? "Premium · de por vida" : me.plan === "trial" ? `Prueba gratuita · ${trialDaysLeft()} ${trialDaysLeft() === 1 ? "día" : "días"}` : me.premium ? "Premium" : me.enforced ? "Gratis" : "Próximamente");
 function premiumSheet(reason = "", keep = false) {
   const head = `<div class="sheet-head"><h2>Florvia Premium</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>`;
   if (!keep) { premiumUi = { reason, sent: "", email: premiumUi.email, error: "", thanks: false }; track("paywall_view"); }
@@ -1464,6 +1464,12 @@ function render() {
   $("subtitle").textContent = state.tab === "today"
     ? fmtDate(localToday(), { weekday: "long", day: "numeric", month: "long" }).replace(/^./, (c) => c.toUpperCase())
     : state.tab === "plants" ? (n === 1 ? "1 planta" : `${n} plantas`) : "Florvia";
+  // Plan mark next to the title: Premium (paid, invited or Noza's), or the days left of the free month; nothing for the free plan.
+  const pill = $("planPill");
+  const pillText = !me ? "" : me.plan === "trial" ? `Prueba · ${trialDaysLeft()} d` : me.premium ? "Premium" : "";
+  pill.hidden = !pillText;
+  pill.innerHTML = pillText ? `✦ ${pillText}` : "";
+  pill.classList.toggle("trial", me?.plan === "trial");
   document.querySelectorAll(".tabbar button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === state.tab)));
   $("fab").hidden = state.tab === "more";
   // Dot on Ajustes while some plant sheet has improvements to fetch.

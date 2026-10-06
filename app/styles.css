@@ -867,3 +867,7 @@ label.link-btn { cursor: pointer; }
 .sp-card.open .sp-view, .sp-card.open .sp-empty { display: none; }
 .sp-card.open .sp-edit { display: flex; }
 .sp-card .seg label, .sp-card .seg button { white-space: nowrap; padding-left: 4px; padding-right: 4px; gap: 4px; font-size: 14px; }
+
+.title-row { display: flex; align-items: center; gap: 10px; }
+.plan-pill { font-size: 12px; font-weight: 700; color: var(--ai); background: var(--ai-soft); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+.plan-pill.trial { color: var(--accent); background: var(--accent-soft); }
