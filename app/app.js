@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006h";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006i";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006h";
-import { buildICS } from "./calendar.js?v=20261006h";
-import { scrubPlant } from "./clean.js?v=20261006h";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006h";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006i";
+import { buildICS } from "./calendar.js?v=20261006i";
+import { scrubPlant } from "./clean.js?v=20261006i";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006i";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -636,7 +636,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006h";
+      sc.src = "vendor/qrcode.min.js?v=20261006i";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1672,7 +1672,7 @@ function plantSheet(id) {
     exposureOf(p, zoneSun()) ? [LIGHT_ICON[exposureOf(p, zoneSun())], `Recibe ${SUN_LABEL[exposureOf(p, zoneSun())].toLowerCase()}`] : null,
     p.size ? ["sprout", `Tamaño ${(SIZE_LABEL[p.size] ?? "").toLowerCase()}`] : null,
   ].filter(Boolean);
-  const sunWarn = sunAdvice(p, zoneSun());
+  const sunWarn = sunAdvice(p, zoneSun(), state.weather);
   const LOG_ICON = { water: "droplet", feed: "flask", prune: "scissors", treat: "bug", note: "notes", task: "check" };
   if (plantUi.id !== id) plantUi = { id, open: new Set(["month"]), monthAll: false, big: false, flash: null };
   const open = (k) => plantUi.open.has(k);

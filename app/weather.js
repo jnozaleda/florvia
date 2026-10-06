@@ -3,7 +3,7 @@
 
 const DAILY = [
   "temperature_2m_max", "temperature_2m_min", "precipitation_sum",
-  "precipitation_probability_max", "wind_gusts_10m_max", "weather_code",
+  "precipitation_probability_max", "wind_gusts_10m_max", "weather_code", "uv_index_max",
 ].join(",");
 
 async function getJSON(url) {
@@ -12,7 +12,7 @@ async function getJSON(url) {
   return res.json();
 }
 
-// Returns { days: [{ date, max, min, rain, rainProb, gust, code }], today: index of today }.
+// Returns { days: [{ date, max, min, rain, rainProb, gust, code, uv }], today: index of today }.
 export async function fetchWeather(loc) {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}` +
     `&daily=${DAILY}&past_days=2&forecast_days=7&timezone=auto`;
@@ -25,6 +25,7 @@ export async function fetchWeather(loc) {
     rainProb: d.precipitation_probability_max[i] ?? 0,
     gust: d.wind_gusts_10m_max[i] ?? 0,
     code: d.weather_code[i],
+    uv: d.uv_index_max?.[i] ?? null,
   }));
   return { days, today: 2 };
 }

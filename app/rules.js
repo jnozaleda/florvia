@@ -91,14 +91,46 @@ export function frostLimit(plant) {
 // Sun-sensitive: burns in direct sun. Plants from before the light data fall back on the calendar's risk.
 export const sunTender = (plant) => (plant.sunSensitive !== undefined ? Boolean(plant.sunSensitive) : Boolean(plant.risks?.includes("sunburn")));
 
-// One line for the plant sheet when its light doesn't match, or null.
-export function sunAdvice(plant, zoneSun = {}) {
+// How strong the sun is where the garden is, for the next 3 days: from the forecast's UV index (it follows both latitude and
+// season: Málaga in July ≈ 9, a northern town in winter ≈ 1). Without UV (older cached forecast) the day's maximum temperature stands in.
+// Returns { level: "low" | "mid" | "high" | "extreme", uv } or null when there is no forecast.
+export function sunStrength(weather) {
+  if (!weather) return null;
+  const span = weather.days.slice(weather.today, weather.today + 3);
+  const uvs = span.map((d) => d.uv).filter(Number.isFinite);
+  if (uvs.length) {
+    const uv = Math.max(...uvs);
+    return { level: uv >= 8 ? "extreme" : uv >= 6 ? "high" : uv >= 3 ? "mid" : "low", uv: Math.round(uv) };
+  }
+  const max = Math.max(...span.map((d) => d.max).filter(Number.isFinite));
+  return Number.isFinite(max) ? { level: max >= 33 ? "extreme" : max >= 28 ? "high" : max >= 18 ? "mid" : "low", uv: null } : null;
+}
+
+// One line for the plant sheet when its light doesn't match, or null. The severity follows the sun where you are:
+// a sun-sensitive plant in full sun is an emergency under strong sun and only a heads-up when the sun is weak.
+export function sunAdvice(plant, zoneSun = {}, weather = null) {
   const exposure = exposureOf(plant, zoneSun);
-  const fit = sunFit(plant.sunNeed, plant.sunSensitive, exposure);
+  let fit = sunFit(plant.sunNeed, plant.sunSensitive, exposure);
   if (!fit || fit === "ok") return null;
   const asks = `${plant.sunSensitive ? "Es muy sensible al sol directo" : `Pide ${SUN_NEED_LABEL[plant.sunNeed ?? "sun"]}`}`;
   const move = plant.sunSensitive || plant.sunNeed === "shade" ? "sombra" : plant.sunNeed === "sun" ? "una zona más soleada" : "media sombra";
-  return { level: fit, text: `${asks} y recibe ${SUN_LABEL[exposure].toLowerCase()}: mejor en ${move}.` };
+  let text = `${asks} y recibe ${SUN_LABEL[exposure].toLowerCase()}: mejor en ${move}.`;
+  const tooMuchSun = exposure !== "shade" && (plant.sunSensitive || plant.sunNeed === "shade" || (plant.sunNeed === "partial" && exposure === "sun"));
+  const sun = tooMuchSun ? sunStrength(weather) : null;
+  if (sun) {
+    const uv = sun.uv != null ? ` (UV ${sun.uv})` : "";
+    if (sun.level === "extreme") {
+      if (plant.sunSensitive || exposure === "sun") fit = "no";
+      text += ` Aquí el sol aprieta mucho ahora${uv}: se le quemarán las hojas si no la mueves.`;
+    } else if (sun.level === "high") {
+      text += ` El sol es fuerte ahora${uv}: no lo dejes para luego.`;
+    } else if (sun.level === "low") {
+      if (fit === "warn" && plant.sunSensitive) return null;
+      fit = "warn";
+      text += ` Ahora el sol es suave${uv}, así que no corre prisa, pero en verano le quemará.`;
+    }
+  }
+  return { level: fit, text };
 }
 
 // Why an exposure does or doesn't suit a plant, in one short sentence.
@@ -206,9 +238,14 @@ export function weatherChecks(plants, weather, today, zoneSun = {}) {
     out.push({ kind: "cold", title: `Noches frías ${whenLabel(today, first.date)} (${Math.round(first.min)}°)`, text: `Ten a mano protección para ${names(cool.map((h) => h.p))}.`, plantIds: cool.map((h) => h.p.id) });
   }
   const hot = week.find((d) => d.max >= LIMITS.heatC);
+  const strongSun = week.find((d) => d.uv >= LIMITS.uvStrong);
   const sunny = plants.filter((p) => sunTender(p) && exposureOf(p, zoneSun) !== "shade");
-  if (hot && sunny.length) {
-    out.push({ kind: "heat", title: `Calor ${whenLabel(today, hot.date)} (${Math.round(hot.max)}°)`, text: `Da sombra en las horas centrales a ${names(sunny)}.`, plantIds: sunny.map((p) => p.id) });
+  if ((hot || strongSun) && sunny.length) {
+    out.push({
+      kind: "heat",
+      title: hot ? `Calor ${whenLabel(today, hot.date)} (${Math.round(hot.max)}°)` : `Sol muy fuerte ${whenLabel(today, strongSun.date)} (UV ${Math.round(strongSun.uv)})`,
+      text: `Da sombra en las horas centrales a ${names(sunny)}.`, plantIds: sunny.map((p) => p.id),
+    });
   }
   // Automatic irrigation: tell when the timer could pause (rain reached them) or needs checking (heat).
   const auto = plants.filter(irrigated);
@@ -225,7 +262,7 @@ export function weatherChecks(plants, weather, today, zoneSun = {}) {
 }
 
 // Thresholds (tunable once there's real use behind them).
-export const LIMITS = { rainSkipMm: 5, rainProb: 60, heatC: 32, heatwaveC: 35, frostC: 2, gustKmh: 50 };
+export const LIMITS = { rainSkipMm: 5, rainProb: 60, heatC: 32, heatwaveC: 35, frostC: 2, gustKmh: 50, uvStrong: 8 };
 
 const DAY = 86400000;
 export const isoDay = (d) => new Date(d).toISOString().slice(0, 10);
