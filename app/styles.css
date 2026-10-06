@@ -886,3 +886,6 @@ label.link-btn { cursor: pointer; }
 .inv .link-btn:active { color: #c93b30; }
 
 .inv-acts { display: flex; gap: 10px; flex: none; }
+
+.trial-nudge { border: 1px solid var(--accent); background: var(--accent-soft); display: flex; flex-direction: column; gap: 6px; }
+.trial-nudge .btn { align-self: flex-start; }

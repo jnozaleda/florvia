@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006f";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006g";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006f";
-import { buildICS } from "./calendar.js?v=20261006f";
-import { scrubPlant } from "./clean.js?v=20261006f";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006f";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006g";
+import { buildICS } from "./calendar.js?v=20261006g";
+import { scrubPlant } from "./clean.js?v=20261006g";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006g";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -155,11 +155,20 @@ function installSheet() {
     <p class="muted small">Si ya tienes plantas en el navegador, sincroniza antes (Ajustes → Sincronizar) para recuperarlas en la app instalada.</p>`);
 }
 
+// Last days of the free month of Premium: tell people before the limits start (nothing is shown the rest of the month).
+function trialNudge() {
+  if (!me || me.plan !== "trial" || !me.enforced || trialDaysLeft() > 5) return "";
+  const n = trialDaysLeft();
+  const F = me.freeLimits ?? {};
+  return `<section class="card trial-nudge"><b>${n === 0 ? "Hoy termina tu mes de Premium gratis" : `Tu mes de Premium gratis termina ${n === 1 ? "mañana" : `en ${n} días`}`}</b>
+    <p class="muted small">Después pasas al plan gratuito: ${F.plants ?? 8} plantas y ${F.suggest ?? 5} consultas al mes de cada función de IA. Si quieres seguir con todo, elige un plan o pide un código de uso gratuito.</p>
+    <button type="button" class="btn small" data-action="open-premium">Ver opciones</button></section>`;
+}
 function todayView() {
   const today = localToday();
   const { plants, log } = state.data;
   const alerts = state.weather ? weatherAlerts(plants, state.weather, today).map((a) => ({ ...a, kind: ALERT_ICON[a.icon] })) : [];
-  let html = upgradeBanner() + forecastCard(alerts) + irrigationCard();
+  let html = trialNudge() + upgradeBanner() + forecastCard(alerts) + irrigationCard();
   if (!plants.length) return html + (welcomeCard() || emptyGarden());
 
   // Para hoy: overdue and due today (tomorrow onwards lives in «Próximos días»).
@@ -627,7 +636,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006f";
+      sc.src = "vendor/qrcode.min.js?v=20261006g";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1522,10 +1531,9 @@ function render() {
     : state.tab === "plants" ? (n === 1 ? "1 planta" : `${n} plantas`) : "Florvia";
   // Plan mark next to the title: Premium (paid, invited or Noza's), or the days left of the free month; nothing for the free plan.
   const pill = $("planPill");
-  const pillText = !me ? "" : me.plan === "trial" ? `Prueba · ${trialDaysLeft()} d` : me.premium ? (me.accessUntil ? `Premium · ${accessDaysLeft()} d` : "Premium") : "";
+  const pillText = !me || me.plan === "trial" ? "" : me.premium ? (me.accessUntil ? `Premium · ${accessDaysLeft()} d` : "Premium") : "";
   pill.hidden = !pillText;
   pill.innerHTML = pillText ? `✦ ${pillText}` : "";
-  pill.classList.toggle("trial", me?.plan === "trial");
   document.querySelectorAll(".tabbar button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === state.tab)));
   $("fab").hidden = state.tab === "more";
   // Dot on Ajustes while some plant sheet has improvements to fetch.
