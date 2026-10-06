@@ -131,11 +131,11 @@ details{border-bottom:1px solid #dfe5da;padding:2px 0}summary{cursor:pointer;fon
 .note{font-size:15px;color:var(--mut);margin-top:30px}.related{display:grid;gap:8px;padding:0;list-style:none}.related a{display:block;padding:12px 16px;background:#fff;border:1px solid #e2e8de;border-radius:14px;text-decoration:none;font-weight:600}
 .hub{display:grid;gap:12px;padding:0;list-style:none;margin:20px 0 40px}.hub a{display:block;padding:18px 20px;background:#fff;border:1px solid #e2e8de;border-radius:16px;text-decoration:none;color:var(--ink)}.hub b{display:block;font-size:19px}.hub span{color:var(--mut);font-size:15.5px}
 footer{background:var(--deep2);color:#b9d1b6;margin-top:60px;padding:30px 0;font-size:15px}footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}footer a{color:#d6e6d3}`;
-const head = ({ title, description, path, extra = "" }) => `<!DOCTYPE html>
+const head = ({ title, description, path, extra = "", type = "article" }) => `<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://api.florvia.app; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><meta name="description" content="${esc(description)}"><link rel="canonical" href="${SITE}${path}">
 <meta name="theme-color" content="#0f4628"><link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/app/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/app/favicon-48.png" type="image/png" sizes="48x48"><link rel="apple-touch-icon" href="/app/icon-180.png">
-<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:type" content="article"><meta property="og:url" content="${SITE}${path}"><meta property="og:image" content="${SITE}/app/og.png">
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:type" content="${type}"><meta property="og:url" content="${SITE}${path}"><meta property="og:image" content="${SITE}/app/og.png">
 ${extra}<style>${CSS}</style></head><body>
 <div class="top"><div class="wrap"><div class="nav"><a class="brand" href="/"><img src="/app/icon-rounded.png" width="34" height="34" alt="">Florvia</a><nav><a href="/es/plantas/">Plantas</a><a href="/es/guias/">Guías</a><a class="btn cream small" href="/app/">Abrir</a></nav></div></div></div>`;
 const foot = `<footer><div class="wrap"><span>© Florvia</span><span><a href="/">Inicio</a> · <a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer><script src="/track.js" defer></script></body></html>`;
@@ -180,7 +180,7 @@ ${foot}`;
 }
 for (const type of Object.keys(TYPES)) {
   const list = pages.filter((p) => p.type === type);
-  const html = `${head({ title: `${TYPES[type].hub} | Florvia`, description: TYPES[type].hubIntro, path: `/es/${type}/` })}
+  const html = `${head({ title: `${TYPES[type].hub} | Florvia`, description: TYPES[type].hubIntro, path: `/es/${type}/`, type: "website" })}
 <div class="wrap"><div class="crumbs"><a href="/">Florvia</a> › ${TYPES[type].label}</div><article><h1>${TYPES[type].hub}</h1><p class="lead">${esc(TYPES[type].hubIntro)}</p>
 <ul class="hub">${list.map((p) => `<li><a href="${p.path}"><b>${esc(p.meta.h1)}</b><span>${esc(p.meta.description)}</span></a></li>`).join("")}</ul></article></div>
 ${foot}`;
@@ -195,10 +195,13 @@ const marks = /(<!-- aprende:start[^>]*-->\n)[\s\S]*?(\n<!-- aprende:end -->)/;
 if (!marks.test(landing)) { console.log("index.html no tiene las marcas <!-- aprende:start --> / <!-- aprende:end -->"); process.exit(1); }
 const nextLanding = landing.replace(marks, (_, a, b) => a + cards + b);
 if (nextLanding !== landing) writeFileSync(join(ROOT, "index.html"), nextLanding);
-const urls = ["/", "/privacidad/", "/es/plantas/", "/es/guias/", ...pages.map((p) => p.path)];
-writeFileSync(join(ROOT, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${SITE}${u}</loc>${byKey[u.replace(/^\/es\/|\/$/g, "")] ? "" : ""}</url>`).join("\n")}\n</urlset>\n`);
-// Títulos legibles para «Uso de la app» (Procedencia y Páginas más leídas): ref de ?ref= y ruta → h1 de la página.
-const titles = { "/": "Inicio (landing)", "/es/plantas/": "Fichas de plantas (índice)", "/es/guias/": "Guías (índice)" };
-for (const p of pages) { titles[p.path] = p.meta.h1; titles[`${p.type === "plantas" ? "planta" : "guia"}-${p.slug}`] = p.meta.h1; }
-writeFileSync(join(ROOT, "app", "pages.json"), JSON.stringify(titles, null, 1) + "\n");
-console.log(`${pages.length} páginas + 2 índices · sitemap con ${urls.length} URL`);
+// Sitemap: only what should rank (the privacy page stays public but is not listed). lastmod = the post's «updated»; a hub's = the newest of its posts;
+// the landing has no date of its own, so it carries none.
+const lastOf = (list) => list.map((p) => p.meta.updated).filter(Boolean).sort().pop();
+const entries = [
+  { u: "/" },
+  ...Object.keys(TYPES).map((type) => ({ u: `/es/${type}/`, d: lastOf(pages.filter((p) => p.type === type)) })),
+  ...pages.map((p) => ({ u: p.path, d: p.meta.updated })),
+];
+writeFileSync(join(ROOT, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.map((e) => `  <url><loc>${SITE}${e.u}</loc>${e.d ? `<lastmod>${e.d}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>\n`);
+console.log(`${pages.length} páginas + 2 índices · sitemap con ${entries.length} URL`);
