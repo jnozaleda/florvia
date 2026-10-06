@@ -1,4 +1,4 @@
-import { dueTasks, weatherAlerts, weatherChecks, plantLabel, monthTasks, groupGardenTasks } from "../../app/rules.js";
+import { dueTasks, weatherAlerts, weatherChecks, plantLabel, monthTasks, groupGardenTasks, rainCredits } from "../../app/rules.js";
 import { verifyGoogleToken } from "./google.js";
 import { EmailMessage } from "cloudflare:email";
 import { fetchWeather } from "../../app/weather.js";
@@ -1633,7 +1633,9 @@ const pushKey = async (endpoint) => `push:${(await gardenKey(endpoint)).slice(7,
 // Today's message for one garden, or null when there's nothing worth a notification.
 function dailyMessage(garden, weather, today, lat) {
   const plants = garden.plants ?? [];
-  const tasks = dueTasks(plants, garden.log ?? [], weather, today, lat, 0).filter((t) => t.advice?.kind !== "skip");
+  const log = [...(garden.log ?? [])];
+  log.push(...rainCredits(plants, log, weather, today, garden.deleted ?? {}));
+  const tasks = dueTasks(plants, log, weather, today, lat, 0).filter((t) => t.advice?.kind !== "skip");
   const alerts = weatherAlerts(plants, weather, today);
   const checks = weatherChecks(plants, weather, today, garden.zoneSun ?? {}).filter((c) => c.title.startsWith("Riego automático") || c.title.startsWith("Calor: revisa"));
   const lines = [];

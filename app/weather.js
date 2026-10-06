@@ -1,5 +1,5 @@
-// Weather for the garden: Open-Meteo daily forecast (no API key) plus the two previous days,
-// so the rules can see "it rained yesterday" as well as "it will rain tomorrow".
+// Weather for the garden: Open-Meteo daily forecast (no API key) plus the 7 previous days,
+// so the rules can see what rained since the last watering as well as "it will rain tomorrow".
 
 const DAILY = [
   "temperature_2m_max", "temperature_2m_min", "precipitation_sum",
@@ -15,7 +15,7 @@ async function getJSON(url) {
 // Returns { days: [{ date, max, min, rain, rainProb, gust, code, uv }], today: index of today }.
 export async function fetchWeather(loc) {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}` +
-    `&daily=${DAILY}&past_days=2&forecast_days=7&timezone=auto`;
+    `&daily=${DAILY}&past_days=7&forecast_days=7&timezone=auto`;
   const d = (await getJSON(url)).daily;
   const days = d.time.map((date, i) => ({
     date,
@@ -27,7 +27,7 @@ export async function fetchWeather(loc) {
     code: d.weather_code[i],
     uv: d.uv_index_max?.[i] ?? null,
   }));
-  return { days, today: 2 };
+  return { days, today: 7 };
 }
 
 export async function searchCities(query) {

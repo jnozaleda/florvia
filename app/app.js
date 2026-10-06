@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006i";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006j";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006i";
-import { buildICS } from "./calendar.js?v=20261006i";
-import { scrubPlant } from "./clean.js?v=20261006i";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006i";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006j";
+import { buildICS } from "./calendar.js?v=20261006j";
+import { scrubPlant } from "./clean.js?v=20261006j";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006j";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -65,11 +65,25 @@ function relDue(n) {
 }
 
 // ---------- Weather ----------
+let weatherAt = 0; // when the forecast was last fetched
+// Rain that already fell counts as a watering (rules.js rainCredits): written to the log so it syncs and can be undone.
+// Only with a location the user chose: the default (Madrid) is not their garden's weather.
+function applyRain() {
+  if (!state.loc || !state.weather) return;
+  const add = rainCredits(state.data.plants, state.data.log, state.weather, localToday(), state.data.deleted ?? {});
+  if (!add.length) return;
+  state.data.log.push(...add);
+  save();
+}
 async function loadWeather() {
   state.weather = null; state.weatherError = false;
   render();
-  try { state.weather = await fetchWeather(state.loc ?? DEFAULT_LOC); } catch { state.weatherError = true; }
+  try { state.weather = await fetchWeather(state.loc ?? DEFAULT_LOC); weatherAt = Date.now(); applyRain(); } catch { state.weatherError = true; }
   render();
+}
+// Back to the app after a while: refresh the forecast without blanking the screen.
+async function refreshWeather() {
+  try { state.weather = await fetchWeather(state.loc ?? DEFAULT_LOC); state.weatherError = false; weatherAt = Date.now(); applyRain(); render(); } catch { /* keep what is on screen */ }
 }
 
 // The weather card: today large, the next six days with a rain bar each, and the alerts (or a
@@ -192,7 +206,7 @@ function todayView() {
   html += tasks.length
     ? `<section class="card"><div class="sec">Para hoy <span class="meta">${tasks.length}</span></div>${rows}</section>`
     : `<section class="card">${empty}</section>`;
-  return html + doneTodayCard(today) + gardenWeekCard(today) + upcomingCard(today, upcoming);
+  return html + rainSkipCard(today) + doneTodayCard(today) + gardenWeekCard(today) + upcomingCard(today, upcoming) + locationNudge();
 }
 
 const TASK_ICON = { water: "droplet", feed: "flask" };
@@ -332,6 +346,29 @@ function yearCalendarParts(p, today) {
 const ALERT_ICON = { "🥶": "snow", "🔥": "flame", "💨": "wind" };
 // "mañana", "el martes"
 const dayPhrase = (iso, today) => daysBetween(today, iso) === 1 ? "mañana" : `el ${fmtDate(iso, { weekday: "long" })}`;
+
+// «Riego saltado por la lluvia»: waterings the rain already did in the last two days, each undoable (it comes back as due).
+function rainSkipCard(today) {
+  const rows = state.data.log.filter((e) => e.auto && e.note === "Lluvia" && daysBetween(e.date, today) <= 2 && lastDone(state.data.log, e.plantId, "water") === e.date)
+    .map((e) => ({ e, p: plantById(e.plantId) })).filter((x) => x.p)
+    .sort((a, b) => plantLabel(a.p).localeCompare(plantLabel(b.p), "es"))
+    .map(({ e, p }) => {
+      const due = nextDue(p, state.data.log, "water", today, here().lat);
+      const when = daysBetween(e.date, today) === 1 ? "Ayer" : "Anteayer";
+      return `<div class="t-row"><span class="t-ico water">${ICONS["cloud-rain"]}</span>
+        <div class="body"><div class="t-title">${esc(plantLabel(p))}: riego saltado</div>
+        <div class="t-when">${when} cayeron ${e.mm} mm${due ? ` · próximo riego ${due <= today ? "hoy" : dayPhrase(due, today)}` : ""}</div></div>
+        <button type="button" class="undo" data-action="undo-log" data-log="${e.id}">Deshacer</button></div>`;
+    }).join("");
+  return rows ? `<section class="card"><div class="sec">Saltado por la lluvia</div>${rows}</section>` : "";
+}
+// Without a chosen location the weather (and the rain adjustments) is Madrid's, not the garden's.
+function locationNudge() {
+  if (state.loc) return "";
+  return `<section class="card"><div class="sec">¿Dónde está tu jardín?</div>
+    <p class="muted small">Ahora ves el tiempo de Madrid. Con tu ubicación los riegos se ajustan a la lluvia que cae de verdad donde tú estás.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn small" data-action="locate">Usar mi ubicación</button><button type="button" class="btn small secondary" data-action="open-place">Buscar ciudad</button><button type="button" class="btn small secondary" data-action="keep-madrid">Es Madrid</button></div></section>`;
+}
 
 // «Hecho hoy»: what was logged today, folded into one line; each entry can be undone.
 let doneOpen = false;
@@ -636,7 +673,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006i";
+      sc.src = "vendor/qrcode.min.js?v=20261006j";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -3139,6 +3176,7 @@ const actions = {
   close: leaveSheet,
   "retry-weather": loadWeather,
   "open-place": placeSheet,
+  "keep-madrid": () => setLoc({ ...DEFAULT_LOC }),
   "zone-open": (d) => zoneSheet(d.zone ?? ""),
   "welcome-install": installSheet,
   "welcome-hide": () => { store.set("mj_welcome", "off"); render(); },
@@ -3605,7 +3643,7 @@ function flushEvents() {
 }
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { flushEvents(); if (pushTimer) pushNow(); }
-  else pullNow();
+  else { pullNow(); if (weatherAt && Date.now() - weatherAt > 30 * 60000) refreshWeather(); }
 });
 
 // ---------- Start ----------

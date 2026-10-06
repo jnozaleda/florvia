@@ -370,13 +370,33 @@ function outlook(weather) {
   const at = (i) => days[today + i] ?? null;
   const next = (n) => days.slice(today, today + n);
   return {
-    rainYesterday: at(-1)?.rain ?? 0,
     rainSoon: next(2).find((d) => d.rain >= LIMITS.rainSkipMm && d.rainProb >= LIMITS.rainProb) ?? null,
     heat: next(2).find((d) => d.max >= LIMITS.heatC) ?? null,
     heatwave: next(3).find((d) => d.max >= LIMITS.heatwaveC) ?? null,
     frost: next(3).find((d) => d.min <= LIMITS.frostC) ?? null,
     wind: next(2).find((d) => d.gust >= LIMITS.gustKmh) ?? null,
   };
+}
+
+// Rain that already fell counts as a watering for plants it reaches: for each one, the latest day with ≥ LIMITS.rainSkipMm mm
+// since its last watering (past days only; today's rain is still a forecast). Returns log entries to add, with a fixed id per
+// plant and day so two phones agree and an entry the user undid (a tombstone in `deleted`) doesn't come back.
+export function rainCredits(plants, log, weather, today, deleted = {}) {
+  if (!weather) return [];
+  const rainy = weather.days.slice(0, weather.today).filter((d) => d.date < today && d.rain >= LIMITS.rainSkipMm);
+  if (!rainy.length) return [];
+  const known = new Set(log.map((e) => e.id));
+  const out = [];
+  for (const plant of plants) {
+    if (!plant.rainReaches || irrigated(plant)) continue;
+    const since = lastDone(log, plant.id, "water") ?? plant.created ?? "";
+    const day = rainy.filter((d) => d.date > since).pop();
+    if (!day) continue;
+    const id = `rain-${plant.id}-${day.date}`;
+    if (known.has(id) || id in deleted) continue;
+    out.push({ id, plantId: plant.id, type: "water", date: day.date, time: "", note: "Lluvia", auto: true, mm: Math.round(day.rain) });
+  }
+  return out;
 }
 
 // Tasks to show today: overdue or due within `horizon` days, adjusted for the weather.
@@ -391,9 +411,7 @@ export function dueTasks(plants, log, weather, today, lat, horizon = 2) {
       let days = daysBetween(today, due);
       let advice = null;
       if (type === "water" && o) {
-        if (plant.rainReaches && o.rainYesterday >= LIMITS.rainSkipMm) {
-          advice = { kind: "skip", text: `Ayer cayeron ${Math.round(o.rainYesterday)} mm: puedes saltarte este riego` };
-        } else if (plant.rainReaches && o.rainSoon) {
+        if (plant.rainReaches && o.rainSoon) {
           advice = { kind: "skip", text: `Se esperan ${Math.round(o.rainSoon.rain)} mm ${whenLabel(today, o.rainSoon.date)}: espera a la lluvia` };
         } else if (o.heat && days <= 2) {
           advice = { kind: "urgent", text: `${Math.round(o.heat.max)}° ${whenLabel(today, o.heat.date)}: riega hoy, mejor al amanecer o al atardecer` };
