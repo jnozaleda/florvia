@@ -26,6 +26,8 @@ const ROW_ICON = [[/^luz|^sol/i, "sun"], [/^riego/i, "droplet"], [/^abono/i, "fl
 const SEASON_ICON = { primavera: "sprout", verano: "sun", otoño: "leaf", invierno: "snow" };
 const rowIcon = (label) => ico((ROW_ICON.find(([re]) => re.test(label.trim())) ?? [])[1]);
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+// schema.org wants a full ISO 8601 date-time with a time zone (a bare date raises warnings): noon UTC keeps the day right everywhere.
+const isoStamp = (d) => `${d}T12:00:00Z`;
 const fmtMonth = (iso) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} de ${iso.slice(0, 4)}`;
 
 // ---- front matter
@@ -165,7 +167,7 @@ for (const p of pages) {
   const related = (m.related ?? []).map((r) => { const [key, label] = r.split("|").map((x) => x.trim()); return byKey[key] ? `<li><a href="${byKey[key].path}">${esc(label || byKey[key].meta.h1)}</a></li>` : ""; }).join("");
   const crumbs = [{ n: "Florvia", u: `${SITE}/` }, { n: TYPES[p.type].label, u: `${SITE}/es/${p.type}/` }, { n: m.h1, u: `${SITE}${p.path}` }];
   const jsonld = ld({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.n, item: c.u })) })
-    + ld({ "@context": "https://schema.org", "@type": "Article", headline: m.h1, description: m.description, dateModified: m.updated, datePublished: m.published || m.updated, inLanguage: "es", mainEntityOfPage: `${SITE}${p.path}`, author: { "@type": "Organization", name: "Florvia", url: `${SITE}/` }, publisher: { "@type": "Organization", name: "Florvia", url: `${SITE}/`, logo: { "@type": "ImageObject", url: `${SITE}/app/icon-512.png` } } });
+    + ld({ "@context": "https://schema.org", "@type": "Article", headline: m.h1, description: m.description, dateModified: isoStamp(m.updated), datePublished: isoStamp(m.published || m.updated), image: [`${SITE}/app/og.png`], inLanguage: "es", mainEntityOfPage: `${SITE}${p.path}`, author: { "@type": "Organization", name: "Florvia", url: `${SITE}/` }, publisher: { "@type": "Organization", name: "Florvia", url: `${SITE}/`, logo: { "@type": "ImageObject", url: `${SITE}/app/icon-512.png` } } });
   const page = `${head({ title: m.title, description: m.description, path: p.path, extra: jsonld })}
 <div class="wrap"><div class="crumbs"><a href="/">Florvia</a> › <a href="/es/${p.type}/">${TYPES[p.type].label}</a> › ${esc(m.h1)}</div>
 <article><h1>${esc(m.h1)}</h1><p class="meta">Actualizado: ${esc(fmtMonth(m.updated))}</p>
