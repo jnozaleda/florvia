@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006p";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006q";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006p";
-import { buildICS } from "./calendar.js?v=20261006p";
-import { scrubPlant } from "./clean.js?v=20261006p";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006p";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006q";
+import { buildICS } from "./calendar.js?v=20261006q";
+import { scrubPlant } from "./clean.js?v=20261006q";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006q";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006p";
+      sc.src = "vendor/qrcode.min.js?v=20261006q";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1210,7 +1210,12 @@ function reportError(msg, at) {
   errorsSent += 1;
   try { fetch(`${API}/error`, { method: "POST", keepalive: true, headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ device: deviceId, garden: usageId?.startsWith("g:") ? usageId : "", version: APP_VERSION, msg: String(msg).slice(0, 160), at: String(at ?? "").slice(0, 120) }) }).catch(() => {}); } catch {}
 }
-window.addEventListener("error", (e) => reportError(e.message, `${String(e.filename ?? "").split("/").pop().split("?")[0]}:${e.lineno}`));
+window.addEventListener("error", (e) => {
+  // «Script error.» with no file or line comes from a script of another origin (Google sign-in, a browser extension…): the browser hides
+  // the details, so there is nothing to act on and it only adds noise to «Errores de la app».
+  if (!e.filename && !e.lineno && /^script error\.?$/i.test(String(e.message ?? "").trim())) return;
+  reportError(e.message, `${String(e.filename ?? "").split("/").pop().split("?")[0]}:${e.lineno}`);
+});
 window.addEventListener("unhandledrejection", (e) => reportError(e.reason?.message ?? e.reason, "promesa"));
 // For the admin: new comments (badge in Ajustes), and the list inside «Uso de la app».
 let adminPushMsg = "";
@@ -3539,7 +3544,11 @@ document.addEventListener("click", (e) => {
   if (tab) { state.tab = tab.dataset.tab; render(); return; }
   if (e.target.closest("#placeBtn")) return placeSheet();
   const el = e.target.closest("[data-action]");
-  if (el && actions[el.dataset.action]) { e.preventDefault(); actions[el.dataset.action](el.dataset, el); }
+  if (el && actions[el.dataset.action]) {
+    e.preventDefault();
+    if (!wiz && el.dataset.action.startsWith("wiz-")) return; // a button left over from a closed «Nueva planta»
+    actions[el.dataset.action](el.dataset, el);
+  }
 });
 
 document.addEventListener("input", (e) => {
@@ -3622,6 +3631,7 @@ document.addEventListener("submit", (e) => {
   }
   if (e.target.id === "wizName") {
     e.preventDefault();
+    if (!wiz) return; // the wizard was closed but its old form is still in the page (e.g. «Intro» on a keyboard that kept the focus)
     if (wiz.identify?.state === "loading") return;
     const name = new FormData(e.target).get("name").trim();
     if (!name) return;
