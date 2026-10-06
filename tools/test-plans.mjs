@@ -139,7 +139,9 @@ await test("un código con duración limitada da Premium hasta esa fecha", async
   seen("temporal", 90);
   const r = await call("/invite/redeem", { code: c, email: "t@example.com" }, { device: "temporal" });
   assert.ok(r.body.until > Date.now() && r.body.until < Date.now() + 31 * 86400000);
-  assert.equal((await me("temporal")).plan, "premium");
+  const m = await me("temporal");
+  assert.equal(m.plan, "premium"); assert.equal(m.source, "invite");
+  assert.ok(m.accessUntil > Date.now() && m.accessUntil <= Date.now() + 30 * 86400000);
 });
 
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }

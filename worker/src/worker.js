@@ -867,13 +867,14 @@ async function planOf(env, request) {
   let plan = "free";
   let source = "";
   let trialEnds = "";
+  let accessUntil = null; // when a paid or invited plan ends (ms), null = no end
   if (env.DB && ids.length) {
     const internal = await env.DB.prepare(`SELECT 1 AS x FROM internal WHERE id IN (${ids.map(() => "?").join(",")})`).bind(...ids).first();
     if (internal) { plan = "premium"; source = "internal"; }
     if (plan === "free") {
       // entitlements.garden holds a garden hash (16 hex, paid) or a device hash (12 hex, an invite redeemed on a phone that isn't synced)
       const e = await env.DB.prepare(`SELECT plan, until, source FROM entitlements WHERE garden IN (${["?", "?"].join(",")})`).bind(garden || "-", device || "-").first();
-      if (e && (!e.until || e.until > Date.now())) { plan = e.plan === "lifetime" ? "lifetime" : "premium"; source = e.source === "invite" ? "invite" : "paid"; }
+      if (e && (!e.until || e.until > Date.now())) { plan = e.plan === "lifetime" ? "lifetime" : "premium"; source = e.source === "invite" ? "invite" : "paid"; accessUntil = e.until ?? null; }
     }
     if (plan === "free") {
       const first = await env.DB.prepare("SELECT MIN(day) AS d FROM events WHERE (garden <> '' AND garden = ?) OR (device <> '' AND device = ?)").bind(garden || "-", device || "-").first();
@@ -882,7 +883,7 @@ async function planOf(env, request) {
       if (today <= trialEnds) { plan = "trial"; source = "trial"; }
     }
   }
-  return { plan, source, live, start, garden, device, trialEnds, premium: plan !== "free", limits: plan === "free" ? PLAN_LIMITS.free : PLAN_LIMITS.premium };
+  return { plan, source, live, start, garden, device, trialEnds, accessUntil, premium: plan !== "free", limits: plan === "free" ? PLAN_LIMITS.free : PLAN_LIMITS.premium };
 }
 const monthStart = () => `${new Date().toISOString().slice(0, 7)}-01`;
 async function monthlyUse(env, p, names) {
@@ -914,7 +915,7 @@ async function handleMe(request, env, headers) {
     plan: p.plan, source: p.source, premium: p.premium, enforced: p.live, start: p.start,
     limits: p.limits, used: { suggest, identify, diagnose }, synced: Boolean(p.garden), lifetimeLeft,
     payments: await paymentsOpen(env, p), sandbox: env.POLAR_ENV !== "production",
-    trialEnds: p.plan === "trial" ? p.trialEnds : (p.trialEnds || null), freeLimits: PLAN_LIMITS.free,
+    trialEnds: p.plan === "trial" ? p.trialEnds : (p.trialEnds || null), freeLimits: PLAN_LIMITS.free, accessUntil: p.accessUntil,
     paid: paid ? { plan: paid.plan, source: paid.source, until: paid.until } : null,
   }, 200, headers);
 }

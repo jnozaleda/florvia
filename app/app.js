@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006b";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006c";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006b";
-import { buildICS } from "./calendar.js?v=20261006b";
-import { scrubPlant } from "./clean.js?v=20261006b";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006b";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006c";
+import { buildICS } from "./calendar.js?v=20261006c";
+import { scrubPlant } from "./clean.js?v=20261006c";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006c";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006b";
+      sc.src = "vendor/qrcode.min.js?v=20261006c";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -855,8 +855,9 @@ async function loadMe() {
   } catch {}
 }
 const plantLimitHit = () => Boolean(me && me.enforced && !me.premium && me.limits?.plants && state.data.plants.length >= me.limits.plants);
+const accessDaysLeft = () => (me?.accessUntil ? Math.max(0, Math.ceil((me.accessUntil - Date.now()) / 86400000)) : 0);
 const trialDaysLeft = () => (me?.plan === "trial" && me.trialEnds ? Math.max(0, daysBetween(localToday(), me.trialEnds)) : 0);
-const planLabel = () => (!me ? "" : me.source === "invite" ? "Premium · amigos y familia" : me.plan === "lifetime" ? "Premium · de por vida" : me.plan === "trial" ? `Prueba gratuita · ${trialDaysLeft()} ${trialDaysLeft() === 1 ? "día" : "días"}` : me.premium ? "Premium" : me.enforced ? "Gratis" : "Próximamente");
+const planLabel = () => (!me ? "" : me.source === "invite" ? `Premium · amigos y familia${me.accessUntil ? ` · ${accessDaysLeft()} d` : ""}` : me.plan === "lifetime" ? "Premium · de por vida" : me.plan === "trial" ? `Prueba gratuita · ${trialDaysLeft()} ${trialDaysLeft() === 1 ? "día" : "días"}` : me.premium ? "Premium" : me.enforced ? "Gratis" : "Próximamente");
 function premiumSheet(reason = "", keep = false) {
   const head = `<div class="sheet-head"><h2>Florvia Premium</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>`;
   if (!keep) { premiumUi = { reason, sent: "", email: premiumUi.email, error: "", thanks: false }; track("paywall_view"); }
@@ -873,7 +874,7 @@ function premiumSheet(reason = "", keep = false) {
   if (me.premium && me.plan !== "trial") {
     return openSheet(`${head}
       <section class="card"><b>Tienes Premium${me.plan === "lifetime" ? " · de por vida" : me.source === "invite" ? " · amigos y familia" : ""}</b>
-        <p class="muted">${me.source === "invite" ? "Gracias por probar Florvia: tienes todo incluido, sin pagar." : "Gracias por apoyar Florvia."}</p></section>
+        <p class="muted">${me.source === "invite" ? `Gracias por probar Florvia: tienes todo incluido, sin pagar${me.accessUntil ? `, hasta el ${fmtDate(new Date(me.accessUntil).toISOString().slice(0, 10))} (${accessDaysLeft()} días)` : ""}.` : "Gracias por apoyar Florvia."}</p></section>
       <section class="card"><div class="sec">Este mes</div>${row("Qué planto aquí", `${used.suggest ?? 0} de ${L.suggest}`)}${row("Identificar por foto", `${used.identify ?? 0} de ${L.identify}`)}${row("¿Qué le pasa?", `${used.diagnose ?? 0} de ${L.diagnose}`)}${L.plants ? "" : row("Plantas", "ilimitadas")}</section>
       <p class="muted small">Las consultas guardadas en memoria no cuentan. El contador se reinicia el día 1.</p>
       ${me.paid ? `<section class="card"><div class="sec">Tu suscripción</div><p class="muted small">${me.paid.plan === "lifetime" ? "Pago único «de por vida»." : me.paid.until ? `Cancelada: sigue activa hasta el ${fmtDate(new Date(me.paid.until).toISOString().slice(0, 10))}.` : "Activa."}</p>
@@ -952,11 +953,16 @@ let usageInvites = null; // { codes, uses } from /invites
 function invitesCard() {
   if (!usageInvites) return "";
   const { codes, uses } = usageInvites;
-  const people = (code) => uses.filter((u) => u.code === code);
-  return `<section class="card"><div class="sec">Amigos y familia <span class="meta">${uses.filter((u) => !u.revoked).length} personas</span></div>
-    ${codes.length ? codes.map((c) => `<div class="u-row"><span><b>${esc(c.code)}</b>${c.label ? ` · ${esc(c.label)}` : ""}${c.active ? "" : " · apagado"}</span><b>${c.uses}/${c.max_uses}<small>${c.access_days ? `${c.access_days} días` : "sin fin"}</small></b></div>
-      ${people(c.code).map((u) => `<div class="u-row"><span class="muted small">${esc(u.email)}${u.revoked ? " · retirado" : ""}</span>${u.revoked ? "" : `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="${esc(u.email)}">Retirar</button>`}</div>`).join("")}
-      ${c.active ? `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="">Apagar el código y retirar a todos</button>` : ""}`).join("") : `<p class="muted small">Aún no hay códigos.</p>`}
+  const live = uses.filter((u) => !u.revoked).length;
+  const day = (ms) => fmtDate(new Date(ms).toISOString().slice(0, 10), { day: "numeric", month: "short", year: "numeric" });
+  const block = (c) => {
+    const people = uses.filter((u) => u.code === c.code);
+    const rows = people.length ? people.map((u) => `<div class="inv-use ${u.revoked ? "off" : ""}"><span><b>${esc(u.email)}</b><small>${u.revoked ? "Retirado" : `Activado el ${day(u.ts)}${c.access_days ? ` · hasta el ${day(u.ts + c.access_days * 86400000)}` : " · sin fecha de fin"}`}</small></span>${u.revoked ? "" : `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="${esc(u.email)}">Retirar</button>`}</div>`).join("")
+      : `<div class="inv-use"><span><small>${c.active ? "Sin usar todavía" : "Apagado"}</small></span></div>`;
+    return `<div class="inv ${c.active ? "" : "off"}"><div class="inv-head"><span><b>${esc(c.label || "Sin nombre")}</b><small>${esc(c.code)} · ${c.uses} de ${c.max_uses} ${c.max_uses === 1 ? "uso" : "usos"} · ${c.access_days ? `${c.access_days} días` : "sin fin"}</small></span>${c.active ? `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="">Apagar</button>` : ""}</div>${rows}</div>`;
+  };
+  return `<section class="card"><div class="sec">Amigos y familia <span class="meta">${live} ${live === 1 ? "persona" : "personas"}</span></div>
+    ${codes.length ? codes.map(block).join("") : `<p class="muted small">Aún no hay códigos.</p>`}
     <div style="margin-top:10px"><button type="button" class="btn small secondary" data-action="invite-new">Crear código</button></div></section>`;
 }
 async function inviteAdmin(path, body) {
@@ -1466,7 +1472,7 @@ function render() {
     : state.tab === "plants" ? (n === 1 ? "1 planta" : `${n} plantas`) : "Florvia";
   // Plan mark next to the title: Premium (paid, invited or Noza's), or the days left of the free month; nothing for the free plan.
   const pill = $("planPill");
-  const pillText = !me ? "" : me.plan === "trial" ? `Prueba · ${trialDaysLeft()} d` : me.premium ? "Premium" : "";
+  const pillText = !me ? "" : me.plan === "trial" ? `Prueba · ${trialDaysLeft()} d` : me.premium ? (me.accessUntil ? `Premium · ${accessDaysLeft()} d` : "Premium") : "";
   pill.hidden = !pillText;
   pill.innerHTML = pillText ? `✦ ${pillText}` : "";
   pill.classList.toggle("trial", me?.plan === "trial");
