@@ -39,7 +39,7 @@ form.addEventListener("submit", async (e) => {
   }
 }
 
-// Scroll animation: blocks fade in as they come into view; on the three steps a green line draws itself and the plant grows from seed to sprout to plant.
+// Scroll animation: blocks fade in as they come into view; the three steps get a connector that fills as you scroll, and a faint plant in the background grows with the page.
 // Skipped when the visitor asked for reduced motion (everything stays visible and finished).
 {
   const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -55,20 +55,25 @@ form.addEventListener("submit", async (e) => {
     });
     const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
     targets.forEach((el) => io.observe(el));
-    const steps = document.querySelector(".steps");
-    if (steps) {
-      const list = [...steps.querySelectorAll(".step")];
-      let tick = false;
-      const update = () => {
-        tick = false;
-        const r = steps.getBoundingClientRect();
-        const p = Math.min(1, Math.max(0, (window.innerHeight * 0.65 - r.top) / r.height));
-        steps.style.setProperty("--p", p.toFixed(3));
-        list.forEach((el, i) => el.classList.toggle("on", p >= [0.04, 0.42, 0.78][i]));
-      };
-      window.addEventListener("scroll", () => { if (!tick) { tick = true; requestAnimationFrame(update); } }, { passive: true });
-      window.addEventListener("resize", update);
-      update();
-    }
+    const steps = [...document.querySelectorAll(".step")];
+    const root = document.documentElement;
+    let tick = false;
+    const update = () => {
+      tick = false;
+      const vh = window.innerHeight;
+      // Background plant: grows with how far down the page you are.
+      const room = Math.max(1, root.scrollHeight - vh);
+      root.style.setProperty("--g", Math.min(1, Math.max(0, window.scrollY / room)).toFixed(3));
+      // Timeline: each connector fills as the reading line (65% down the screen) passes its step.
+      const line = vh * 0.65;
+      steps.forEach((el, i) => {
+        const r = el.getBoundingClientRect();
+        el.style.setProperty("--f", Math.min(1, Math.max(0, (line - r.top - 22) / Math.max(1, r.height - 22))).toFixed(3));
+        el.classList.toggle("on", line - r.top > 22);
+      });
+    };
+    window.addEventListener("scroll", () => { if (!tick) { tick = true; requestAnimationFrame(update); } }, { passive: true });
+    window.addEventListener("resize", update);
+    update();
   }
 }

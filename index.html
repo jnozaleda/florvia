@@ -69,29 +69,34 @@ section[id]{scroll-margin-top:84px}.site-nav{position:sticky;top:0;z-index:50;ma
 @media(min-width:800px){.plans{grid-template-columns:1fr 1fr}}
 .free-badge{display:inline-block;margin-left:8px;padding:3px 10px;border-radius:999px;background:var(--sage);color:var(--deep);font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;vertical-align:2px}
 
-/* Mobile: tighter vertical rhythm, the three steps as a timeline, and the stage icons (hidden on desktop) */
-.stage{display:none}
+/* Mobile: tighter vertical rhythm and the three steps as a numbered timeline whose connector fills in while scrolling */
 @media(max-width:700px){
 .how{padding-top:52px;padding-bottom:8px}.sec{padding:54px 0 10px}.band{padding:52px 0}.band h2{margin-bottom:22px}.cols{gap:16px}
 .row{gap:20px;padding:34px 0}.shot{min-height:360px;border-radius:28px;padding-top:26px}.mini{padding:10px 0 48px}.contact{margin-top:48px}
-.steps{display:block;position:relative;margin-top:22px}
-.steps:before,.steps:after{content:"";position:absolute;left:21px;top:22px;bottom:30px;width:2px;border-radius:2px}
-.steps:before{background:#dfe7da}.steps:after{background:var(--leaf);transform-origin:top;transform:scaleY(var(--p,1))}
-.step{background:none;border:0;border-radius:0;padding:0 0 26px 62px;position:relative}.step:last-child{padding-bottom:0}
-.step .n{display:none}.step b{margin:2px 0 4px;font-size:18px}
-.stage{display:flex;align-items:center;justify-content:center;position:absolute;left:0;top:0;width:44px;height:44px;border-radius:50%;background:var(--mist);border:2px solid var(--leaf);transition:transform .5s cubic-bezier(.2,.8,.2,1),background-color .4s}
-.stage svg{width:26px;height:26px;fill:none;stroke:var(--leaf-d);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
-.step:nth-child(2) .stage svg{width:30px;height:30px}.step:nth-child(3) .stage svg{width:34px;height:34px}
+.steps{display:block;margin-top:24px}
+.step{background:none;border:0;border-radius:0;padding:0 0 30px 64px;position:relative}.step:last-child{padding-bottom:0}
+.step b{margin:0 0 4px;font-size:18px;line-height:44px}.step p{margin-top:-2px}
+.step .n{position:absolute;left:0;top:0;z-index:1;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:21px;font-weight:600;background:var(--cream);border:2px solid #cfdccb;color:var(--mut);transition:background-color .4s,border-color .4s,color .4s}
+.step:not(:last-child):before,.step:not(:last-child):after{content:"";position:absolute;left:21px;top:44px;bottom:0;width:2px}
+.step:before{background:#dfe7da}.step:after{background:var(--leaf);transform-origin:top;transform:scaleY(var(--f,0))}
 }
 /* Scroll animation: only when landing.js runs (html.js) and motion is welcome; without it everything is simply visible */
 .js .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0s)}
 .js .reveal.in{opacity:1;transform:none}
-.js .stage{transform:scale(.55);opacity:.4;background:#fff}
-.js .step.on .stage{transform:scale(1);opacity:1;background:var(--mist)}
-.js .stage .d{stroke-dasharray:60;stroke-dashoffset:60;transition:stroke-dashoffset .9s ease .15s}
-.js .step.on .stage .d{stroke-dashoffset:0}
-@media(prefers-reduced-motion:reduce){.js .reveal{opacity:1;transform:none;transition:none}.js .stage{transform:none;opacity:1}.js .stage .d{stroke-dashoffset:0;transition:none}}
-</style></head><body>
+.js .step.on .n{background:var(--leaf);border-color:var(--leaf);color:#fff}
+@media(max-width:700px){.js .step:not(.on) .n{background:var(--cream)}}
+@media(min-width:701px){.js .step.on .n{background:none;border:0;color:var(--leaf)}}
+/* Background plant: fixed, huge, faint; its stem and leaves grow with page scroll (--g 0..1 set by landing.js) */
+.bgplant{display:none}
+.js .bgplant{display:block;position:fixed;z-index:40;pointer-events:none;right:-6vw;bottom:0;height:92vh;width:min(86vw,520px);opacity:.14}
+.bgplant svg{width:100%;height:100%;overflow:visible}
+.bgplant .stem{fill:none;stroke:var(--leaf-d);stroke-width:5;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--g,0))}
+.bgplant .soil{fill:none;stroke:var(--leaf-d);stroke-width:5;stroke-linecap:round}
+.bgplant .lf{fill:var(--leaf);transform-box:fill-box;transform-origin:left center;transform:scale(clamp(0, calc((var(--g,0) - var(--t)) * 7), 1))}
+.bgplant .bud{fill:var(--leaf-d);transform-box:fill-box;transform-origin:center bottom;transform:scale(clamp(0, calc((var(--g,0) - .9) * 10), 1))}
+@media(min-width:900px){.js .bgplant{right:2vw;width:min(34vw,460px);opacity:.11}}
+@media(prefers-reduced-motion:reduce){.js .reveal{opacity:1;transform:none;transition:none}.js .bgplant{display:none}}
+</style></head><body><div class="bgplant" aria-hidden="true"><svg viewBox="0 0 200 400" preserveAspectRatio="xMidYMax meet"><path class="soil" d="M60 394h80"/><path class="stem" pathLength="1" d="M100 394C96 320 104 260 100 200S96 90 100 40"/><g transform="translate(100 335) rotate(-18)"><path class="lf" style="--t:0.1" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(100 288) scale(-1 1) rotate(-18)"><path class="lf" style="--t:0.22" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(100 238) rotate(-18)"><path class="lf" style="--t:0.36" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(100 188) scale(-1 1) rotate(-18)"><path class="lf" style="--t:0.5" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(100 138) rotate(-18)"><path class="lf" style="--t:0.63" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(100 90) scale(-1 1) rotate(-18)"><path class="lf" style="--t:0.76" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(100 40)"><path class="bud" d="M0 0C-16-6-18-30 0-44 18-30 16-6 0 0Z"/></g></svg></div>
 
 <header class="site-nav"><div class="wrap">
  <div class="nav"><a class="brand" href="./"><img src="app/icon-rounded.png" width="38" height="38" alt="">Florvia</a><nav><a class="l" href="#como">Cómo funciona</a><a class="l g" href="/es/guias/">Guías</a><a class="l" href="#precios">Precios</a><a class="l" href="#preguntas">Preguntas</a><a class="l" href="#contacto">Contacto</a><a class="btn cream small" href="app/">Abrir</a></nav></div>
@@ -115,9 +120,9 @@ section[id]{scroll-margin-top:84px}.site-nav{position:sticky;top:0;z-index:50;ma
 <main>
 <section class="wrap how" id="como"><h2 class="serif">Tres pasos, y te olvidas.</h2><p style="color:var(--mut);max-width:34em;margin:0">No hace falta saber de jardinería: Florvia lo propone y tú lo ajustas.</p>
 <div class="steps">
-<div class="step"><div class="n">1</div><span class="stage" aria-hidden="true"><svg viewBox="0 0 48 48"><path class="d" d="M12 36h24"/><path class="d" d="M24 36c-4-2-5-6-3-9 3 0 5 3 3 9z"/></svg></span><b>Dime qué plantas tienes</b><p>Escribe su nombre o hazle una foto. También puedes explorar una antes de comprarla.</p></div>
-<div class="step"><div class="n">2</div><span class="stage" aria-hidden="true"><svg viewBox="0 0 48 48"><path class="d" d="M12 38h24"/><path class="d" d="M24 38V22"/><path class="d" d="M24 26c-6 0-9-3-9-8 6 0 9 3 9 8z"/><path class="d" d="M24 22c0-5 3-8 9-8 0 5-3 8-9 8z"/></svg></span><b>Florvia prepara su ficha</b><p>Riego y abono por estación, el sol que pide, el frío que aguanta y su calendario del año.</p></div>
-<div class="step"><div class="n">3</div><span class="stage" aria-hidden="true"><svg viewBox="0 0 48 48"><path class="d" d="M10 40h28"/><path class="d" d="M24 40V12"/><path class="d" d="M24 32c-7 0-10-3-10-9 7 0 10 3 10 9z"/><path class="d" d="M24 24c0-6 3-10 10-10 0 6-3 10-10 10z"/><path class="d" d="M24 17c-4 0-7-2-7-6 4 0 7 2 7 6z"/></svg></span><b>Cada día, lo que toca</b><p>Con el tiempo de tu zona: si llueve, no te hace regar; si hiela, te avisa.</p></div>
+<div class="step"><div class="n">1</div><b>Dime qué plantas tienes</b><p>Escribe su nombre o hazle una foto. También puedes explorar una antes de comprarla.</p></div>
+<div class="step"><div class="n">2</div><b>Florvia prepara su ficha</b><p>Riego y abono por estación, el sol que pide, el frío que aguanta y su calendario del año.</p></div>
+<div class="step"><div class="n">3</div><b>Cada día, lo que toca</b><p>Con el tiempo de tu zona: si llueve, no te hace regar; si hiela, te avisa.</p></div>
 </div></section>
 
 <div class="wrap" id="que-hace">
@@ -202,6 +207,6 @@ section[id]{scroll-margin-top:84px}.site-nav{position:sticky;top:0;z-index:50;ma
 </div>
 </main>
 <footer><div class="wrap"><span>© Florvia</span><span><a href="/es/guias/">Guías</a> · <a href="/es/plantas/">Plantas</a> · <a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer>
-<script src="landing.js?v=20261006i"></script>
+<script src="landing.js?v=20261006j"></script>
 <script src="track.js" defer></script>
 </body></html>
