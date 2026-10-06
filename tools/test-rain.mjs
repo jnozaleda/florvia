@@ -1,6 +1,6 @@
 // Prueba de la lluvia como riego (app/rules.js: rainCredits, dueTasks). Uso: node tools/test-rain.mjs
 import assert from "node:assert/strict";
-import { rainCredits, dueTasks } from "../app/rules.js";
+import { rainCredits, dueTasks, irrigationRain } from "../app/rules.js";
 
 const TODAY = "2026-10-10";
 const iso = (back) => new Date(Date.parse(`${TODAY}T12:00:00Z`) - back * 86400000).toISOString().slice(0, 10);
@@ -52,6 +52,27 @@ test("el aviso de «ayer cayó» ya no sale en la tarea (lo resuelve el registro
 test("la lluvia prevista hoy o mañana sigue avisando", () => {
   const t = dueTasks([out], [water("a", 6)], wx({}, { 0: 9 }), TODAY, 40, 0).find((x) => x.type === "water");
   assert.equal(t.advice.kind, "skip"); assert.match(t.advice.text, /Se esperan 9 mm hoy/);
+});
+
+const drip2 = { id: "d", name: "Rosal", zone: "Terraza", rainReaches: true, autoWater: true, created: iso(30), seasons };
+const dripCovered = { id: "e", name: "Helecho", zone: "Porche", rainReaches: false, autoWater: true, created: iso(30), seasons };
+test("riego automático: ha llovido 9 mm y se esperan 6 → avisa de pausar la zona", () => {
+  const r = irrigationRain([drip2, out], wx({ 1: 9 }, { 1: 6 }), TODAY);
+  assert.deepEqual(r.pause.map((z) => [z.zone, z.past, z.soon, z.plants.length]), [["Terraza", 9, 6, 1]]);
+});
+test("riego automático: con poca lluvia o plantas a cubierto no avisa", () => {
+  assert.equal(irrigationRain([drip2], wx({ 1: 3 }, { 1: 3 }), TODAY).pause.length, 0);
+  assert.equal(irrigationRain([dripCovered], wx({ 1: 20 }), TODAY).pause.length, 0);
+});
+test("riego automático: la lluvia prevista con poca probabilidad no cuenta", () => {
+  const w = wx({}, { 1: 20 }); w.days[8].rainProb = 30;
+  assert.equal(irrigationRain([drip2], w, TODAY).pause.length, 0);
+});
+test("zona pausada: pide reanudar cuando ya no se espera lluvia, y lo dice si aún llueve", () => {
+  const calm = irrigationRain([drip2], wx({ 1: 9 }), TODAY, ["Terraza"]);
+  assert.deepEqual([calm.pause.length, calm.resume[0].rainLeft], [0, false]);
+  const wet = irrigationRain([drip2], wx({}, { 1: 12 }), TODAY, ["Terraza"]);
+  assert.equal(wet.resume[0].rainLeft, true);
 });
 
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }

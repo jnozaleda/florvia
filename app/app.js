@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006j";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006k";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006j";
-import { buildICS } from "./calendar.js?v=20261006j";
-import { scrubPlant } from "./clean.js?v=20261006j";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006j";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006k";
+import { buildICS } from "./calendar.js?v=20261006k";
+import { scrubPlant } from "./clean.js?v=20261006k";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006k";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -182,7 +182,7 @@ function todayView() {
   const today = localToday();
   const { plants, log } = state.data;
   const alerts = state.weather ? weatherAlerts(plants, state.weather, today).map((a) => ({ ...a, kind: ALERT_ICON[a.icon] })) : [];
-  let html = trialNudge() + upgradeBanner() + forecastCard(alerts) + irrigationCard();
+  let html = trialNudge() + upgradeBanner() + forecastCard(alerts) + irrigationRainCard(today) + irrigationCard();
   if (!plants.length) return html + (welcomeCard() || emptyGarden());
 
   // Para hoy: overdue and due today (tomorrow onwards lives in «Próximos días»).
@@ -265,7 +265,7 @@ function applyCalendar(plant, cal) {
 
 function gardenWeekCard(today) {
   const { plants, log } = state.data;
-  const checks = weatherChecks(plants, state.weather, today, zoneSun());
+  const checks = weatherChecks(plants, state.weather, today, zoneSun()).filter((c) => !c.title.startsWith("Riego automático"));
   const items = groupGardenTasks(monthTasks(plants, log, today));
   if (!checks.length && !items.length) return "";
   const done = items.filter((x) => x.done).length;
@@ -347,20 +347,38 @@ const ALERT_ICON = { "🥶": "snow", "🔥": "flame", "💨": "wind" };
 // "mañana", "el martes"
 const dayPhrase = (iso, today) => daysBetween(today, iso) === 1 ? "mañana" : `el ${fmtDate(iso, { weekday: "long" })}`;
 
-// «Riego saltado por la lluvia»: waterings the rain already did in the last two days, each undoable (it comes back as due).
+// «Saltado por la lluvia»: waterings the rain already did in the last two days. Folded to one line (names and the rain);
+// open it to see each one's next watering and undo it (the task comes back as due).
+let rainSkipOpen = false;
 function rainSkipCard(today) {
-  const rows = state.data.log.filter((e) => e.auto && e.note === "Lluvia" && daysBetween(e.date, today) <= 2 && lastDone(state.data.log, e.plantId, "water") === e.date)
+  const items = state.data.log.filter((e) => e.auto && e.note === "Lluvia" && daysBetween(e.date, today) <= 2 && lastDone(state.data.log, e.plantId, "water") === e.date)
     .map((e) => ({ e, p: plantById(e.plantId) })).filter((x) => x.p)
-    .sort((a, b) => plantLabel(a.p).localeCompare(plantLabel(b.p), "es"))
-    .map(({ e, p }) => {
-      const due = nextDue(p, state.data.log, "water", today, here().lat);
-      const when = daysBetween(e.date, today) === 1 ? "Ayer" : "Anteayer";
-      return `<div class="t-row"><span class="t-ico water">${ICONS["cloud-rain"]}</span>
-        <div class="body"><div class="t-title">${esc(plantLabel(p))}: riego saltado</div>
-        <div class="t-when">${when} cayeron ${e.mm} mm${due ? ` · próximo riego ${due <= today ? "hoy" : dayPhrase(due, today)}` : ""}</div></div>
-        <button type="button" class="undo" data-action="undo-log" data-log="${e.id}">Deshacer</button></div>`;
-    }).join("");
-  return rows ? `<section class="card"><div class="sec">Saltado por la lluvia</div>${rows}</section>` : "";
+    .sort((a, b) => plantLabel(a.p).localeCompare(plantLabel(b.p), "es"));
+  if (!items.length) return "";
+  const newest = items.reduce((a, x) => (x.e.date > a.date ? x.e : a), items[0].e);
+  const names = items.map((x) => plantLabel(x.p));
+  const list = names.length > 3 ? `${names.slice(0, 3).join(", ")} y ${names.length - 3} más` : names.join(", ").replace(/, ([^,]*)$/, " y $1");
+  const when = daysBetween(newest.date, today) === 1 ? "ayer" : "anteayer";
+  const rows = items.map(({ e, p }) => {
+    const due = nextDue(p, state.data.log, "water", today, here().lat);
+    return `<div class="done-row"><span class="tick">${ICONS["cloud-rain"]}</span><span style="flex:1;min-width:0">${esc(plantLabel(p))}${due ? ` <small class="muted">· riego ${due <= today ? "hoy" : dayPhrase(due, today)}</small>` : ""}</span><button type="button" class="undo" data-action="undo-log" data-log="${e.id}">Deshacer</button></div>`;
+  }).join("");
+  return `<section class="card done-card ${rainSkipOpen ? "open" : ""}">
+    <button type="button" class="fold" data-action="toggle-rain-skip" aria-expanded="${rainSkipOpen}"><span>Saltado por la lluvia</span><span class="meta" style="white-space:nowrap">${items.length} <span class="chev">›</span></span></button>
+    ${rainSkipOpen ? `<div class="done-list">${rows}</div>` : `<p class="muted small" style="margin:0 0 2px">${esc(list)} · ${when} cayeron ${newest.mm} mm</p>`}</section>`;
+}
+// Automatic irrigation and the rain, per zone: pause it when the rain covers it, and remember to switch it back on afterwards.
+function irrigationRainCard(today) {
+  const r = irrigationRain(state.data.plants, state.weather, today, pausedZones());
+  const name = (z) => z || "Sin zona";
+  const rows = [
+    ...r.pause.map((x) => {
+      const bits = [x.past >= 1 ? `han caído ${x.past} mm` : "", x.soon >= 1 ? `se esperan ${x.soon} mm` : ""].filter(Boolean).join(" y ");
+      return `<div class="t-row"><span class="t-ico water">${ICONS.drip}</span><div class="body"><div class="t-title">Pausa el riego en ${esc(name(x.zone))}</div><div class="t-when">${esc(bits.replace(/^./, (c) => c.toUpperCase()))}: la lluvia lo cubre</div></div><button type="button" class="btn small secondary" data-action="zone-auto" data-zone="${esc(x.zone)}">Pausar</button></div>`;
+    }),
+    ...r.resume.map((x) => `<div class="t-row"><span class="t-ico water">${ICONS.drip}</span><div class="body"><div class="t-title">Riego pausado en ${esc(name(x.zone))}</div><div class="t-when">${x.rainLeft ? `Aún se esperan ${x.soon} mm` : "Ya no se espera lluvia: reanúdalo"}</div></div><button type="button" class="btn small ${x.rainLeft ? "secondary" : ""}" data-action="zone-auto" data-zone="${esc(x.zone)}">Reanudar</button></div>`),
+  ];
+  return rows.length ? `<section class="card"><div class="sec">Riego automático</div>${rows.join("")}</section>` : "";
 }
 // Without a chosen location the weather (and the rain adjustments) is Madrid's, not the garden's.
 function locationNudge() {
@@ -673,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006j";
+      sc.src = "vendor/qrcode.min.js?v=20261006k";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -3434,6 +3452,7 @@ const actions = {
   "plants-view": (d) => { store.set("mj_plants_view", d.view); render(); },
   "toggle-week-tasks": () => { weekAll = !weekAll; render(); },
   "toggle-done": () => { doneOpen = !doneOpen; render(); },
+  "toggle-rain-skip": () => { rainSkipOpen = !rainSkipOpen; render(); },
   "toggle-week": () => { weekOpen = !weekOpen; render(); },
   "del-log": (d) => {
     state.data.log = state.data.log.filter((e) => e.id !== d.log);

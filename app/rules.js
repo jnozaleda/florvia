@@ -262,7 +262,7 @@ export function weatherChecks(plants, weather, today, zoneSun = {}) {
 }
 
 // Thresholds (tunable once there's real use behind them).
-export const LIMITS = { rainSkipMm: 5, rainProb: 60, heatC: 32, heatwaveC: 35, frostC: 2, gustKmh: 50, uvStrong: 8 };
+export const LIMITS = { rainSkipMm: 5, rainProb: 60, heatC: 32, heatwaveC: 35, frostC: 2, gustKmh: 50, uvStrong: 8, rainPauseMm: 8 };
 
 const DAY = 86400000;
 export const isoDay = (d) => new Date(d).toISOString().slice(0, 10);
@@ -395,6 +395,25 @@ export function rainCredits(plants, log, weather, today, deleted = {}) {
     const id = `rain-${plant.id}-${day.date}`;
     if (known.has(id) || id in deleted) continue;
     out.push({ id, plantId: plant.id, type: "water", date: day.date, time: "", note: "Lluvia", auto: true, mm: Math.round(day.rain) });
+  }
+  return out;
+}
+
+// Automatic irrigation against the rain, per zone. Rain that fell in the last two days plus what's forecast (today and the next two
+// days, only likely rain) adding up to LIMITS.rainPauseMm or more → «pause it»; a paused zone is told when the rain has passed so it
+// is switched back on. Only plants the rain reaches count. Returns { pause: [{ zone, plants, past, soon }], resume: [{ zone, plants, soon, rainLeft }] }.
+export function irrigationRain(plants, weather, today, paused = []) {
+  const out = { pause: [], resume: [] };
+  if (!weather) return out;
+  const { days, today: t } = weather;
+  const sum = (list) => Math.round(list.reduce((a, d) => a + d.rain, 0));
+  const past = sum(days.slice(Math.max(0, t - 2), t));
+  const soon = sum(days.slice(t, t + 3).filter((d) => d.rainProb >= LIMITS.rainProb));
+  const zones = new Map();
+  for (const p of plants) if (p.autoWater && p.rainReaches) zones.set(p.zone || "", [...(zones.get(p.zone || "") ?? []), p]);
+  for (const [zone, list] of zones) {
+    if (paused.includes(zone)) out.resume.push({ zone, plants: list, soon, rainLeft: soon >= LIMITS.rainSkipMm });
+    else if (past + soon >= LIMITS.rainPauseMm) out.pause.push({ zone, plants: list, past, soon });
   }
   return out;
 }
