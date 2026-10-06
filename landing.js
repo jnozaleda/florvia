@@ -29,3 +29,12 @@ form.addEventListener("submit", async (e) => {
   btn.disabled = false;
   btn.textContent = "Enviar";
 });
+// Sticky header: transparent over the hero at the top (it shows the hero's own green), solid once the page is scrolled.
+{
+  const nav = document.querySelector(".site-nav");
+  if (nav) {
+    const sync = () => nav.classList.toggle("top", window.scrollY < 8);
+    sync();
+    window.addEventListener("scroll", sync, { passive: true });
+  }
+}
