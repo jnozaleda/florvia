@@ -972,10 +972,14 @@ async function handleFeedbackStatus(request, env, headers) {
 const PAYWALL_START_DEFAULT = "2026-10-19";
 const TRIAL_DAYS = 30;
 const addDaysIso = (iso, n) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+// «total» = fair-use ceiling on all AI calls of the month (not advertised, not sent to the app by /me). The trial shows the same per-feature
+// limits as Premium but has a lower ceiling.
 const PLAN_LIMITS = {
-  free: { plants: 8, suggest: 5, identify: 5, diagnose: 5 },
+  free: { plants: 8, suggest: 5, identify: 5, diagnose: 5, total: 40 },
+  trial: { plants: 0, suggest: 30, identify: 30, diagnose: 30, total: 150 },
   premium: { plants: 0, suggest: 30, identify: 30, diagnose: 30, total: 300 }, // 0 = unlimited
 };
+const publicLimits = ({ total, ...rest }) => rest;
 async function paywallStart(env) {
   try { return (await env.DB.prepare("SELECT v FROM meta WHERE k = 'paywall_start'").first())?.v ?? PAYWALL_START_DEFAULT; } catch { return PAYWALL_START_DEFAULT; }
 }
@@ -1006,7 +1010,7 @@ async function planOf(env, request) {
       if (today <= trialEnds) { plan = "trial"; source = "trial"; }
     }
   }
-  return { plan, source, live, start, garden, device, trialEnds, accessUntil, premium: plan !== "free", limits: plan === "free" ? PLAN_LIMITS.free : PLAN_LIMITS.premium };
+  return { plan, source, live, start, garden, device, trialEnds, accessUntil, premium: plan !== "free", limits: PLAN_LIMITS[plan === "free" || plan === "trial" ? plan : "premium"] };
 }
 const monthStart = () => `${new Date().toISOString().slice(0, 7)}-01`;
 async function monthlyUse(env, p, names) {
@@ -1036,9 +1040,9 @@ async function handleMe(request, env, headers) {
   const paid = p.garden ? await env.DB.prepare("SELECT plan, source, until FROM entitlements WHERE garden = ?").bind(p.garden).first() : null;
   return json({
     plan: p.plan, source: p.source, premium: p.premium, enforced: p.live, start: p.start,
-    limits: p.limits, used: { suggest, identify, diagnose }, synced: Boolean(p.garden), lifetimeLeft,
+    limits: publicLimits(p.limits), used: { suggest, identify, diagnose }, synced: Boolean(p.garden), lifetimeLeft,
     payments: await paymentsOpen(env, p), sandbox: env.POLAR_ENV !== "production",
-    trialEnds: p.plan === "trial" ? p.trialEnds : (p.trialEnds || null), freeLimits: PLAN_LIMITS.free, accessUntil: p.accessUntil,
+    trialEnds: p.plan === "trial" ? p.trialEnds : (p.trialEnds || null), freeLimits: publicLimits(PLAN_LIMITS.free), accessUntil: p.accessUntil,
     paid: paid ? { plan: paid.plan, source: paid.source, until: paid.until } : null,
   }, 200, headers);
 }

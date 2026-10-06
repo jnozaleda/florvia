@@ -173,5 +173,37 @@ await test("el dueño edita un código: nombre, usos, duración (también a quie
   assert.equal((await call("/invites/update", { code: c, maxUses: 1 }, { admin: true })).status, 400); // ya lo usan 2
 });
 
+// ---- tope total de IA al mes (uso razonable): gratis 40, prueba 150, Premium 300; no se anuncia ni sale en /me
+env.CACHE = { get: async () => null, put: async () => {} }; env.REQUIRE_CODE = "off";
+const aiUse = (id, n) => { for (let i = 0; i < n; i++) sqlite.prepare("INSERT INTO events (ts, day, src, kind, name, device) VALUES (?, ?, 'prod', 'ai', 'care', ?)").run(Date.now(), isoDay(0), deviceHash(id)); };
+const suggest = async (device) => worker.fetch(new Request("https://api.florvia.app/suggest", { method: "POST", headers: { Origin: "https://florvia.app", "Content-Type": "application/json", "X-Device": device }, body: JSON.stringify({ lat: 40, site: { name: "Terraza" } }) }), env, ctx);
+await test("el plan gratuito se para en 40 consultas de IA al mes (uso razonable), no antes", async () => {
+  setStart("2000-01-01");
+  seen("gratis-39", 60); aiUse("gratis-39", 39);
+  seen("gratis-40", 60); aiUse("gratis-40", 40);
+  assert.notEqual((await suggest("gratis-39")).status, 402);
+  const r = await suggest("gratis-40");
+  assert.equal(r.status, 402); assert.equal((await r.json()).error, "fair_use");
+});
+await test("la prueba de 30 días se para en 150, no antes", async () => {
+  aiUse("prueba-149", 149); aiUse("prueba-150", 150);
+  assert.equal((await me("prueba-149")).plan, "trial");
+  assert.notEqual((await suggest("prueba-149")).status, 402);
+  const r = await suggest("prueba-150");
+  assert.equal(r.status, 402); assert.equal((await r.json()).error, "fair_use");
+});
+await test("Premium sigue en 300: con 299 pasa y con 300 se para", async () => {
+  seen("pro-299", 90); seen("pro-300", 90);
+  for (const id of ["pro-299", "pro-300"]) sqlite.prepare("INSERT INTO internal (id, ts) VALUES (?, ?)").run(deviceHash(id), Date.now());
+  aiUse("pro-299", 299); aiUse("pro-300", 300);
+  assert.notEqual((await suggest("pro-299")).status, 402);
+  assert.equal((await suggest("pro-300")).status, 402);
+});
+await test("la prueba se ve igual que Premium: mismos límites por función y el tope total no sale en /me", async () => {
+  const t = await me("a-mitad"), p = await me("yo");
+  assert.deepEqual({ ...t.limits }, { ...p.limits });
+  assert.equal(t.limits.total, undefined); assert.equal(t.freeLimits.total, undefined);
+});
+
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
 console.log("\nTodas las pruebas de planes pasan");
