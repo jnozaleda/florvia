@@ -61,9 +61,9 @@ form.addEventListener("submit", async (e) => {
     const update = () => {
       tick = false;
       const vh = window.innerHeight;
-      // Background plant: grows with how far down the page you are.
+      // Background plant: reaches full size by the middle of the page, so it is mostly grown before the dense sections.
       const room = Math.max(1, root.scrollHeight - vh);
-      root.style.setProperty("--g", Math.min(1, Math.max(0, window.scrollY / room)).toFixed(3));
+      root.style.setProperty("--g", Math.min(1, Math.max(0, window.scrollY / (room * 0.5))).toFixed(3));
       // Timeline: each connector fills as the reading line (65% down the screen) passes its step.
       const line = vh * 0.65;
       steps.forEach((el, i) => {
