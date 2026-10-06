@@ -143,6 +143,17 @@ await test("un código con duración limitada da Premium hasta esa fecha", async
   assert.equal(m.plan, "premium"); assert.equal(m.source, "invite");
   assert.ok(m.accessUntil > Date.now() && m.accessUntil <= Date.now() + 30 * 86400000);
 });
+await test("la persona puede dejar el código: vuelve a gratis y el código recupera su uso", async () => {
+  const c = (await call("/invites", { label: "Salir", maxUses: 1 }, { admin: true })).body.code;
+  seen("saliente", 90);
+  assert.equal((await call("/invite/redeem", { code: c, email: "s@example.com" }, { device: "saliente" })).status, 200);
+  assert.equal((await me("saliente")).plan, "premium");
+  assert.equal((await call("/invite/leave", {}, { device: "saliente" })).body.left, 1);
+  assert.equal((await me("saliente")).plan, "free");
+  assert.equal(sqlite.prepare("SELECT uses FROM invites WHERE code = ?").get(c).uses, 0);
+  assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM invite_uses WHERE code = ?").get(c).n, 0);
+  assert.equal((await call("/invite/redeem", { code: c, email: "otra@example.com" }, { device: "otro-movil" })).status, 200);
+});
 
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
 console.log("\nTodas las pruebas de planes pasan");

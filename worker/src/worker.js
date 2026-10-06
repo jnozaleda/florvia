@@ -1067,6 +1067,22 @@ async function handleInviteRedeem(request, env, headers, ctx) {
   }
   return json({ ok: true, until: inv.access_days ? Date.now() + inv.access_days * 86400000 : null }, 200, headers);
 }
+// The person gives the invite up (Premium sheet): their use is removed, the code gets that use back and the plan it gave ends.
+async function handleInviteLeave(request, env, headers) {
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  const who = await usageWho(request);
+  const ids = [(await keyGarden(request)) || "", who.device].filter(Boolean);
+  if (!ids.length) return json({ error: "input" }, 400, headers);
+  const marks = ids.map(() => "?").join(",");
+  const used = (await env.DB.prepare(`SELECT code, who FROM invite_uses WHERE revoked = 0 AND who IN (${marks})`).bind(...ids).all()).results ?? [];
+  const batch = used.flatMap((u) => [
+    env.DB.prepare("UPDATE invites SET uses = MAX(0, uses - 1) WHERE code = ?").bind(u.code),
+    env.DB.prepare("DELETE FROM invite_uses WHERE code = ? AND who = ?").bind(u.code, u.who),
+    env.DB.prepare("DELETE FROM entitlements WHERE garden = ? AND source = 'invite'").bind(u.who),
+  ]);
+  if (batch.length) await env.DB.batch(batch);
+  return json({ ok: true, left: used.length }, 200, headers);
+}
 async function handleInvitesList(request, env, headers) {
   if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
   const codes = (await env.DB.prepare("SELECT code, label, max_uses, uses, access_days, expires, active, created FROM invites ORDER BY created DESC LIMIT 100").all()).results ?? [];
@@ -1952,6 +1968,7 @@ export default {
     if (pathname === "/me" && request.method === "GET") return handleMe(request, env, headers);
     if (pathname === "/premium/intent" && request.method === "POST") return handlePremiumIntent(request, env, headers, ctx);
     if (pathname === "/invite/redeem" && request.method === "POST") return handleInviteRedeem(request, env, headers, ctx);
+    if (pathname === "/invite/leave" && request.method === "POST") return handleInviteLeave(request, env, headers);
     if (pathname === "/invites" && request.method === "GET") return handleInvitesList(request, env, headers);
     if (pathname === "/invites" && request.method === "POST") return handleInviteCreate(request, env, headers);
     if (pathname === "/invites/revoke" && request.method === "POST") return handleInviteRevoke(request, env, headers);

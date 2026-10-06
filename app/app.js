@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006d";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006e";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006d";
-import { buildICS } from "./calendar.js?v=20261006d";
-import { scrubPlant } from "./clean.js?v=20261006d";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006d";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006e";
+import { buildICS } from "./calendar.js?v=20261006e";
+import { scrubPlant } from "./clean.js?v=20261006e";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006e";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006d";
+      sc.src = "vendor/qrcode.min.js?v=20261006e";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -874,7 +874,7 @@ function premiumSheet(reason = "", keep = false) {
   if (me.premium && me.plan !== "trial") {
     return openSheet(`${head}
       <section class="card"><b>Tienes Premium${me.plan === "lifetime" ? " · de por vida" : me.source === "invite" ? " · amigos y familia" : ""}</b>
-        <p class="muted">${me.source === "invite" ? `Gracias por probar Florvia: tienes todo incluido, sin pagar${me.accessUntil ? `, hasta el ${fmtDate(new Date(me.accessUntil).toISOString().slice(0, 10))} (${accessDaysLeft()} días)` : ""}.` : "Gracias por apoyar Florvia."}</p></section>
+        <p class="muted">${me.source === "invite" ? `Gracias por probar Florvia: tienes todo incluido, sin pagar${me.accessUntil ? `, hasta el ${fmtDate(new Date(me.accessUntil).toISOString().slice(0, 10))} (${accessDaysLeft()} días)` : ""}.` : "Gracias por apoyar Florvia."}</p>${me.source === "invite" ? `<button type="button" class="link-btn" data-action="invite-leave">Dejar de usar este código</button>` : ""}</section>
       <section class="card"><div class="sec">Este mes</div>${row("Qué planto aquí", `${used.suggest ?? 0} de ${L.suggest}`)}${row("Identificar por foto", `${used.identify ?? 0} de ${L.identify}`)}${row("¿Qué le pasa?", `${used.diagnose ?? 0} de ${L.diagnose}`)}${L.plants ? "" : row("Plantas", "ilimitadas")}</section>
       <p class="muted small">Las consultas guardadas en memoria no cuentan. El contador se reinicia el día 1.</p>
       ${me.paid ? `<section class="card"><div class="sec">Tu suscripción</div><p class="muted small">${me.paid.plan === "lifetime" ? "Pago único «de por vida»." : me.paid.until ? `Cancelada: sigue activa hasta el ${fmtDate(new Date(me.paid.until).toISOString().slice(0, 10))}.` : "Activa."}</p>
@@ -947,6 +947,16 @@ async function inviteGo() {
   } catch (err) { inviteUi.error = INVITE_ERRORS[err.message] ?? "No se ha podido comprobar el código. Prueba otra vez."; }
   inviteUi.busy = false;
   inviteSheet();
+}
+async function inviteLeave() {
+  if (!confirm("¿Dejar de usar este código? Perderás el Premium que te da y borraremos tu correo del acceso. Podrás volver a usarlo si te lo permiten.")) return;
+  try {
+    const res = await fetch(`${API}/invite/leave`, { method: "POST", headers: aiHeaders(), body: "{}" });
+    if (!res.ok) throw new Error("x");
+    me = null;
+    loadMe();
+    premiumSheet("", false);
+  } catch { alert("No se ha podido quitar el código. Prueba otra vez."); }
 }
 // «Amigos y familia» for Noza (Uso de la app): create codes, see who used them, take access away.
 let usageInvites = null; // { codes, uses } from /invites
@@ -2991,6 +3001,7 @@ const actions = {
   "premium-buy": (d) => premiumBuy(d.c),
   "invite-open": () => { inviteUi = { code: "", email: premiumUi.email || "", error: "", done: false, busy: false }; inviteSheet(); },
   "invite-go": () => inviteGo(),
+  "invite-leave": () => inviteLeave(),
   "invite-new": () => inviteNew(),
   "invite-revoke": (d) => inviteRevoke(d.code, d.email),
   "premium-portal": () => premiumPortal(),
