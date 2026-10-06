@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006m";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261006n";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006m";
-import { buildICS } from "./calendar.js?v=20261006m";
-import { scrubPlant } from "./clean.js?v=20261006m";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006m";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006n";
+import { buildICS } from "./calendar.js?v=20261006n";
+import { scrubPlant } from "./clean.js?v=20261006n";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006n";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006m";
+      sc.src = "vendor/qrcode.min.js?v=20261006n";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -2668,7 +2668,7 @@ function identifyBlock() {
   return `<section class="card species-check">
       <img src="${esc(id.photo)}" alt="" />
       <div class="body"><b>${esc(top.commonName)} <span class="ai-mark">✦</span> <span class="conf ${top.confidence}">${conf[top.confidence]}</span></b><i>${esc(top.species)}</i>
-        <small>Tu foto será la foto de la planta</small>
+        <small>Usaremos tu foto como foto de la planta (podrás cambiarla)</small>
         <div class="q-row"><button type="button" class="btn small" data-action="wiz-id-pick" data-i="0">Sí, es esta</button></div></div>
     </section>
     ${others.length ? `<section class="card species-alts"><div class="sec">También podría ser</div><div class="alt-grid">${others.map((c, i) => {
@@ -2887,8 +2887,6 @@ function renderWizard() {
       <form id="wizName" class="sheet-in" style="padding:0">
         <h3 class="q">¿Qué planta es?</h3>
         <input name="name" class="big-input" required placeholder="Olivo, limonero, geranio…" autocomplete="off" value="${esc(wiz.name)}" />
-        <div class="photo-pick"><span id="photoPreview">${draftPhoto ? `<img src="${draftPhoto}" alt="" />` : `<span class="thumb placeholder">${ICONS.camera}</span>`}</span>
-          <label class="btn small secondary">Añadir foto<input type="file" id="photoInput" accept="image/*" hidden /></label></div>
         <p class="muted">${hasCode ? `<span class="ai-mark">✦</span> Con el nombre, la IA propondrá sus cuidados por estación para tu zona.` : (aiOff() ? "La IA está apagada: rellena los cuidados a mano." : "Activa el asistente IA en Ajustes para que proponga los cuidados.")}</p>
         ${wiz.identify?.state === "loading"
           ? `<button class="btn block" type="submit" disabled aria-busy="true"><span class="spinner" aria-hidden="true"></span> Mirando la foto…</button>`
@@ -2970,6 +2968,12 @@ function renderWizard() {
       </div>` : ""}
     </section>
     ${store.get("mj_last_place", null) ? `<p class="muted small">Zona y opciones como en la última planta que añadiste.</p>` : ""}
+    <h3 class="q">Foto de tu planta <span class="muted small">(opcional)</span></h3>
+    <div class="photo-pick"><span id="photoPreview">${draftPhoto ? `<img class="thumb" src="${draftPhoto}" alt="" />` : `<span class="thumb placeholder">${ICONS.camera}</span>`}</span>
+      <div style="display:grid;gap:8px;min-width:0">
+        <span class="muted small">${draftPhoto && wiz.photoFromId ? "Es la foto con la que la reconociste." : "Para encontrarla de un vistazo en tu lista."}</span>
+        <div class="row" style="gap:8px"><label class="btn small secondary">${draftPhoto ? "Cambiar foto" : "Añadir foto"}<input type="file" id="photoInput" accept="image/*" hidden /></label>${draftPhoto ? `<button type="button" class="btn small secondary" data-action="wiz-photo-remove">Quitar</button>` : ""}</div>
+      </div></div>
     <div class="sheet-actions">${busy
       ? `<button class="btn block" data-action="wiz-save" disabled aria-busy="true"><span class="spinner" aria-hidden="true"></span> Esperando a la IA…</button>`
       : `<button class="btn block" data-action="wiz-save">Guardar planta</button>`}</div>`);
@@ -3077,6 +3081,7 @@ function addLog(plantId, type, note = "") {
 const actions = {
   "new-plant": newPlantWizard,
   "wiz-back": () => { wiz.step = 1; renderWizard(); },
+  "wiz-photo-remove": () => { wiz.nick = $("wizNick")?.value ?? wiz.nick; if ($("wizZone")) wiz.zone = $("wizZone").value; draftPhoto = null; wiz.photoFromId = false; renderWizard(); },
   "wiz-alt": (d) => { wiz.nick = $("wizNick")?.value ?? wiz.nick; wiz.query = altQuery(wiz.care.alternatives[+d.i]); wiz.showAlts = false; wizLookup(); },
   "wiz-id-cancel": () => { wiz.identify = null; renderWizard(); },
   "wiz-id-pick": (d) => {
@@ -3084,7 +3089,7 @@ const actions = {
     const c = id?.candidates?.[+d.i];
     if (!c) return;
     draftPhoto = id.photo;
-    Object.assign(wiz, { name: c.commonName, query: altQuery(c), identify: null, care: null, step: 2 });
+    Object.assign(wiz, { photoFromId: true, name: c.commonName, query: altQuery(c), identify: null, care: null, step: 2 });
     if (aiGo()) wizLookup(); else renderWizard();
   },
   "wiz-species-ok": () => { wiz.nick = $("wizNick")?.value ?? wiz.nick; wiz.checked = true; wiz.showAlts = false; renderWizard(); },
@@ -3560,8 +3565,15 @@ document.addEventListener("change", async (e) => {
     return identifyFromFile(file);
   }
   if (e.target.id === "photoInput" && e.target.files[0]) {
-    draftPhoto = await shrinkPhoto(e.target.files[0]).catch(() => null);
-    if (draftPhoto) $("photoPreview").innerHTML = `<img class="thumb" src="${draftPhoto}" alt="" />`;
+    const picked = await shrinkPhoto(e.target.files[0]).catch(() => null);
+    if (!picked) return;
+    draftPhoto = picked;
+    if (wiz?.step === 2) {
+      wiz.photoFromId = false;
+      wiz.nick = $("wizNick")?.value ?? wiz.nick;
+      if ($("wizZone")) wiz.zone = $("wizZone").value;
+      renderWizard();
+    } else $("photoPreview").innerHTML = `<img class="thumb" src="${draftPhoto}" alt="" />`;
   }
   if (e.target.classList.contains("tile-photo") && e.target.files[0]) {
     const p = plantById(e.target.dataset.id);
