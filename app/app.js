@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006c";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006d";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006c";
-import { buildICS } from "./calendar.js?v=20261006c";
-import { scrubPlant } from "./clean.js?v=20261006c";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006c";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006d";
+import { buildICS } from "./calendar.js?v=20261006d";
+import { scrubPlant } from "./clean.js?v=20261006d";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006d";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -627,7 +627,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006c";
+      sc.src = "vendor/qrcode.min.js?v=20261006d";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -959,7 +959,7 @@ function invitesCard() {
     const people = uses.filter((u) => u.code === c.code);
     const rows = people.length ? people.map((u) => `<div class="inv-use ${u.revoked ? "off" : ""}"><span><b>${esc(u.email)}</b><small>${u.revoked ? "Retirado" : `Activado el ${day(u.ts)}${c.access_days ? ` · hasta el ${day(u.ts + c.access_days * 86400000)}` : " · sin fecha de fin"}`}</small></span>${u.revoked ? "" : `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="${esc(u.email)}">Retirar</button>`}</div>`).join("")
       : `<div class="inv-use"><span><small>${c.active ? "Sin usar todavía" : "Apagado"}</small></span></div>`;
-    return `<div class="inv ${c.active ? "" : "off"}"><div class="inv-head"><span><b>${esc(c.label || "Sin nombre")}</b><small>${esc(c.code)} · ${c.uses} de ${c.max_uses} ${c.max_uses === 1 ? "uso" : "usos"} · ${c.access_days ? `${c.access_days} días` : "sin fin"}</small></span>${c.active ? `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="">Apagar</button>` : ""}</div>${rows}</div>`;
+    return `<div class="inv ${c.active ? "" : "off"}"><div class="inv-head"><span><b>${esc(c.label || "Sin nombre")}</b><small><span class="code">${esc(c.code)}</span> · ${c.uses} de ${c.max_uses} ${c.max_uses === 1 ? "uso" : "usos"} · ${c.access_days ? `${c.access_days} días` : "sin fin"}</small></span>${c.active ? `<button type="button" class="link-btn" data-action="invite-revoke" data-code="${esc(c.code)}" data-email="">Apagar</button>` : ""}</div>${rows}</div>`;
   };
   return `<section class="card"><div class="sec">Amigos y familia <span class="meta">${live} ${live === 1 ? "persona" : "personas"}</span></div>
     ${codes.length ? codes.map(block).join("") : `<p class="muted small">Aún no hay códigos.</p>`}
