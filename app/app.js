@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006k";
+import { fetchWeather, searchCities, weatherKind } from "./weather.js?v=20261006l";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006k";
-import { buildICS } from "./calendar.js?v=20261006k";
-import { scrubPlant } from "./clean.js?v=20261006k";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006k";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261006l";
+import { buildICS } from "./calendar.js?v=20261006l";
+import { scrubPlant } from "./clean.js?v=20261006l";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261006l";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -367,7 +367,7 @@ function rainSkipCard(today) {
     <button type="button" class="fold" data-action="toggle-rain-skip" aria-expanded="${rainSkipOpen}"><span>Saltado por la lluvia</span><span class="meta" style="white-space:nowrap">${items.length} <span class="chev">›</span></span></button>
     ${rainSkipOpen ? `<div class="done-list">${rows}</div>` : `<p class="muted small" style="margin:0 0 2px">${esc(list)} · ${when} cayeron ${newest.mm} mm</p>`}</section>`;
 }
-// Automatic irrigation and the rain, per zone: pause it when the rain covers it, and remember to switch it back on afterwards.
+// Automatic irrigation and the rain, per zone: pause it when the rain covers it, and remember to switch it back on once the rain has passed.
 function irrigationRainCard(today) {
   const r = irrigationRain(state.data.plants, state.weather, today, pausedZones());
   const name = (z) => z || "Sin zona";
@@ -376,7 +376,7 @@ function irrigationRainCard(today) {
       const bits = [x.past >= 1 ? `han caído ${x.past} mm` : "", x.soon >= 1 ? `se esperan ${x.soon} mm` : ""].filter(Boolean).join(" y ");
       return `<div class="t-row"><span class="t-ico water">${ICONS.drip}</span><div class="body"><div class="t-title">Pausa el riego en ${esc(name(x.zone))}</div><div class="t-when">${esc(bits.replace(/^./, (c) => c.toUpperCase()))}: la lluvia lo cubre</div></div><button type="button" class="btn small secondary" data-action="zone-auto" data-zone="${esc(x.zone)}">Pausar</button></div>`;
     }),
-    ...r.resume.map((x) => `<div class="t-row"><span class="t-ico water">${ICONS.drip}</span><div class="body"><div class="t-title">Riego pausado en ${esc(name(x.zone))}</div><div class="t-when">${x.rainLeft ? `Aún se esperan ${x.soon} mm` : "Ya no se espera lluvia: reanúdalo"}</div></div><button type="button" class="btn small ${x.rainLeft ? "secondary" : ""}" data-action="zone-auto" data-zone="${esc(x.zone)}">Reanudar</button></div>`),
+    ...r.resume.map((x) => `<div class="t-row"><span class="t-ico water">${ICONS.drip}</span><div class="body"><div class="t-title">Riego pausado en ${esc(name(x.zone))}</div><div class="t-when">Ya no se espera lluvia: reanúdalo</div></div><button type="button" class="btn small" data-action="zone-auto" data-zone="${esc(x.zone)}">Reanudar</button></div>`),
   ];
   return rows.length ? `<section class="card"><div class="sec">Riego automático</div>${rows.join("")}</section>` : "";
 }
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261006k";
+      sc.src = "vendor/qrcode.min.js?v=20261006l";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });

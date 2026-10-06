@@ -68,11 +68,11 @@ test("riego automático: la lluvia prevista con poca probabilidad no cuenta", ()
   const w = wx({}, { 1: 20 }); w.days[8].rainProb = 30;
   assert.equal(irrigationRain([drip2], w, TODAY).pause.length, 0);
 });
-test("zona pausada: pide reanudar cuando ya no se espera lluvia, y lo dice si aún llueve", () => {
+test("zona pausada: solo pide reanudar cuando ya no se espera lluvia (mientras llueve no dice nada)", () => {
   const calm = irrigationRain([drip2], wx({ 1: 9 }), TODAY, ["Terraza"]);
-  assert.deepEqual([calm.pause.length, calm.resume[0].rainLeft], [0, false]);
+  assert.deepEqual([calm.pause.length, calm.resume.map((z) => z.zone)], [0, ["Terraza"]]);
   const wet = irrigationRain([drip2], wx({}, { 1: 12 }), TODAY, ["Terraza"]);
-  assert.equal(wet.resume[0].rainLeft, true);
+  assert.deepEqual([wet.pause.length, wet.resume.length], [0, 0]);
 });
 
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }

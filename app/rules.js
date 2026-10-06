@@ -400,8 +400,7 @@ export function rainCredits(plants, log, weather, today, deleted = {}) {
 }
 
 // Automatic irrigation against the rain, per zone. Rain that fell in the last two days plus what's forecast (today and the next two
-// days, only likely rain) adding up to LIMITS.rainPauseMm or more → «pause it»; a paused zone is told when the rain has passed so it
-// is switched back on. Only plants the rain reaches count. Returns { pause: [{ zone, plants, past, soon }], resume: [{ zone, plants, soon, rainLeft }] }.
+// days, only likely rain) adding up to LIMITS.rainPauseMm or more → «pause it»; a paused zone is only mentioned once no more rain is expected, to switch it back on (while it rains there is nothing to say). Only plants the rain reaches count. Returns { pause: [{ zone, plants, past, soon }], resume: [{ zone, plants, soon }] }.
 export function irrigationRain(plants, weather, today, paused = []) {
   const out = { pause: [], resume: [] };
   if (!weather) return out;
@@ -412,7 +411,7 @@ export function irrigationRain(plants, weather, today, paused = []) {
   const zones = new Map();
   for (const p of plants) if (p.autoWater && p.rainReaches) zones.set(p.zone || "", [...(zones.get(p.zone || "") ?? []), p]);
   for (const [zone, list] of zones) {
-    if (paused.includes(zone)) out.resume.push({ zone, plants: list, soon, rainLeft: soon >= LIMITS.rainSkipMm });
+    if (paused.includes(zone)) { if (soon < LIMITS.rainSkipMm) out.resume.push({ zone, plants: list, soon }); }
     else if (past + soon >= LIMITS.rainPauseMm) out.pause.push({ zone, plants: list, past, soon });
   }
   return out;
