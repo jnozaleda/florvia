@@ -330,6 +330,9 @@ function cors(request, env) {
 
 const json = (body, status, headers) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
 const normName = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+// Genus + epithet, lowercase, without hybrid signs, authors, varieties or cultivars: «Citrus × limon», «Citrus limon (L.) Osbeck» and «Citrus limon»
+// are the same plant here. A name with a single word (a genus) stays as it is. Empty when there is no usable species.
+const speciesKey = (species) => normName(String(species ?? "")).split(" ").filter((w) => w && w !== "x").slice(0, 2).join(" ");
 
 // App versions from before the seasonal sheet send `month` and read one waterEvery/feedEvery.
 function withLegacy(care, month, lat) {
@@ -384,9 +387,26 @@ async function handleCare(request, env, headers, ctx) {
   // Where the request came from (alta by default), only for the usage counters.
   const kind = ["explore", "edit", "upgrade"].includes(body.src) ? `care_${body.src}` : "care";
 
-  // Same plant, same climate cell (~100 km) → same answer, whatever the month.
-  const cacheKey = `care:v16:${normName(name)}:${Math.round(lat)}:${Math.round(lon)}`;
-  const cached = await env.CACHE.get(cacheKey, "json");
+  // Same plant, same climate cell (~100 km) → same answer, whatever the month. The sheet is kept per SPECIES (genus + epithet) and cell, so
+  // «aspidistra», «Aspidistra elatior» and «aspidistra aspidistra elatior» get one and the same sheet; a name → species alias (per cell) saves
+  // asking again. Sheets saved the old way (per typed name) join their species the first time they are asked for.
+  const cell = `${Math.round(lat)}:${Math.round(lon)}`;
+  const nameKey = `care:v16:${normName(name)}:${cell}`; // old: one sheet per typed name
+  const aliasKey = `alias:v16:${normName(name)}:${cell}`; // typed name → species key
+  const speciesCacheKey = (sk) => `species:v16:${sk}:${cell}`;
+  const remember = (sk, sheet) => Promise.all([sheet ? env.CACHE.put(speciesCacheKey(sk), JSON.stringify(sheet), { expirationTtl: CACHE_TTL }) : null, env.CACHE.put(aliasKey, sk, { expirationTtl: CACHE_TTL })]);
+  const findCached = async () => {
+    const alias = await env.CACHE.get(aliasKey);
+    if (alias) { const sheet = await env.CACHE.get(speciesCacheKey(alias), "json"); if (sheet) return sheet; }
+    const old = await env.CACHE.get(nameKey, "json");
+    if (!old) return null;
+    const sk = speciesKey(old.species);
+    if (!sk) return old;
+    const canon = await env.CACHE.get(speciesCacheKey(sk), "json");
+    await remember(sk, canon ? null : old);
+    return canon ?? old;
+  };
+  const cached = await findCached();
   const careCase = (output) => saveCase(env, ctx, request, { kind: kind === "care_explore" ? "explore" : "care", name, input: { name, place, lat: Math.round(lat * 10) / 10, lon: Math.round(lon * 10) / 10 }, output });
   if (cached) { recordAi(env, ctx, "cached", 0, request, kind); recordTopics(env, ctx, request, kind === "care_explore" ? "explore" : kind === "care" ? "care" : "", name); return json({ ...withLegacy(cached, body.month, lat), cached: true, caseId: careCase(cached) }, 200, headers); }
 
@@ -408,7 +428,16 @@ async function handleCare(request, env, headers, ctx) {
   }
   recordAi(env, ctx, "call", Date.now() - t0, request, kind, aiUsage);
   if (!care.isPlant) { recordAi(env, ctx, "not_plant"); return json({ error: "not_plant" }, 422, headers); }
-  if (care.confidence !== "baja") await env.CACHE.put(cacheKey, JSON.stringify(care), { expirationTtl: CACHE_TTL });
+  if (care.confidence !== "baja") {
+    const sk = speciesKey(care.species);
+    if (!sk) await env.CACHE.put(nameKey, JSON.stringify(care), { expirationTtl: CACHE_TTL });
+    else {
+      // Another spelling of this species got here first: everybody gets that sheet (only the first one is kept).
+      const known = await env.CACHE.get(speciesCacheKey(sk), "json");
+      await remember(sk, known ? null : care);
+      if (known) care = known;
+    }
+  }
   recordTopics(env, ctx, request, kind === "care_explore" ? "explore" : kind === "care" ? "care" : "", name);
   return json({ ...withLegacy(care, body.month, lat), caseId: careCase(care) }, 200, headers);
 }
