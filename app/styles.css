@@ -889,3 +889,7 @@ label.link-btn { cursor: pointer; }
 
 .trial-nudge { border: 1px solid var(--accent); background: var(--accent-soft); display: flex; flex-direction: column; gap: 6px; }
 .trial-nudge .btn { align-self: flex-start; }
+
+/* «¿Dónde está mejor?»: the answer flashes once when it opens */
+@keyframes pf-flash { 0% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 3px transparent; } }
+.pf.pf-flash { animation: pf-flash 1.6s ease-out; }

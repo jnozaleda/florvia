@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261007a";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261007c";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261007a";
-import { buildICS } from "./calendar.js?v=20261007a";
-import { scrubPlant } from "./clean.js?v=20261007a";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261007a";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261007c";
+import { buildICS } from "./calendar.js?v=20261007c";
+import { scrubPlant } from "./clean.js?v=20261007c";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261007c";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261007a";
+      sc.src = "vendor/qrcode.min.js?v=20261007c";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1257,15 +1257,25 @@ function topicName(kind, key) {
   if (kind === "suggest_pref") return SG_PREFS.find(([k]) => k === key)?.[1] ?? key;
   return key.replace(/^./, (c) => c.toUpperCase());
 }
+let topicsAll = false; // «Qué se pide»: the last 30 days (top 10 per kind) or everything since it is measured (full lists)
+function topicsCsv() {
+  const t = usage?.topics?.all;
+  const rows = [["tipo", "nombre", "veces", "origen"]];
+  for (const [origin, set] of [["real", t?.real], ["mis_dispositivos", t?.mine]]) for (const [kind, list] of Object.entries(set ?? {})) for (const [key, n] of list) rows.push([TOPIC_LABEL[kind] ?? kind, topicName(kind, key), n, origin]);
+  return rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+}
 function topicsCard() {
   const t = usage?.topics;
   if (!t) return "";
-  const set = topicsMine ? t.mine : t.real;
+  const src = topicsAll ? t.all : t;
+  const set = topicsMine ? src.mine : src.real;
   const kinds = Object.keys(TOPIC_LABEL).filter((k) => set[k]?.length);
   const toggle = `<button type="button" class="btn small secondary" data-action="topics-mine" aria-pressed="${topicsMine}">${topicsMine ? "Ver el uso real" : "Ver mis pruebas"}</button>`;
-  return `<section class="card"><div class="sec">Qué se pide <span class="meta">30 días · ${topicsMine ? "mis dispositivos" : "uso real"}</span></div>
-    ${kinds.length ? kinds.map((k) => `<details class="pf-plain"><summary>${TOPIC_LABEL[k]} <span class="meta">${set[k].reduce((a, [, n]) => a + n, 0)}</span></summary>${set[k].map(([key, n]) => `<div class="u-row"><span>${esc(topicName(k, key))}</span><b>${n}</b></div>`).join("")}</details>`).join("") : `<p class="muted small">${topicsMine ? "Todavía no hay datos de tus dispositivos." : "Todavía no hay datos de uso real. Se cuenta desde que se activó esta tarjeta."}</p>`}
-    <div style="margin-top:10px">${toggle}</div></section>`;
+  const range = `<div class="seg" role="radiogroup" aria-label="Periodo" style="margin:6px 0 10px">${[[false, "30 días"], [true, "Desde el principio"]].map(([v, l]) => `<button type="button" role="radio" aria-checked="${topicsAll === v}" data-action="topics-range" data-all="${v}">${l}</button>`).join("")}</div>`;
+  const meta = `${topicsAll ? `desde ${t.since ? fmtDate(t.since, { day: "numeric", month: "short", year: "numeric" }) : "el principio"}` : "30 días"} · ${topicsMine ? "mis dispositivos" : "uso real"}`;
+  return `<section class="card"><div class="sec">Qué se pide <span class="meta">${meta}</span></div>${range}
+    ${kinds.length ? kinds.map((k) => `<details class="pf-plain"><summary>${TOPIC_LABEL[k]} <span class="meta">${set[k].length > 10 ? `${set[k].length} distintas · ` : ""}${set[k].reduce((a, [, n]) => a + n, 0)}</span></summary>${set[k].map(([key, n]) => `<div class="u-row"><span>${esc(topicName(k, key))}</span><b>${n}</b></div>`).join("")}</details>`).join("") : `<p class="muted small">${topicsMine ? "Todavía no hay datos de tus dispositivos." : "Todavía no hay datos de uso real. Se cuenta desde que se activó esta tarjeta."}</p>`}
+    <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">${toggle}<button type="button" class="btn small secondary" data-action="topics-csv">Descargar todo (CSV)</button></div></section>`;
 }
 // «Retención»: of the real people whose first day is old enough, how many came back (next day, within the week, later in the month).
 function retentionCard() {
@@ -1966,8 +1976,8 @@ function placeAdviceFold(p, fold) {
   if (!a?.zones?.length) return "";
   const stale = (a.zone ?? "") !== (p.zone || "");
   const prev = a.best && a.best !== (p.zone || "") ? `Mejor en ${esc(a.best)}` : "Donde está le va bien";
-  return fold("place", "¿Dónde está mejor?", `<span class="pf-line">${prev}${stale ? " · ha cambiado de zona" : ""}</span>`,
-    `<p class="muted small">Valorado el ${fmtDate(a.at)}${stale ? ` para «${esc(a.zone || "sin zona")}»: ha cambiado de zona, vuelve a valorar` : ""}.</p>${placeAdviceHtml(a, p.zone || "")}${placeNudge()}`);
+  return fold("place", `¿Dónde está mejor?${aiMark(true)}`, `<span class="pf-line">${prev}${stale ? " · ha cambiado de zona" : ""}</span>`,
+    `<p class="muted small"><span class="ai-mark">✦</span> Valoración de la IA, el ${fmtDate(a.at)}${stale ? ` para «${esc(a.zone || "sin zona")}»: ha cambiado de zona, vuelve a valorar` : ""}.</p>${placeAdviceHtml(a, p.zone || "")}${placeNudge()}`);
 }
 function diagRead() {
   if (!diag) return;
@@ -2202,7 +2212,10 @@ async function askExplorePlace() {
     const needs = { sunNeed: care.sunNeed, sunSensitive: Boolean(care.sunSensitive), minTemp: care.minTemp ?? null, frostSensitive: Boolean(care.frostSensitive), windSensitive: Boolean(care.windSensitive), waterDays: care.seasons?.[season]?.water ?? 0, inPot: care.plantIn === "maceta" ? true : care.plantIn === "suelo" ? false : null };
     e.place = await requestPlace({ name: care.commonName || e.name, species: care.species ?? "", needs, current: "" });
   } catch (err) { e.place = { error: aiErrorText(err.message) }; }
-  if (explore === e && $("sheet").open) exploreSheet();
+  if (explore === e && $("sheet").open) {
+    exploreSheet();
+    requestAnimationFrame(() => document.querySelector(".place-ai")?.scrollIntoView({ block: "center" }));
+  }
 }
 let plantPlace = null; // { id, running, ok, at, text }
 async function askPlantPlace(id) {
@@ -2218,6 +2231,16 @@ async function askPlantPlace(id) {
     p.placeAdvice = { at: localToday(), zone: p.zone || "", zones: res.zones, best: res.best, bestWhy: res.bestWhy, seasonal: res.seasonal, summary: res.summary };
     save();
     plantPlace = null;
+    plantUi.open.add("place"); // open the answer and bring it into view: it lands below the buttons
+    redraw();
+    requestAnimationFrame(() => {
+      const el = document.querySelector('.pf[data-k="place"]');
+      if (!el) return;
+      el.scrollIntoView({ block: "center" });
+      el.classList.add("pf-flash");
+      setTimeout(() => el.classList.remove("pf-flash"), 1800);
+    });
+    return;
   } catch (err) {
     plantPlace = { id, ok: false, at: Date.now(), text: aiErrorText(err.message) };
   }
@@ -3357,6 +3380,8 @@ const actions = {
   },
   "plant-place": (d) => askPlantPlace(d.id),
   "topics-mine": () => { topicsMine = !topicsMine; usageSheet(); },
+  "topics-range": (d) => { topicsAll = d.all === "true"; usageSheet(); },
+  "topics-csv": () => download(`florvia-plantas-pedidas-${localToday()}.csv`, `\uFEFF${topicsCsv()}`, "text/csv"),
   "pf-photo": () => { plantUi.big = !plantUi.big; plantSheet(plantUi.id); },
   "pf-month": () => { plantUi.monthAll = !plantUi.monthAll; plantSheet(plantUi.id); },
   "diag-open": (d) => { diag = { id: d.id, symptoms: [], note: "", photo: null, state: "idle", saved: false }; if (!me) loadMe(); diagSheet(); },

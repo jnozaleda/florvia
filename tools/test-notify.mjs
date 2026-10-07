@@ -130,6 +130,17 @@ await test("tope diario: tras 40 avisos manda uno de límite y para", async () =
   assert.equal(emails.length, 41);
   assert.equal(subjects()[40], "Florvia · Límite diario de avisos de actividad");
 });
+await test("«Qué se pide»: lista completa desde el principio (más de 10) y los 10 de 30 días, con la fecha de inicio", async () => {
+  sqlite.exec("DELETE FROM topics");
+  const old = new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10);
+  for (let i = 0; i < 14; i++) sqlite.prepare("INSERT INTO topics (day, kind, key, src, internal, n) VALUES (?, 'identify', ?, 'prod', 0, ?)").run(old, `planta ${i}`, 20 - i);
+  sqlite.prepare("INSERT INTO topics (day, kind, key, src, internal, n) VALUES (date('now'), 'identify', 'olivo', 'prod', 0, 3)").run();
+  const t = (await admin("/stats2?days=30")).topics;
+  assert.deepEqual(t.real.identify, [["olivo", 3]], "30 días: solo lo reciente");
+  assert.equal(t.all.real.identify.length, 15, "desde el principio: todas");
+  assert.deepEqual(t.all.real.identify[0], ["planta 0", 20]);
+  assert.equal(t.since, old);
+});
 await test("las horas de «Uso de la app»: 24 cubos y las aperturas reales de la última hora", async () => {
   sqlite.prepare("DELETE FROM meta").run();
   sqlite.prepare("INSERT INTO meta (k, v) VALUES ('clean_start', '2020-01-01')").run();

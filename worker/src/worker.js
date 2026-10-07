@@ -819,10 +819,15 @@ async function handleStats2(request, env, headers) {
     env.DB.prepare(USAGE_SQL).all(), env.DB.prepare("SELECT id, label FROM labels").all(), env.DB.prepare("SELECT v FROM meta WHERE k = 'clean_start'").first(),
   ]);
   // What was asked for in the period (table topics): top names per kind, from real use and from Noza's own devices apart.
-  const topicRows = (await env.DB.prepare("SELECT kind, key, internal, SUM(n) AS n FROM topics WHERE day >= ? AND src IN ('prod', 'old') GROUP BY kind, key, internal").bind(dayList[0]).all().catch(() => ({ results: [] }))).results ?? [];
-  const topics = { real: {}, mine: {} };
-  for (const r of topicRows) ((r.internal ? topics.mine : topics.real)[r.kind] ??= []).push([r.key, r.n]);
-  for (const set of [topics.real, topics.mine]) for (const k of Object.keys(set)) set[k] = set[k].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const topicQuery = (since) => env.DB.prepare(`SELECT kind, key, internal, SUM(n) AS n, MIN(day) AS first FROM topics WHERE ${since ? "day >= ? AND " : ""}src IN ('prod', 'old') GROUP BY kind, key, internal`).bind(...(since ? [since] : [])).all().catch(() => ({ results: [] }));
+  const topicSets = (rows, limit) => {
+    const set = { real: {}, mine: {} };
+    for (const r of rows) ((r.internal ? set.mine : set.real)[r.kind] ??= []).push([r.key, r.n]);
+    for (const s of [set.real, set.mine]) for (const kind of Object.keys(s)) s[kind] = s[kind].sort((a, b) => b[1] - a[1]).slice(0, limit);
+    return set;
+  };
+  const allTopicRows = (await topicQuery(null)).results ?? [];
+  const topics = { ...topicSets((await topicQuery(dayList[0])).results ?? [], 10), all: topicSets(allTopicRows, 300), since: allTopicRows.map((r) => r.first).sort()[0] ?? null };
   const rows = rowsRes.results ?? [];
   const labels = Object.fromEntries((labelsRes.results ?? []).map((l) => [l.id, l.label]));
   const cleanStart = metaRes?.v ?? today;
