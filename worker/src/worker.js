@@ -372,6 +372,15 @@ async function takeQuota(request, env, ctx = null) {
   return true;
 }
 
+// A care sheet in two pieces: the PARENT is what is true of the species wherever it grows (name, light, hardiness, toxicity, size, how to water,
+// notes…) and the CHILD what depends on the climate of the cell (watering and feeding by season, seasonal tips, planting and flowering months, fit).
+// The Worker joins them when it serves a sheet, so the app still gets the same flat sheet. A species has one parent; each cell has its own child.
+const PARENT_FIELDS = ["commonName", "species", "confidence", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives", "isPlant"];
+const CHILD_FIELDS = ["seasons", "feedTypes", "tips", "climateFit", "climateNote", "plantMonths", "plantWhen", "bloomMonths", "bloomWhat"];
+const PARENT_TTL = 365 * 86400;
+const pick = (o, keys) => Object.fromEntries(keys.filter((key) => o[key] !== undefined).map((key) => [key, o[key]]));
+const splitSheet = (sheet) => ({ parent: { ...pick(sheet, PARENT_FIELDS), provider: sheet.provider }, child: { ...pick(sheet, CHILD_FIELDS), provider: sheet.provider } });
+const mergeSheet = (parent, child) => ({ ...parent, ...child }); // `provider` is the child's: the model that wrote the climate part
 async function handleCare(request, env, headers, ctx) {
   if (!authorized(request, env)) {
     return json({ error: "code" }, 401, headers);
@@ -387,24 +396,39 @@ async function handleCare(request, env, headers, ctx) {
   // Where the request came from (alta by default), only for the usage counters.
   const kind = ["explore", "edit", "upgrade"].includes(body.src) ? `care_${body.src}` : "care";
 
-  // Same plant, same climate cell (~100 km) → same answer, whatever the month. The sheet is kept per SPECIES (genus + epithet) and cell, so
-  // «aspidistra», «Aspidistra elatior» and «aspidistra aspidistra elatior» get one and the same sheet; a name → species alias (per cell) saves
-  // asking again. Sheets saved the old way (per typed name) join their species the first time they are asked for.
+  // Same plant, same climate cell (~100 km) → same answer, whatever the month. The sheet is kept per SPECIES (genus + epithet): a parent with what is
+  // universal and, per cell, a child with what depends on the climate (see PARENT_FIELDS). A name → species alias (per cell) saves asking again, so
+  // «aspidistra», «Aspidistra elatior» and «aspidistra aspidistra elatior» get one and the same sheet. A species asked for in a new cell keeps its
+  // parent and only gets a new child. Sheets saved the older ways (per typed name, or whole per species and cell) are split the first time they are asked for.
   const cell = `${Math.round(lat)}:${Math.round(lon)}`;
-  const nameKey = `care:v16:${normName(name)}:${cell}`; // old: one sheet per typed name
+  const nameKey = `care:v16:${normName(name)}:${cell}`; // old: one whole sheet per typed name
   const aliasKey = `alias:v16:${normName(name)}:${cell}`; // typed name → species key
-  const speciesCacheKey = (sk) => `species:v16:${sk}:${cell}`;
-  const remember = (sk, sheet) => Promise.all([sheet ? env.CACHE.put(speciesCacheKey(sk), JSON.stringify(sheet), { expirationTtl: CACHE_TTL }) : null, env.CACHE.put(aliasKey, sk, { expirationTtl: CACHE_TTL })]);
+  const wholeKey = (sk) => `species:v16:${sk}:${cell}`; // older: one whole sheet per species and cell
+  const parentKey = (sk) => `parent:v16:${sk}`;
+  const childKey = (sk) => `child:v16:${sk}:${cell}`;
+  const remember = (sk) => env.CACHE.put(aliasKey, sk, { expirationTtl: CACHE_TTL });
+  // Keeps a whole sheet as parent (unless the species already has one: that one stays) + child, and returns what to serve.
+  const store = async (sk, sheet) => {
+    const { parent, child } = splitSheet(sheet);
+    const known = await env.CACHE.get(parentKey(sk), "json");
+    await Promise.all([known ? null : env.CACHE.put(parentKey(sk), JSON.stringify(parent), { expirationTtl: PARENT_TTL }), env.CACHE.put(childKey(sk), JSON.stringify(child), { expirationTtl: CACHE_TTL })]);
+    return known ? mergeSheet(known, child) : sheet;
+  };
+  const loadSheet = async (sk) => {
+    const [parent, child] = await Promise.all([env.CACHE.get(parentKey(sk), "json"), env.CACHE.get(childKey(sk), "json")]);
+    if (parent && child) return mergeSheet(parent, child);
+    const whole = await env.CACHE.get(wholeKey(sk), "json");
+    return whole ? store(sk, whole) : null;
+  };
   const findCached = async () => {
     const alias = await env.CACHE.get(aliasKey);
-    if (alias) { const sheet = await env.CACHE.get(speciesCacheKey(alias), "json"); if (sheet) return sheet; }
+    if (alias) { const sheet = await loadSheet(alias); if (sheet) return sheet; }
     const old = await env.CACHE.get(nameKey, "json");
     if (!old) return null;
     const sk = speciesKey(old.species);
     if (!sk) return old;
-    const canon = await env.CACHE.get(speciesCacheKey(sk), "json");
-    await remember(sk, canon ? null : old);
-    return canon ?? old;
+    await remember(sk);
+    return (await loadSheet(sk)) ?? (await store(sk, old));
   };
   const cached = await findCached();
   const careCase = (output) => saveCase(env, ctx, request, { kind: kind === "care_explore" ? "explore" : "care", name, input: { name, place, lat: Math.round(lat * 10) / 10, lon: Math.round(lon * 10) / 10 }, output });
@@ -432,10 +456,10 @@ async function handleCare(request, env, headers, ctx) {
     const sk = speciesKey(care.species);
     if (!sk) await env.CACHE.put(nameKey, JSON.stringify(care), { expirationTtl: CACHE_TTL });
     else {
-      // Another spelling of this species got here first: everybody gets that sheet (only the first one is kept).
-      const known = await env.CACHE.get(speciesCacheKey(sk), "json");
-      await remember(sk, known ? null : care);
-      if (known) care = known;
+      // Another spelling of this species got here first: everybody gets that sheet. Otherwise the new sheet is kept (its parent only if the species has none).
+      const known = await loadSheet(sk);
+      await remember(sk);
+      care = known ?? (await store(sk, care));
     }
   }
   recordTopics(env, ctx, request, kind === "care_explore" ? "explore" : kind === "care" ? "care" : "", name);

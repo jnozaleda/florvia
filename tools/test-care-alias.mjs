@@ -83,7 +83,8 @@ await test("dos formas de escribir la misma planta dan la misma ficha (la primer
   setAI({ notes: "nota B" });
   const b = await ask("aspidistra aspidistra elatior");
   assert.equal(b.status, 200); assert.equal(b.body.notes, "nota A", "se sirve la ficha que ya existía para la especie");
-  assert.deepEqual(kvKeys().filter((k) => k.startsWith("species:")), ["species:v16:aspidistra elatior:40:-4"]);
+  assert.deepEqual(kvKeys().filter((k) => k.startsWith("parent:") || k.startsWith("child:")).sort(), ["child:v16:aspidistra elatior:40:-4", "parent:v16:aspidistra elatior"]);
+  assert.deepEqual(kvKeys().filter((k) => k.startsWith("species:")), [], "ya no se guarda entera");
   assert.deepEqual(kvKeys().filter((k) => k.startsWith("alias:")).sort(), ["alias:v16:aspidistra aspidistra elatior:40:-4", "alias:v16:aspidistra:40:-4"]);
 });
 await test("repetir un nombre ya visto no llama a la IA y entrega la ficha de la especie", async () => {
@@ -102,16 +103,18 @@ await test("«Citrus × limon», «Citrus limon (L.) Osbeck» y «Citrus limon»
   assert.equal((await ask("limón")).body.notes, "limón 1");
   setAI({ species: "Citrus limon", notes: "limón 3" });
   assert.equal((await ask("citrus limon")).body.notes, "limón 1");
-  assert.equal(kvKeys().filter((k) => k.startsWith("species:")).length, 1);
+  assert.equal(kvKeys().filter((k) => k.startsWith("parent:")).length, 1);
 });
 await test("especies distintas no se mezclan, y otra zona climática tiene su propia ficha", async () => {
   setAI({ notes: "madrid" });
   await ask("aspidistra");
   setAI({ species: "Cycas revoluta", commonName: "Cica", notes: "cica" });
   assert.equal((await ask("cica")).body.notes, "cica");
-  setAI({ notes: "málaga" });
-  assert.equal((await ask("aspidistra", { lat: 36.7, lon: -4.4 })).body.notes, "málaga", "otra celda: ficha nueva");
-  assert.equal(kvKeys().filter((k) => k.startsWith("species:")).length, 3);
+  setAI({ notes: "málaga", water_spring: 3 });
+  const malaga = (await ask("aspidistra", { lat: 36.7, lon: -4.4 })).body;
+  assert.deepEqual([malaga.notes, malaga.seasons.spring.water], ["madrid", 3], "otra celda: hija nueva (clima), con el padre de la especie (notas)");
+  assert.equal(kvKeys().filter((k) => k.startsWith("child:")).length, 3);
+  assert.equal(kvKeys().filter((k) => k.startsWith("parent:")).length, 2, "un padre por especie, no por zona");
 });
 await test("fichas antiguas por nombre escrito: la primera en pedirse se queda como la de la especie y las demás se unen a ella", async () => {
   const sheet = (notes) => JSON.stringify({ ...RAW, notes, seasons: { spring: { water: 10, feed: 30 }, summer: { water: 6, feed: 30 }, autumn: { water: 12, feed: 0 }, winter: { water: 20, feed: 0 } } });
@@ -126,7 +129,7 @@ await test("fichas antiguas por nombre escrito: la primera en pedirse se queda c
 await test("confianza «baja»: no se guarda ni se crea alias (se vuelve a preguntar)", async () => {
   setAI({ confidence: "baja", notes: "dudosa" });
   assert.equal((await ask("aspidistra")).body.notes, "dudosa");
-  assert.deepEqual(kvKeys().filter((k) => k.startsWith("species:") || k.startsWith("alias:") || k.startsWith("care:")), []);
+  assert.deepEqual(kvKeys().filter((k) => /^(species|parent|child|alias|care):/.test(k)), []);
   const n = calls();
   await ask("aspidistra");
   assert.equal(calls(), n + 1);
@@ -135,6 +138,40 @@ await test("una respuesta que no parece una planta se rechaza y no se guarda", a
   setAI({ species: "planta rara", notes: "rara" });
   const r = await ask("rarita");
   assert.equal(r.status, 422, "no parece una planta: la IA lo marca y no se guarda");
+});
+
+await test("la ficha entregada es la misma que se generó (padre + hija se juntan sin perder nada)", async () => {
+  setAI({ notes: "nota A", tip_spring: "consejo primavera", plantMonths: [3, 4], bloomMonths: [5], toxic: "mascotas", buyTips: ["a", "b"], difficulty: "facil" });
+  const first = await ask("aspidistra");
+  const again = await ask("aspidistra"); // ya desde la caché, juntando padre e hija
+  const strip = ({ caseId, cached, ...rest }) => rest;
+  assert.deepEqual(strip(again.body), strip(first.body));
+  assert.equal(again.body.cached, true);
+  assert.deepEqual([again.body.toxic, again.body.tips.spring, again.body.plantMonths, again.body.seasons.spring.water, again.body.provider], ["mascotas", "consejo primavera", [3, 4], 10, "gemini:m1"]);
+});
+await test("misma especie en otra zona: se queda el padre (lo universal) y se guarda una hija nueva (lo del clima)", async () => {
+  setAI({ notes: "nota A", toxic: "mascotas", water_spring: 10, tip_spring: "consejo Madrid" });
+  await ask("aspidistra");
+  setAI({ notes: "nota B", toxic: "no", water_spring: 7, tip_spring: "consejo Málaga", climateNote: "Costa" });
+  const m = await ask("aspidistra", { lat: 36.7, lon: -4.4 });
+  assert.equal(m.body.notes, "nota A", "universal: del padre");
+  assert.equal(m.body.toxic, "mascotas", "universal: del padre");
+  assert.equal(m.body.seasons.spring.water, 7, "clima: de la hija nueva");
+  assert.equal(m.body.tips.spring, "consejo Málaga");
+  assert.equal(m.body.climateNote, "Costa");
+  const mad = await ask("aspidistra");
+  assert.deepEqual([mad.body.notes, mad.body.seasons.spring.water, mad.body.tips.spring], ["nota A", 10, "consejo Madrid"], "Madrid no cambia");
+});
+await test("fichas enteras de antes (por especie y zona) se parten solas al pedirse, sin llamar a la IA", async () => {
+  const whole = JSON.stringify({ ...RAW, notes: "entera", seasons: { spring: { water: 9, feed: 30 }, summer: { water: 6, feed: 30 }, autumn: { water: 12, feed: 0 }, winter: { water: 20, feed: 0 } }, tips: { spring: "t", summer: "t", autumn: "t", winter: "t" }, feedTypes: { spring: "", summer: "", autumn: "", winter: "" }, provider: "gemini:antiguo" });
+  kv.set("species:v16:aspidistra elatior:40:-4", whole);
+  kv.set("alias:v16:aspidistra:40:-4", "aspidistra elatior");
+  setAI({ notes: "nueva" });
+  const n = calls();
+  const r = await ask("aspidistra");
+  assert.deepEqual([r.body.notes, r.body.seasons.spring.water, r.body.provider], ["entera", 9, "gemini:antiguo"]);
+  assert.equal(calls(), n);
+  assert.deepEqual(kvKeys().filter((k) => k.startsWith("parent:") || k.startsWith("child:")).sort(), ["child:v16:aspidistra elatior:40:-4", "parent:v16:aspidistra elatior"]);
 });
 
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
