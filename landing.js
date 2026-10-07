@@ -45,7 +45,7 @@ form.addEventListener("submit", async (e) => {
   const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (!calm && "IntersectionObserver" in window) {
     document.documentElement.classList.add("js");
-    const targets = [...document.querySelectorAll(".how h2, .how > p, .step, #que-hace .row, .mini div, .band h2, .cols div, .sec h2, .plan, .learn a, .contact")];
+    const targets = [...document.querySelectorAll(".how h2, .how > p, .step, #que-hace .row, .mini div, .band h2, .cols div, .sec h2, .plan, .learn a, .pop .pcard, .contact")];
     const seen = new Map();
     targets.forEach((el) => {
       el.classList.add("reveal");

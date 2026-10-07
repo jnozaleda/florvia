@@ -387,7 +387,8 @@ async function handleCare(request, env, headers, ctx) {
   // Same plant, same climate cell (~100 km) → same answer, whatever the month.
   const cacheKey = `care:v16:${normName(name)}:${Math.round(lat)}:${Math.round(lon)}`;
   const cached = await env.CACHE.get(cacheKey, "json");
-  if (cached) { recordAi(env, ctx, "cached", 0, request, kind); recordTopics(env, ctx, request, kind === "care_explore" ? "explore" : kind === "care" ? "care" : "", name); return json({ ...withLegacy(cached, body.month, lat), cached: true }, 200, headers); }
+  const careCase = (output) => saveCase(env, ctx, request, { kind: kind === "care_explore" ? "explore" : "care", name, input: { name, place, lat: Math.round(lat * 10) / 10, lon: Math.round(lon * 10) / 10 }, output });
+  if (cached) { recordAi(env, ctx, "cached", 0, request, kind); recordTopics(env, ctx, request, kind === "care_explore" ? "explore" : kind === "care" ? "care" : "", name); return json({ ...withLegacy(cached, body.month, lat), cached: true, caseId: careCase(cached) }, 200, headers); }
 
   const blocked = await paywallCheck(env, request, "total");
   if (blocked) return json(blocked, 402, headers);
@@ -409,7 +410,7 @@ async function handleCare(request, env, headers, ctx) {
   if (!care.isPlant) { recordAi(env, ctx, "not_plant"); return json({ error: "not_plant" }, 422, headers); }
   if (care.confidence !== "baja") await env.CACHE.put(cacheKey, JSON.stringify(care), { expirationTtl: CACHE_TTL });
   recordTopics(env, ctx, request, kind === "care_explore" ? "explore" : kind === "care" ? "care" : "", name);
-  return json(withLegacy(care, body.month, lat), 200, headers);
+  return json({ ...withLegacy(care, body.month, lat), caseId: careCase(care) }, 200, headers);
 }
 
 // ---------- Usage stats ----------
@@ -584,11 +585,12 @@ async function handleNotify(request, env, headers) {
 // keep the case: what was asked and what the AI answered (plus the photo and the free text, if there were any), so Noza can open
 // exactly what they saw. Each rating is one row of ai_cases; Noza gets an email at once with a link (#caso=ID in the app) and a daily
 // summary at 8:00. Cases from devices marked as Noza's are kept and emailed as «prueba tuya» but never counted. Cases live 180 days.
-const RATING_KINDS = ["care", "identify", "diagnose", "suggest", "explore", "calendar"];
-const RATING_KIND_ES = { care: "Ficha de cuidados", identify: "Identificar por foto", diagnose: "Diagnóstico", suggest: "Qué planto aquí", explore: "Explorar", calendar: "Calendario del año" };
+const RATING_KINDS = ["care", "identify", "diagnose", "suggest", "explore", "calendar", "place"];
+const RATING_KIND_ES = { care: "Ficha de cuidados", identify: "Identificar por foto", diagnose: "Diagnóstico", suggest: "Qué planto aquí", explore: "Explorar", calendar: "Calendario del año", place: "¿Dónde está mejor?" };
 const RATING_REASONS = { planta_equivocada: "Planta equivocada", cuidados_no_encajan: "Cuidados que no encajan", consejo_dudoso: "Consejo dudoso o peligroso", generico: "Demasiado genérico", otro: "Otro" };
 const CASE_STATUSES = ["new", "revisado", "bueno", "malo", "caso_de_prueba"];
 const CASE_TTL = 180 * 86400;
+const UNRATED_TTL = 60 * 86400;
 const RATING_DAILY_PER_DEVICE = 30;
 const APP_URL = "https://florvia.app/app/";
 let casesReady = false;
@@ -608,6 +610,29 @@ const personCode = async (env, device, garden) => {
   const label = (await env.DB.prepare("SELECT label FROM labels WHERE id = ?").bind(id).first().catch(() => null))?.label;
   return `${label ? `${label} · ` : ""}código ${id.slice(0, 4).toUpperCase()}`;
 };
+// Every AI answer (care sheet, photo identification, diagnosis, «¿Dónde está mejor?», «Qué planto aquí») is kept as a case, unrated
+// (rating -1) until the person rates it, so Noza can see what each person got. The answer carries `caseId`; rating it updates that row.
+// Unrated cases live 60 days (rated ones 180). Only the real app (florvia.app / old address) is kept; Noza's devices are flagged, not counted.
+function saveCase(env, ctx, request, c) {
+  if (!env.DB || !request || !ctx) return undefined;
+  const src = originSrc(request);
+  if (src !== "prod" && src !== "old") return undefined;
+  const id = caseId();
+  ctx.waitUntil((async () => {
+    await ensureCases(env);
+    const who = await usageWho(request);
+    const garden = who.garden || (await keyGarden(request));
+    const ids = [who.device, garden].filter(Boolean);
+    const internal = ids.length && (await env.DB.prepare(`SELECT 1 AS x FROM internal WHERE id IN (${ids.map(() => "?").join(",")}) LIMIT 1`).bind(...ids).first()) ? 1 : 0;
+    const out = JSON.stringify(c.output ?? {});
+    if (out.length > 200000) return;
+    const photo = typeof c.photo === "string" && c.photo.length <= 600000 ? c.photo : "";
+    await env.DB.prepare("INSERT INTO ai_cases (id, ts, day, src, kind, rating, name, provider, version, device, garden, internal, input, output, has_photo) VALUES (?, ?, ?, ?, ?, -1, ?, ?, '', ?, ?, ?, ?, ?, ?)")
+      .bind(id, Date.now(), new Date().toISOString().slice(0, 10), src, c.kind, clean(c.name, 80), clean(c.output?.provider ?? "", 40), who.device, garden, internal, JSON.stringify(c.input ?? {}).slice(0, 60000), out, photo ? 1 : 0).run();
+    if (photo && env.CACHE) await env.CACHE.put(`case-photo:${id}`, photo, { expirationTtl: UNRATED_TTL });
+  })().catch((err) => console.error("save case", err?.message)));
+  return id;
+}
 async function handleRating(request, env, headers, ctx) {
   const none = (status, error) => json(error ? { error } : { ok: true }, status, headers);
   if (!env.DB) return none(500, "db");
@@ -637,6 +662,14 @@ async function handleRating(request, env, headers, ctx) {
     const used = (await env.DB.prepare("SELECT COUNT(*) AS n FROM ai_cases WHERE device = ? AND day = ?").bind(who.device, day).first())?.n ?? 0;
     if (used >= RATING_DAILY_PER_DEVICE) return none(429, "limit");
   }
+  // The answer came with its case (saved when it was generated): rating it updates that row instead of creating another one.
+  const existing = /^[a-z0-9]{10}$/.test(String(body.caseId ?? "")) ? await env.DB.prepare("SELECT id, device, garden, has_photo FROM ai_cases WHERE id = ?").bind(body.caseId).first() : null;
+  if (existing && ((existing.device && existing.device === who.device) || (existing.garden && existing.garden === garden))) {
+    await env.DB.prepare("UPDATE ai_cases SET rating = ?, reasons = ?, note = ?, version = ?, day = ? WHERE id = ?").bind(rating, reasons.join(","), note, version, day, existing.id).run();
+    if (existing.has_photo && env.CACHE) { const ph = await env.CACHE.get(`case-photo:${existing.id}`); if (ph) await env.CACHE.put(`case-photo:${existing.id}`, ph, { expirationTtl: CASE_TTL }).catch(() => {}); }
+    ctx.waitUntil(notifyRating(env, { id: existing.id, kind, rating, reasons, note, name, provider, version, internal, device: who.device, garden, hasPhoto: Boolean(existing.has_photo) }).catch((err) => console.error("rating notify", err?.message)));
+    return json({ ok: true, id: existing.id }, 200, headers);
+  }
   const id = caseId();
   await env.DB.prepare("INSERT INTO ai_cases (id, ts, day, src, kind, rating, reasons, note, name, provider, version, device, garden, internal, input, output, has_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
     .bind(id, Date.now(), day, src, kind, rating, reasons.join(","), note, name, provider, version, who.device, garden, internal, input, output, photo ? 1 : 0).run();
@@ -656,6 +689,26 @@ async function notifyRating(env, c) {
     "Ábrelo tal como lo vio (necesitas tu código de acceso en la app):", `${APP_URL}#caso=${c.id}`].filter((l, i, a) => l !== "" || a[i - 1] !== "");
   await sendAdminEmail(env, subject, lines.join("\n"));
   if (!c.rating && !c.internal) await pushAdmin(env, `👎 ${RATING_KIND_ES[c.kind]}`, `${c.name || ""}${c.reasons.length ? ` · ${c.reasons.map((r) => RATING_REASONS[r]).join(", ")}` : ""}`.trim()).catch(() => {});
+}
+// «Análisis de la IA»: every saved answer, newest first, with who got it (the name Noza gave that person, else a short code).
+async function handleCases(request, env, headers) {
+  if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  await ensureCases(env);
+  const q = new URL(request.url).searchParams;
+  const limit = Math.min(60, Math.max(1, Number(q.get("limit")) || 30));
+  const before = Number(q.get("before")) || Date.now() + 1;
+  const kind = RATING_KINDS.includes(q.get("kind")) ? q.get("kind") : "";
+  const bad = q.get("bad") === "1";
+  const mine = q.get("mine") === "1";
+  const rows = (await env.DB.prepare(`SELECT c.id, c.ts, c.kind, c.rating, c.name, c.reasons, c.status, c.internal, c.has_photo, COALESCE(NULLIF(c.garden, ''), c.device) AS who, l.label AS label
+    FROM ai_cases c LEFT JOIN labels l ON l.id = COALESCE(NULLIF(c.garden, ''), c.device)
+    WHERE c.ts < ? ${kind ? "AND c.kind = ?" : ""} ${bad ? "AND c.rating = 0" : ""} AND c.internal = ${mine ? 1 : 0}
+    ORDER BY c.ts DESC LIMIT ?`).bind(...[before, ...(kind ? [kind] : []), limit + 1]).all()).results ?? [];
+  return json({
+    cases: rows.slice(0, limit).map((r) => ({ id: r.id, ts: r.ts, kind: r.kind, rating: r.rating, name: r.name, reasons: r.reasons ? r.reasons.split(",") : [], status: r.status, internal: Boolean(r.internal), photo: Boolean(r.has_photo), person: `${r.label ? `${r.label} · ` : ""}${r.who ? r.who.slice(0, 4).toUpperCase() : "?"}` })),
+    more: rows.length > limit,
+  }, 200, headers);
 }
 async function handleCase(request, env, headers, id) {
   if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
@@ -683,7 +736,7 @@ async function handleCaseStatus(request, env, headers) {
 async function qualityReport(env) {
   try {
     await ensureCases(env);
-    const rows = (await env.DB.prepare("SELECT kind, rating, reasons, day FROM ai_cases WHERE internal = 0 AND day >= date('now', '-30 days')").all()).results ?? [];
+    const rows = (await env.DB.prepare("SELECT kind, rating, reasons, day FROM ai_cases WHERE internal = 0 AND rating >= 0 AND day >= date('now', '-30 days')").all()).results ?? [];
     const d7 = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
     const byKind = {};
     const reasons = {};
@@ -693,7 +746,7 @@ async function qualityReport(env) {
       if (r.day >= d7) k[r.rating ? "up7" : "down7"] += 1;
       if (!r.rating) for (const x of r.reasons ? r.reasons.split(",") : []) reasons[x] = (reasons[x] ?? 0) + 1;
     }
-    const cases = (await env.DB.prepare("SELECT id, ts, kind, rating, name, reasons, status, internal FROM ai_cases ORDER BY (rating = 0 AND status = 'new') DESC, ts DESC LIMIT 20").all()).results ?? [];
+    const cases = (await env.DB.prepare("SELECT id, ts, kind, rating, name, reasons, status, internal FROM ai_cases WHERE rating >= 0 ORDER BY (rating = 0 AND status = 'new') DESC, ts DESC LIMIT 20").all()).results ?? [];
     return { byKind, reasons, cases: cases.map((c) => ({ ...c, reasons: c.reasons ? c.reasons.split(",") : [], internal: Boolean(c.internal) })) };
   } catch { return null; }
 }
@@ -704,7 +757,7 @@ async function sendRatingSummary(env, force = false) {
   const key = `alert:ratings-summary:${day}`;
   if (!force && (await env.CACHE.get(key))) return;
   await ensureCases(env);
-  const rows = (await env.DB.prepare("SELECT id, kind, rating, reasons, name, status FROM ai_cases WHERE internal = 0 AND day = ?").bind(day).all()).results ?? [];
+  const rows = (await env.DB.prepare("SELECT id, kind, rating, reasons, name, status FROM ai_cases WHERE internal = 0 AND rating >= 0 AND day = ?").bind(day).all()).results ?? [];
   if (!rows.length) return;
   await env.CACHE.put(key, "1", { expirationTtl: 3 * 86400 });
   const per = {};
@@ -1581,7 +1634,8 @@ async function handlePlace(request, env, headers, ctx) {
   const cacheKey = `place:v1:${(await sha(JSON.stringify(input))).slice(0, 40)}`;
   const names = zones.map((z) => z.name);
   const cached = await env.CACHE.get(cacheKey, "json");
-  if (cached) { recordAi(env, ctx, "cached", 0, request, "place"); return json({ ...cached, cached: true }, 200, headers); }
+  const placeCase = (output) => saveCase(env, ctx, request, { kind: "place", name, input: { name, species: input.species, current: input.current, place: input.place, zones: names }, output });
+  if (cached) { recordAi(env, ctx, "cached", 0, request, "place"); return json({ ...cached, cached: true, caseId: placeCase(cached) }, 200, headers); }
   if (!(await takeQuota(request, env, ctx))) { recordAi(env, ctx, "limit", 0, request, "place"); return json({ error: "limit" }, 429, headers); }
   if (!chain(env).length) return json({ error: "provider" }, 500, headers);
   let res, aiUsage;
@@ -1597,7 +1651,7 @@ async function handlePlace(request, env, headers, ctx) {
   }
   recordAi(env, ctx, "call", Date.now() - t0, request, "place", aiUsage);
   if (res.zones.length) await env.CACHE.put(cacheKey, JSON.stringify(res), { expirationTtl: CACHE_TTL });
-  return json(res, 200, headers);
+  return json({ ...res, caseId: placeCase(res) }, 200, headers);
 }
 
 // ---------- «Qué planto aquí» (POST /suggest) ----------
@@ -1685,7 +1739,8 @@ async function handleSuggest(request, env, headers, ctx) {
   const input = { site, prefs, note, owned, place: String(body.place ?? "").slice(0, 60), lat: Math.round(lat) };
   const cacheKey = `suggest:v1:${(await sha(JSON.stringify(input))).slice(0, 40)}`;
   const cached = await env.CACHE.get(cacheKey, "json");
-  if (cached) { recordAi(env, ctx, "cached", 0, request, "suggest"); recordTopics(env, ctx, request, "suggest_pick", (cached.picks ?? []).map((x) => x.commonName)); return json({ ...cached, cached: true }, 200, headers); }
+  const suggestCase = (output) => saveCase(env, ctx, request, { kind: "suggest", name: input.site?.name || input.site?.zone || "Sitio descrito", input, output });
+  if (cached) { recordAi(env, ctx, "cached", 0, request, "suggest"); recordTopics(env, ctx, request, "suggest_pick", (cached.picks ?? []).map((x) => x.commonName)); return json({ ...cached, cached: true, caseId: suggestCase(cached) }, 200, headers); }
   const blocked = await paywallCheck(env, request, "suggest");
   if (blocked) return json(blocked, 402, headers);
   if (!(await takeQuota(request, env, ctx))) { recordAi(env, ctx, "limit", 0, request, "suggest"); return json({ error: "limit" }, 429, headers); }
@@ -1704,7 +1759,7 @@ async function handleSuggest(request, env, headers, ctx) {
   recordAi(env, ctx, "call", Date.now() - t0, request, "suggest", aiUsage);
   if (res.picks.length) await env.CACHE.put(cacheKey, JSON.stringify(res), { expirationTtl: CACHE_TTL });
   recordTopics(env, ctx, request, "suggest_pick", res.picks.map((x) => x.commonName));
-  return json(res, 200, headers);
+  return json({ ...res, caseId: suggestCase(res) }, 200, headers);
 }
 
 // ---------- Garden sync ----------
@@ -2019,7 +2074,8 @@ async function handleIdentify(request, env, headers, ctx) {
       console.log("identify ok", spec, Date.now() - t0, "ms");
       if (candidates.length && parsed.isPlant !== false) recordTopics(env, ctx, request, "identify", candidates[0].commonName);
       if (candidates.length && parsed.isPlant !== false) notifyActivity(env, ctx, request, "identify", { what: candidates[0].commonName, extra: `${candidates[0].species} · confianza ${candidates[0].confidence}` });
-      return json({ isPlant: parsed.isPlant !== false && candidates.length > 0, candidates }, 200, headers);
+      const idOut = { isPlant: parsed.isPlant !== false && candidates.length > 0, candidates };
+      return json({ ...idOut, caseId: saveCase(env, ctx, request, { kind: "identify", name: candidates[0]?.commonName ?? "", input: { place: String(body.place ?? "").slice(0, 60) }, output: idOut, photo: image ? `data:image/jpeg;base64,${image}` : "" }) }, 200, headers);
     } catch (err) {
       console.error("identify failed", spec, err?.message);
       lastErr = err;
@@ -2089,6 +2145,7 @@ async function handleDiagnose(request, env, headers, ctx) {
   const place = clip(body.place, 60) || "España";
   recordTopics(env, ctx, request, "diagnose", plant.name);
   recordTopics(env, ctx, request, "symptom", symptoms);
+  const diagCase = (output) => saveCase(env, ctx, request, { kind: "diagnose", name: plant.name, input: { plant: { name: plant.name, species: plant.species, zone: plant.zone }, symptoms, note, place }, output, photo: image ? `data:image/jpeg;base64,${image}` : "" });
   const blocked = await paywallCheck(env, request, "diagnose");
   if (blocked) return json(blocked, 402, headers);
   if (!(await takeQuota(request, env, ctx))) { recordAi(env, ctx, "limit", 0, request, "diagnose"); return json({ error: "limit" }, 429, headers); }
@@ -2138,15 +2195,17 @@ ${image ? `La persona dice que su planta es «${plant.name.replace(/[«»]/g, ""
         const wrong = photo === "otra_planta" && parsed.isPlant !== false ? "otra_planta" : "no_es_planta";
         recordAi(env, ctx, "not_plant", Date.now() - t0, request, "diagnose", tokens);
         console.log("diagnose photo", wrong, spec, Date.now() - t0, "ms");
-        return json({ isPlant: wrong !== "no_es_planta", photo: wrong, photoSeen, urgency: "baja", summary: "", causes: [], watch: "", needMore: "" }, 200, headers);
+        const wrongOut = { isPlant: wrong !== "no_es_planta", photo: wrong, photoSeen, urgency: "baja", summary: "", causes: [], watch: "", needMore: "" };
+        return json({ ...wrongOut, caseId: diagCase(wrongOut) }, 200, headers);
       }
       recordAi(env, ctx, "call", Date.now() - t0, request, "diagnose", tokens);
       console.log("diagnose ok", spec, Date.now() - t0, "ms");
       notifyActivity(env, ctx, request, "diagnose", { what: plant.name, extra: [symptoms.map((s) => SYMPTOMS[s]).filter(Boolean).join(", "), image ? "Con foto." : ""].filter(Boolean).join(" · ") });
-      return json({
+      const diagOut = {
         isPlant: true, photo, photoSeen, urgency: ["baja", "media", "alta"].includes(parsed.urgency) ? parsed.urgency : "media",
         summary: clip(parsed.summary, 400), causes, watch: clip(parsed.watch, 400), needMore: clip(parsed.needMore, 300),
-      }, 200, headers);
+      };
+      return json({ ...diagOut, caseId: diagCase(diagOut) }, 200, headers);
     } catch (err) {
       console.error("diagnose failed", spec, err?.message);
       lastErr = err;
@@ -2260,7 +2319,7 @@ export default {
   async scheduled(event, env, ctx) {
     if (madridNow().hour !== 8) return;
     if (env.DB) ctx.waitUntil(env.DB.batch([env.DB.prepare("DELETE FROM events WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM errors WHERE day < date('now', '-90 days')"), env.DB.prepare("DELETE FROM pv_seen WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_seen_day WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_page WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM pv_site WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM topics WHERE day < date('now', '-400 days')")]).catch(() => {}));
-    if (env.DB) ctx.waitUntil(ensureCases(env).then(() => env.DB.prepare("DELETE FROM ai_cases WHERE day < date('now', '-180 days')").run()).catch(() => {}));
+    if (env.DB) ctx.waitUntil(ensureCases(env).then(() => env.DB.prepare("DELETE FROM ai_cases WHERE day < date('now', CASE WHEN rating >= 0 THEN '-180 days' ELSE '-60 days' END)").run()).catch(() => {}));
     ctx.waitUntil(sendRatingSummary(env).catch((err) => console.error("rating summary", err?.message)));
     console.log("daily push sent:", await sendDaily(env));
   },
@@ -2299,6 +2358,7 @@ export default {
     if (pathname === "/ratings/summary" && request.method === "POST") { if (!needCode(request, env)) return json({ error: "code" }, 401, headers); await sendRatingSummary(env, true); return json({ ok: true }, 200, headers); }
     if (pathname === "/rating" && request.method === "POST") return handleRating(request, env, headers, ctx);
     if (pathname === "/case/status" && request.method === "POST") return handleCaseStatus(request, env, headers);
+    if (pathname === "/cases" && request.method === "GET") return handleCases(request, env, headers);
     if (pathname.startsWith("/case/") && request.method === "GET") return handleCase(request, env, headers, pathname.slice(6));
     if (pathname === "/usage/label" && request.method === "POST") return handleUsageLabel(request, env, headers);
     if (pathname === "/usage/delete" && request.method === "POST") return handleUsageDelete(request, env, headers);

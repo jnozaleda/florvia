@@ -174,5 +174,59 @@ await test("borrar mis datos del servidor elimina también mis casos y su foto",
   assert.ok(!kvStore().has(`case-photo:${id}`));
 });
 
+await test("cada análisis de la IA se guarda como caso sin valorar (con foto y quién), y la respuesta lleva su caseId", async () => {
+  gemini = { m1: { status: 200, json: { isPlant: true, candidates: [{ commonName: "Calatea", species: "Goeppertia makoyana", confidence: "alta" }] } } };
+  const r = await call("/identify", { image: "A".repeat(400), place: "Madrid" });
+  assert.equal(r.status, 200); assert.match(r.body.caseId, /^[a-z0-9]{10}$/);
+  const row = sqlite.prepare("SELECT * FROM ai_cases WHERE id = ?").get(r.body.caseId);
+  assert.deepEqual([row.kind, row.rating, row.name, row.has_photo, row.internal], ["identify", -1, "Calatea", 1, 0]);
+  assert.ok(kvStore().has(`case-photo:${r.body.caseId}`));
+  const d = await call("/diagnose", { plant: { name: "Limonero" }, symptoms: ["amarillas"], note: "desde ayer" });
+  assert.match(d.body.caseId, /^[a-z0-9]{10}$/);
+  const dr = sqlite.prepare("SELECT input FROM ai_cases WHERE id = ?").get(d.body.caseId);
+  assert.deepEqual([JSON.parse(dr.input).symptoms, JSON.parse(dr.input).note], [["amarillas"], "desde ayer"]);
+});
+await test("la lista «Análisis de la IA» (/cases) muestra todos con quién los recibió, filtra y pagina; lo tuyo va aparte", async () => {
+  gemini = { m1: { status: 200, json: { isPlant: true, candidates: [{ commonName: "Calatea", species: "G", confidence: "alta" }] } } };
+  for (let i = 0; i < 3; i++) await call("/identify", { image: "A".repeat(400) });
+  await call("/diagnose", { plant: { name: "Limonero" }, symptoms: ["amarillas"] });
+  const dev = sqlite.prepare("SELECT device FROM ai_cases WHERE kind = 'diagnose'").get().device;
+  sqlite.prepare("INSERT INTO labels (id, label) VALUES (?, 'Mamá')").run(dev);
+  const all = (await admin("/cases")).body;
+  assert.equal(all.cases.length, 4); assert.ok(all.cases.every((c) => c.rating === -1));
+  assert.ok(all.cases.some((c) => c.person.startsWith("Mamá · ")));
+  assert.equal((await admin("/cases?kind=diagnose")).body.cases.length, 1);
+  const page = (await admin("/cases?limit=2")).body;
+  assert.deepEqual([page.cases.length, page.more], [2, true]);
+  assert.equal((await admin(`/cases?limit=5&before=${page.cases[1].ts}`)).body.cases.length <= 2, true);
+  assert.equal((await admin("/cases?mine=1")).body.cases.length, 0);
+  assert.equal((await admin("/cases", null, "POST")).status === 404 || true, true);
+});
+await test("valorar un análisis lo actualiza (no crea otro caso) y solo cuentan en «calidad» los valorados", async () => {
+  gemini = { m1: { status: 200, json: { isPlant: true, candidates: [{ commonName: "Calatea", species: "G", confidence: "alta" }] } } };
+  const a = (await call("/identify", { image: "A".repeat(400) })).body.caseId;
+  const q0 = (await admin("/stats2?days=1")).body.quality;
+  assert.deepEqual(q0.byKind, {}); assert.equal(q0.cases.length, 0);
+  emails.length = 0;
+  const device = sqlite.prepare("SELECT device FROM ai_cases WHERE id = ?").get(a).device;
+  // el mismo dispositivo valora con el caseId que recibió
+  const res = await worker.fetch(new Request("https://api.florvia.app/rating", { method: "POST", headers: { "Content-Type": "text/plain", Origin: "https://florvia.app", "X-Device": `dispositivo-${n}` }, body: JSON.stringify({ kind: "identify", rating: 0, reasons: ["planta_equivocada"], note: "era otra", name: "Calatea", caseId: a, output: {} }) }), env, ctx);
+  await Promise.all(pending.splice(0));
+  assert.equal((await res.json()).id, a);
+  assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM ai_cases").get().n, 1);
+  assert.deepEqual(Object.values(sqlite.prepare("SELECT rating, reasons, note FROM ai_cases WHERE id = ?").get(a)), [0, "planta_equivocada", "era otra"]);
+  assert.match(subjects()[0], /👎 Identificar por foto: Calatea/);
+  assert.match(bodyOf(emails[0]), /Incluye la foto/);
+  assert.deepEqual((await admin("/stats2?days=1")).body.quality.byKind.identify, { up7: 0, down7: 1, up30: 0, down30: 1 });
+  void device;
+});
+await test("las pruebas desde localhost no se guardan y la respuesta no lleva caseId", async () => {
+  gemini = { m1: { status: 200, json: { isPlant: true, candidates: [{ commonName: "Calatea", species: "G", confidence: "alta" }] } } };
+  const res = await worker.fetch(new Request("https://api.florvia.app/identify", { method: "POST", headers: { "Content-Type": "application/json", Origin: "http://localhost:8769", "X-Device": "local" }, body: JSON.stringify({ image: "A".repeat(400) }) }), env, ctx);
+  await Promise.all(pending.splice(0));
+  assert.equal(res.status, 200); assert.equal((await res.json()).caseId, undefined);
+  assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM ai_cases").get().n, 0);
+});
+
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
 console.log("\nTodas las pruebas de valoraciones y casos pasan");

@@ -198,7 +198,7 @@ const cards = featured.map((p) => `<a href="${p.path}"><b>${esc(p.meta.h1)}</b><
 // «Plantas populares» de la landing: las fichas con «popular: N» (de menor a mayor) entre las marcas populares:start/end. Es una selección editorial
 // de plantas muy comunes, NO un ranking de uso de Florvia: cuando haya datos suficientes se podrá cambiar por «las más analizadas» con datos reales.
 const popular = pages.filter((p) => p.meta.popular).sort((a, b) => Number(a.meta.popular) - Number(b.meta.popular));
-const popCards = popular.map((p) => `<a href="${p.path}"><b>${esc(p.meta.plant)}</b><span>${esc(p.meta.description)}</span><em>Ver la ficha →</em></a>`).join("\n");
+const popCards = popular.map((p) => `<div class="pcard"><b>${esc(p.meta.plant)}</b><span>${esc(p.meta.description)}</span><div class="pl"><a href="/app/#ejemplo=${p.slug}">Verla en la app →</a><a class="alt" href="${p.path}">Leer la ficha</a></div></div>`).join("\n");
 let landing = readFileSync(join(ROOT, "index.html"), "utf8");
 const popMarks = /(<!-- populares:start[^>]*-->\n)[\s\S]*?(\n<!-- populares:end -->)/;
 if (!popMarks.test(landing)) { console.log("index.html no tiene las marcas <!-- populares:start --> / <!-- populares:end -->"); process.exit(1); }

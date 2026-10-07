@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261007c";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261007e";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261007c";
-import { buildICS } from "./calendar.js?v=20261007c";
-import { scrubPlant } from "./clean.js?v=20261007c";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261007c";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261007e";
+import { buildICS } from "./calendar.js?v=20261007e";
+import { scrubPlant } from "./clean.js?v=20261007e";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261007e";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261007c";
+      sc.src = "vendor/qrcode.min.js?v=20261007e";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -839,6 +839,22 @@ async function openShared(id) {
   explore = {
     state: "done", name: care.commonName || care.species, query: null, photo, care, calendar: calendar ?? null, refPhoto: ph ?? null,
     shared: { place, at: doc.at },
+    report: fitReport(care, state.data.plants, zoneSun(), seasonOf(localToday(), here().lat), here().name),
+  };
+  exploreSheet();
+}
+
+// Example plant sheets from the landing («Plantas populares» → «Verla en la app»): app/demo/<planta>.json (made by tools/make-demos.mjs from the
+// real AI answer for Madrid). Opens the same view as a shared plant, so visitors see what a sheet is like without spending any AI.
+async function openDemo(slug) {
+  openSheet(`<div class="sheet-head"><h2>Ejemplo de ficha</h2><button class="btn small secondary" data-action="close">Cerrar</button></div><div class="ai-step"><span class="spinner" aria-hidden="true"></span>Abriendo la ficha…</div>`);
+  let doc = null;
+  try { const res = await fetch(`demo/${slug}.json`, { signal: AbortSignal.timeout(15000) }); if (res.ok) doc = await res.json(); } catch {}
+  if (!doc?.care) return openSheet(`<div class="sheet-head"><h2>Ejemplo de ficha</h2><button class="btn small secondary" data-action="close">Cerrar</button></div><p class="ai-status warn">No se ha podido abrir este ejemplo. Prueba a buscar la planta en «Explorar».</p>`);
+  const { care, calendar, refPhoto: ph, place } = doc;
+  explore = {
+    state: "done", name: care.commonName || care.species, query: null, photo: null, care, calendar: calendar ?? null, refPhoto: ph ?? null,
+    shared: { place, at: doc.made, demo: true },
     report: fitReport(care, state.data.plants, zoneSun(), seasonOf(localToday(), here().lat), here().name),
   };
   exploreSheet();
@@ -1291,6 +1307,37 @@ function retentionCard() {
       ${r.cohorts.map((c) => `<div class="u-row"><span>Semana del ${fmtDate(c.week, { day: "numeric", month: "short" })}<small>${c.people} ${c.people === 1 ? "persona" : "personas"}</small></span><b>D1 ${pct(c.d1)} · sem. ${pct(c.w1)} · mes ${pct(c.m1)}</b></div>`).join("")}</details>
     <p class="muted small">Solo cuenta a quien ya ha tenido tiempo de volver. Con pocas personas los porcentajes bailan mucho: mira también «de cuántas».</p></section>`;
 }
+// «Análisis de la IA»: every answer the AI gave to someone (care sheet, photo identification, diagnosis, «¿Dónde está mejor?», «Qué planto aquí»),
+// newest first, with who got it. Opens the same read-only view as the email link. Unrated ones are kept 60 days, rated ones 180.
+let analyses = { list: [], more: false, loading: false, kind: "", bad: false, mine: false, loaded: false };
+async function loadAnalyses(reset = true) {
+  const a = analyses;
+  if (a.loading) return;
+  a.loading = true;
+  if (reset) { a.list = []; a.more = false; }
+  if (sheet.open && sheet.dataset.view === "usage") usageSheet();
+  try {
+    const q = new URLSearchParams({ limit: "30", ...(a.kind ? { kind: a.kind } : {}), ...(a.bad ? { bad: "1" } : {}), ...(a.mine ? { mine: "1" } : {}), ...(!reset && a.list.length ? { before: String(a.list[a.list.length - 1].ts) } : {}) });
+    const res = await fetch(`${API}/cases?${q}`, { headers: aiHeaders() });
+    if (res.ok) { const d = await res.json(); a.list = reset ? d.cases : [...a.list, ...d.cases]; a.more = d.more; }
+  } catch { /* keep what is shown */ }
+  a.loading = false;
+  a.loaded = true;
+  if (sheet.open && sheet.dataset.view === "usage") usageSheet();
+}
+function analysesCard() {
+  const a = analyses;
+  const chip = (label, on, action, data) => `<button type="button" class="chip ${on ? "on" : ""}" data-action="${action}" ${data} aria-pressed="${on}">${label}</button>`;
+  const kinds = [["", "Todos"], ["care", "Fichas"], ["identify", "Fotos"], ["diagnose", "Diagnósticos"], ["place", "Dónde"], ["suggest", "Qué planto"], ["explore", "Explorar"]];
+  const state = (c) => (c.rating === 1 ? "👍" : c.rating === 0 ? "👎" : "○");
+  return `<section class="card"><div class="sec">Análisis de la IA <span class="meta">lo que respondió a cada persona</span></div>
+    <div class="chips">${kinds.map(([k, l]) => chip(l, a.kind === k, "analyses-kind", `data-kind="${k}"`)).join("")}</div>
+    <div class="chips" style="margin-top:6px">${chip("Solo 👎", a.bad, "analyses-bad", "")}${chip("Mis pruebas", a.mine, "analyses-mine", "")}</div>
+    ${a.loaded || a.list.length ? "" : `<button type="button" class="btn small" style="margin-top:10px" data-action="analyses-load">Cargar los últimos análisis</button>`}
+    ${a.list.map((c) => `<button type="button" class="u-person" data-action="case-open" data-id="${esc(c.id)}"><span class="u-garden">${state(c)} ${esc(CASE_KIND[c.kind] ?? c.kind)}${c.name ? ` · ${esc(c.name)}` : ""}${c.photo ? " 📷" : ""}</span><b><small>${esc(c.person)} · ${esc(new Date(c.ts).toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</small></b></button>`).join("")}
+    ${a.loading ? `<p class="muted small"><span class="spinner" aria-hidden="true"></span> Cargando…</p>` : a.loaded && !a.list.length ? `<p class="muted small">Todavía no hay análisis guardados con estos filtros. Se guardan desde que se activó esta función.</p>` : ""}
+    ${a.more && !a.loading ? `<button type="button" class="btn small secondary" style="margin-top:8px" data-action="analyses-more">Ver más</button>` : ""}</section>`;
+}
 // «Calidad percibida»: satisfaction per AI function (real people) and the saved cases to review, 👎 first.
 function qualityCard() {
   const q = usage?.quality;
@@ -1406,6 +1453,7 @@ async function loadUsage() {
     usageInvites = await fetch(`${API}/invites`, { headers: aiHeaders() }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   } catch { usage = { error: "network" }; }
   if (sheet.open && sheet.dataset.view === "usage") usageSheet();
+  loadAnalyses(true);
   loadFeedback(false);
 }
 const BUCKET_LABEL = { dev: "desde localhost (desarrollo)", none: "sin origen (scripts, curl)", internal: "de dispositivos marcados como tuyos", old: "de la dirección antigua", prod: "de producción", before: "anteriores a la fecha limpia" };
@@ -1478,6 +1526,7 @@ function usageSheet() {
       ${row("alert", "Otros fallos de la IA", ai.errors, lastAiDay("errors"))}
       ${row("check", "No era una planta", ai.notPlant, "no cuenta como consulta")}
       <p class="muted small">«Tope diario» es el límite propio de la app (se avisa por correo al 80 % y al 100 %). «Cuota» es que Google o Cloudflare se han quedado sin consultas gratis. «Otros fallos» son errores del modelo o de la conexión.</p></section>
+    ${analysesCard()}
     ${qualityCard()}
     ${tokensCard()}
     <div class="group-title">Comentarios y avisos</div>
@@ -1892,7 +1941,7 @@ async function rateSend(key, rating) {
   ui.step = "sending";
   ctx.rerender();
   try {
-    const res = await fetch(`${API}/rating`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ kind: ctx.kind, rating, reasons: rating ? [] : ui.reasons, note: rating ? "" : ui.note.trim(), name: ctx.name, version: APP_VERSION, input: ctx.input, output: ctx.output, photo: ctx.photo || undefined }) });
+    const res = await fetch(`${API}/rating`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ kind: ctx.kind, rating, reasons: rating ? [] : ui.reasons, note: rating ? "" : ui.note.trim(), name: ctx.name, caseId: ctx.caseId || undefined, version: APP_VERSION, input: ctx.input, output: ctx.output, photo: ctx.photo || undefined }) });
     if (!res.ok && res.status !== 429) throw new Error();
     store.set("mj_rated", [...ratedKeys(), key].slice(-300));
     delete rateUi[key];
@@ -1912,7 +1961,7 @@ async function openCase(id) {
   } catch { caseView = { error: "network" }; }
   caseSheet();
 }
-const CASE_KIND = { care: "Ficha de cuidados", identify: "Identificar por foto", diagnose: "Diagnóstico", suggest: "Qué planto aquí", explore: "Explorar", calendar: "Calendario del año" };
+const CASE_KIND = { place: "¿Dónde está mejor?", care: "Ficha de cuidados", identify: "Identificar por foto", diagnose: "Diagnóstico", suggest: "Qué planto aquí", explore: "Explorar", calendar: "Calendario del año" };
 const CASE_STATUS = [["new", "Sin revisar"], ["revisado", "Revisado"], ["bueno", "Bueno"], ["malo", "Malo"], ["caso_de_prueba", "Caso de prueba"]];
 function careCaseHtml(c) {
   const rows = SEASONS.filter((s) => c.seasons?.[s]).map((s) => `<div class="u-row"><span>${SEASON_LABEL[s]}</span><b>Riego cada ${c.seasons[s].water} d<small>${c.seasons[s].feed ? `abono cada ${c.seasons[s].feed} d` : "sin abono"}</small></b></div>`).join("");
@@ -1943,13 +1992,15 @@ function caseSheet() {
     const conf = { alta: "Muy probable", media: "Probable", baja: "Poco seguro" };
     body = `<section class="card">${c.photo ? `<img class="hero-photo" src="${esc(c.photo)}" alt="" style="max-height:260px;object-fit:cover" />` : `<p class="muted small">Sin foto guardada.</p>`}</section>
       <section class="card"><div class="sec">Qué dijo la IA</div>${(out.candidates ?? []).map((x) => `<div class="u-row"><span><b>${esc(x.commonName)}</b> <i class="muted">${esc(x.species)}</i></span><b>${esc(conf[x.confidence] ?? x.confidence)}</b></div>`).join("") || `<p class="muted small">Sin candidatos.</p>`}</section>`;
-  } else if (c.kind === "care") {
+  } else if (c.kind === "care" || c.kind === "explore") {
     body = `${inp.place ? `<p class="muted small">Pedida para: ${esc(inp.place)}</p>` : ""}${careCaseHtml(out)}`;
+  } else if (c.kind === "place") {
+    body = `<section class="card"><div class="sec">Lo que se le pidió</div><p><b>${esc(inp.name ?? c.name)}</b>${inp.current ? ` · ahora en ${esc(inp.current)}` : ""}</p><p class="muted small">Zonas: ${esc((inp.zones ?? []).join(", "))}</p></section><section class="card"><div class="sec">Qué dijo la IA <span class="ai-mark">✦</span></div>${placeAdviceHtml(out, inp.current ?? "")}</section>`;
   } else {
     body = `<section class="card"><div class="sec">Entrada</div><pre class="muted small" style="white-space:pre-wrap">${esc(JSON.stringify(inp, null, 2))}</pre></section><section class="card"><div class="sec">Respuesta</div><pre class="muted small" style="white-space:pre-wrap">${esc(JSON.stringify(out, null, 2))}</pre></section>`;
   }
   openSheet(`${head}
-    <section class="card"><div class="row" style="justify-content:space-between;align-items:center"><b>${c.rating ? "👍 Le sirvió" : "👎 No le sirvió"}</b><span class="muted small">${CASE_KIND[c.kind] ?? c.kind}${c.internal ? " · prueba tuya" : ""}</span></div>
+    <section class="card"><div class="row" style="justify-content:space-between;align-items:center"><b>${c.rating === 1 ? "👍 Le sirvió" : c.rating === 0 ? "👎 No le sirvió" : "Sin valorar"}</b><span class="muted small">${CASE_KIND[c.kind] ?? c.kind}${c.internal ? " · prueba tuya" : ""}</span></div>
       ${c.reasons?.length ? `<div class="chips" style="margin-top:8px">${c.reasons.map((k) => `<span class="chip on">${esc(RATE_REASONS.find(([x]) => x === k)?.[1] ?? k)}</span>`).join("")}</div>` : ""}
       ${c.note ? `<p class="muted">«${esc(c.note)}»</p>` : ""}
       <p class="muted small">${esc(c.person)} · ${esc(new Date(c.ts).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" }))}${c.version ? ` · versión ${esc(c.version)}` : ""}${c.provider ? ` · ${esc(c.provider)}` : ""}</p></section>
@@ -2023,7 +2074,7 @@ function diagSheet() {
     }
     return openSheet(`${head}
       ${diagResultHtml(r)}
-      ${ratingCard({ kind: "diagnose", name: plantLabel(p), input: { plant: { name: p.name, species: p.species ?? "", zone: p.zone ?? "" }, symptoms: dg.symptoms, note: dg.note }, output: r, photo: dg.photo, rerender: diagSheet })}
+      ${ratingCard({ kind: "diagnose", name: plantLabel(p), input: { plant: { name: p.name, species: p.species ?? "", zone: p.zone ?? "" }, symptoms: dg.symptoms, note: dg.note }, output: r, photo: dg.photo, caseId: r.caseId, rerender: diagSheet })}
       <button type="button" class="btn block" data-action="dg-save" ${dg.saved ? "disabled" : ""}>${dg.saved ? "Anotado en el historial" : "Anotar en el historial"}</button>
       <button type="button" class="btn block secondary" data-action="dg-back" style="margin-top:8px">Hacer otra consulta</button>`, "diag");
   }
@@ -2875,7 +2926,7 @@ function identifyBlock() {
       const ph = photoOf(c);
       return `<button type="button" class="alt-card" data-action="wiz-id-pick" data-i="${i + 1}">${ph ? `<img src="${esc(ph.url)}" alt="" />` : `<span class="alt-noimg">${ph === null ? "Sin foto" : `<span class="spinner" aria-hidden="true"></span>`}</span>`}<b>${esc(c.commonName)}</b><i>${esc(c.species)}</i></button>`;
     }).join("")}</div></section>` : ""}
-    ${ratingCard({ kind: "identify", name: top.commonName, input: { place: here().name }, output: { candidates: id.candidates }, photo: id.photo, rerender: renderWizard })}
+    ${ratingCard({ kind: "identify", name: top.commonName, input: { place: here().name }, output: { candidates: id.candidates }, photo: id.photo, caseId: id.caseId, rerender: renderWizard })}
     <div class="row"><label class="link-btn">Hacer otra foto${pick}</label><button type="button" class="link-btn" data-action="wiz-id-cancel">Escribir el nombre</button></div>`;
 }
 // The /identify call: resolves to { isPlant, candidates }, or throws an Error with a message key.
@@ -2902,7 +2953,7 @@ async function identifyFromFile(file) {
     const body = await callIdentify(photo);
     if (!body.isPlant || !body.candidates?.length) current.identify = { state: "none", photo, message: "Puedes repetir la foto o escribir el nombre a mano." };
     else {
-      current.identify = { state: "done", photo, candidates: body.candidates, refs: {} };
+      current.identify = { state: "done", photo, candidates: body.candidates, refs: {}, caseId: body.caseId };
       track("plant_identify");
       // Reference photos for the alternatives, as in the alta by name.
       body.candidates.slice(1).forEach((c) => refPhoto(c.species).then((ph) => { if (wiz === current && current.identify) { current.identify.refs[c.species] = ph; if ($("wizName")) renderWizard(); } }));
@@ -2962,9 +3013,9 @@ function exploreSheet() {
   const row = (icon, title, text, level = "info") => `<div class="fit-row"><span class="fit-ic ${level}">${ICONS[icon]}</span><div><b>${esc(title)}</b>${text ? `<span>${esc(text)}</span>` : ""}</div></div>`;
   const ICON = { climate: "snow", water: "droplet", sun: "sun", similar: "sprout" };
   const seasons = seasonReadCells(care.seasons, season);
-  const shareHead = `<div class="sheet-head"><h2>${e.shared ? "Planta compartida" : "Explorar"}</h2><div class="row"><button class="btn small secondary icon-btn" data-action="explore-share" aria-label="Compartir">${ICONS.share}</button><button class="btn small secondary" data-action="close">Cerrar</button></div></div>`;
+  const shareHead = `<div class="sheet-head"><h2>${e.shared?.demo ? "Ejemplo de ficha" : e.shared ? "Planta compartida" : "Explorar"}</h2><div class="row"><button class="btn small secondary icon-btn" data-action="explore-share" aria-label="Compartir">${ICONS.share}</button><button class="btn small secondary" data-action="close">Cerrar</button></div></div>`;
   openSheet(`${shareHead}
-    ${e.shared ? `<p class="muted small">Alguien te ha enviado esta ficha. Está pensada para ${esc(e.shared.place || "otro lugar")}${e.shared.place && e.shared.place !== here().name ? `; tú estás en ${esc(here().name)}, así que el clima puede variar` : ""}. El encaje es con tu jardín.</p>` : ""}
+    ${e.shared?.demo ? `<p class="muted small">Así se ve la ficha de una planta en Florvia (ejemplo para ${esc(e.shared.place || "Madrid")}). Los cuidados los propone la IA y, en tu jardín, se ajustan a tu zona, a su sol y al tiempo. Pulsa «Añadir» para probarlo con esta planta.</p>` : e.shared ? `<p class="muted small">Alguien te ha enviado esta ficha. Está pensada para ${esc(e.shared.place || "otro lugar")}${e.shared.place && e.shared.place !== here().name ? `; tú estás en ${esc(here().name)}, así que el clima puede variar` : ""}. El encaje es con tu jardín.</p>` : ""}
     <section class="explore-hero">${hero ? `<img class="hero-photo" src="${esc(hero)}" alt="" />` : ""}
       ${!e.photo && ph ? `<small class="hero-credit">Foto: ${esc(ph.credit)}</small>` : ""}
       <div class="body"><b>${esc(care.commonName || e.name)} <span class="ai-mark">✦</span></b><i>${esc(care.species)}</i></div></section>
@@ -3169,7 +3220,7 @@ function renderWizard() {
       </div>` : ""}
     </section>
     ${store.get("mj_last_place", null) ? `<p class="muted small">Zona y opciones como en la última planta que añadiste.</p>` : ""}
-    ${wiz.ai === "done" && wiz.care ? ratingCard({ kind: "care", name: wiz.name, input: { name: wiz.name, place: here().name }, output: wiz.care, rerender: renderWizard }) : ""}
+    ${wiz.ai === "done" && wiz.care ? ratingCard({ kind: "care", name: wiz.name, input: { name: wiz.name, place: here().name }, output: wiz.care, caseId: wiz.care.caseId, rerender: renderWizard }) : ""}
     <h3 class="q">Foto de tu planta <span class="muted small">(opcional)</span></h3>
     <div class="photo-pick"><span id="photoPreview">${draftPhoto ? `<img class="thumb" src="${draftPhoto}" alt="" />` : `<span class="thumb placeholder">${ICONS.camera}</span>`}</span>
       <div style="display:grid;gap:8px;min-width:0">
@@ -3685,6 +3736,11 @@ const actions = {
   "rate-send": (d) => rateSend(d.key, 0),
   "rate-cancel": (d) => { const ctx = rateCtxs[d.key]; delete rateUi[d.key]; ctx.rerender(); },
   "case-open": (d) => openCase(d.id),
+  "analyses-load": () => loadAnalyses(true),
+  "analyses-more": () => loadAnalyses(false),
+  "analyses-kind": (d) => { analyses.kind = d.kind; loadAnalyses(true); },
+  "analyses-bad": () => { analyses.bad = !analyses.bad; loadAnalyses(true); },
+  "analyses-mine": () => { analyses.mine = !analyses.mine; loadAnalyses(true); },
   "case-status": async (d) => {
     if (caseView?.id === d.id) { caseView.status = d.status; caseSheet(); }
     await fetch(`${API}/case/status`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ id: d.id, status: d.status }) }).catch(() => {});
@@ -3941,7 +3997,13 @@ loadFeedback();
   const linked = parseKey(hash.get("jardin"));
   const sharedId = hash.get("ver") ?? hash.get("planta");
   const caseLink = /^[A-Za-z0-9]{6,20}$/.test(hash.get("caso") ?? "") ? hash.get("caso") : "";
+  const demoSlug = /^[a-z0-9-]{2,30}$/.test(hash.get("ejemplo") ?? "") ? hash.get("ejemplo") : "";
   const addName = hash.get("anadir");
+  if (demoSlug && !(sharedId || linked)) {
+    history.replaceState(null, "", location.pathname + location.search);
+    pullNow();
+    setTimeout(() => openDemo(demoSlug), 400);
+  } else
   if (caseLink && !(sharedId || linked)) {
     history.replaceState(null, "", location.pathname + location.search);
     pullNow();
