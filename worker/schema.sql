@@ -111,3 +111,9 @@ CREATE TABLE IF NOT EXISTS invite_uses (
   revoked INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_invite_uses_code ON invite_uses(code);
+
+-- Ratings and saved cases of the AI («¿Te sirvió?»): one row per rating, with what was asked and what the AI answered (input/output as JSON).
+-- The photo (if any) lives in KV («case-photo:ID»). Created on first use by the Worker too (ensureCases). Kept 180 days.
+CREATE TABLE IF NOT EXISTS ai_cases (id TEXT PRIMARY KEY, ts INTEGER NOT NULL, day TEXT NOT NULL, src TEXT NOT NULL, kind TEXT NOT NULL, rating INTEGER NOT NULL, reasons TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', name TEXT NOT NULL DEFAULT '', provider TEXT NOT NULL DEFAULT '', version TEXT NOT NULL DEFAULT '', device TEXT NOT NULL DEFAULT '', garden TEXT NOT NULL DEFAULT '', internal INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'new', admin_note TEXT NOT NULL DEFAULT '', input TEXT NOT NULL DEFAULT '{}', output TEXT NOT NULL DEFAULT '{}', has_photo INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS idx_cases_day ON ai_cases(day);
+CREATE INDEX IF NOT EXISTS idx_cases_device ON ai_cases(device);

@@ -42,6 +42,7 @@ related:
 
 Campos opcionales:
 
+- `popular: N` (solo en fichas de planta; número entero, único): la ficha sale en el bloque «Plantas populares» de la landing, de menor a mayor. Es una selección editorial de plantas muy comunes, **no** un ranking de uso de Florvia: no la presentes como «las más analizadas» hasta que sea verdad con datos.
 - `featured: N` (número entero, único): el post sale en el bloque «Aprende a cuidar tus plantas» de la landing, ordenado de menor a mayor. La tarjeta usa `h1` y `description`. Normalmente se destacan 4 guías; para quitar una de la landing, borra la línea. La landing se regenera sola con `node tools/build-blog.mjs`; no edites a mano lo que hay entre `<!-- aprende:start -->` y `<!-- aprende:end -->` en `index.html`.
 
 | Campo | ¿Obligatorio? | Qué poner |

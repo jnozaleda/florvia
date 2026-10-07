@@ -130,7 +130,7 @@ h2{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;font-size:clam
 ul,ol{padding-left:24px}li{margin:6px 0}blockquote{margin:18px 0;padding:14px 18px;border-left:4px solid var(--leaf);background:var(--mist);border-radius:0 12px 12px 0;color:#2b3b30}
 .cta{margin:30px 0;padding:24px;border-radius:22px;background:var(--deep);color:var(--cream)}.cta b{display:block;font-family:var(--serif);font-size:24px;line-height:1.2;margin-bottom:8px}.cta p{margin:0 0 16px;color:#cfe0cc}
 details{border-bottom:1px solid #dfe5da;padding:2px 0}summary{cursor:pointer;font-weight:700;padding:14px 0;list-style:none;display:flex;justify-content:space-between;gap:12px}summary::-webkit-details-marker{display:none}summary:after{content:"+";color:var(--leaf);font-size:24px;line-height:1}details[open] summary:after{content:"–"}details p{margin:0 0 14px;color:var(--mut)}
-.note{font-size:15px;color:var(--mut);margin-top:30px}.related{display:grid;gap:8px;padding:0;list-style:none}.related a{display:block;padding:12px 16px;background:#fff;border:1px solid #e2e8de;border-radius:14px;text-decoration:none;font-weight:600}
+.plantcard{display:block;margin:22px 0;padding:18px 20px;border-radius:20px;background:var(--mist);border:1px solid #d8e4d4;color:var(--ink);text-decoration:none}.plantcard .pc-k{display:block;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--leaf-d)}.plantcard b{display:block;font-family:var(--serif);font-size:22px;margin:4px 0 2px}.plantcard span.pc-d{display:block;color:var(--mut);font-size:16px}.plantcard em{display:block;margin-top:8px;font-style:normal;font-weight:700;color:var(--leaf-d)}.note{font-size:15px;color:var(--mut);margin-top:30px}.related{display:grid;gap:8px;padding:0;list-style:none}.related a{display:block;padding:12px 16px;background:#fff;border:1px solid #e2e8de;border-radius:14px;text-decoration:none;font-weight:600}
 .hub{display:grid;gap:12px;padding:0;list-style:none;margin:20px 0 40px}.hub a{display:block;padding:18px 20px;background:#fff;border:1px solid #e2e8de;border-radius:16px;text-decoration:none;color:var(--ink)}.hub b{display:block;font-size:19px}.hub span{color:var(--mut);font-size:15.5px}
 footer{background:var(--deep2);color:#b9d1b6;margin-top:60px;padding:30px 0;font-size:15px}footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}footer a{color:#d6e6d3}`;
 const head = ({ title, description, path, extra = "", type = "article" }) => `<!DOCTYPE html>
@@ -164,6 +164,9 @@ for (const p of pages) {
   const ctaHash = m.ctaHash === "none" ? "" : m.ctaHash || (m.plant ? `anadir=${encodeURIComponent(m.plant)}` : "explorar");
   const cta = (final = false) => `<div class="cta"><b>${esc(final && m.ctaFinalTitle ? m.ctaFinalTitle : m.ctaTitle)}</b><p>${esc(final && m.ctaFinalText ? m.ctaFinalText : m.ctaText)}</p><a class="btn cream" href="${appLink(ctaHash)}">${esc(m.ctaButton)}</a></div>`;
   let html = markdown(p.body, { cta: () => cta(false) });
+  // A guide about one plant carries that plant's card (its ficha) right after the intro.
+  const ficha = p.type === "guias" && m.plant ? pages.find((q) => q.type === "plantas" && String(q.meta.plant).toLowerCase() === String(m.plant).toLowerCase()) : null;
+  if (ficha) html = html.replace("</p>", `</p><a class="plantcard" href="${ficha.path}"><span class="pc-k">Ficha de la planta</span><b>${esc(ficha.meta.plant)}</b><span class="pc-d">${esc(ficha.meta.description)}</span><em>Ver la ficha completa →</em></a>`);
   const related = (m.related ?? []).map((r) => { const [key, label] = r.split("|").map((x) => x.trim()); return byKey[key] ? `<li><a href="${byKey[key].path}">${esc(label || byKey[key].meta.h1)}</a></li>` : ""; }).join("");
   const crumbs = [{ n: "Florvia", u: `${SITE}/` }, { n: TYPES[p.type].label, u: `${SITE}/es/${p.type}/` }, { n: m.h1, u: `${SITE}${p.path}` }];
   const jsonld = ld({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.n, item: c.u })) })
@@ -192,11 +195,18 @@ ${foot}`;
 // «Aprende» de la landing: las guías con «featured: N» (de menor a mayor) entre las marcas aprende:start/end de index.html.
 const featured = pages.filter((p) => p.meta.featured).sort((a, b) => Number(a.meta.featured) - Number(b.meta.featured));
 const cards = featured.map((p) => `<a href="${p.path}"><b>${esc(p.meta.h1)}</b><span>${esc(p.meta.description)}</span><em>${p.type === "plantas" ? "Ver la ficha" : "Leer la guía"} →</em></a>`).join("\n");
-const landing = readFileSync(join(ROOT, "index.html"), "utf8");
+// «Plantas populares» de la landing: las fichas con «popular: N» (de menor a mayor) entre las marcas populares:start/end. Es una selección editorial
+// de plantas muy comunes, NO un ranking de uso de Florvia: cuando haya datos suficientes se podrá cambiar por «las más analizadas» con datos reales.
+const popular = pages.filter((p) => p.meta.popular).sort((a, b) => Number(a.meta.popular) - Number(b.meta.popular));
+const popCards = popular.map((p) => `<a href="${p.path}"><b>${esc(p.meta.plant)}</b><span>${esc(p.meta.description)}</span><em>Ver la ficha →</em></a>`).join("\n");
+let landing = readFileSync(join(ROOT, "index.html"), "utf8");
+const popMarks = /(<!-- populares:start[^>]*-->\n)[\s\S]*?(\n<!-- populares:end -->)/;
+if (!popMarks.test(landing)) { console.log("index.html no tiene las marcas <!-- populares:start --> / <!-- populares:end -->"); process.exit(1); }
+landing = landing.replace(popMarks, (_, a, z) => a + popCards + z);
 const marks = /(<!-- aprende:start[^>]*-->\n)[\s\S]*?(\n<!-- aprende:end -->)/;
 if (!marks.test(landing)) { console.log("index.html no tiene las marcas <!-- aprende:start --> / <!-- aprende:end -->"); process.exit(1); }
 const nextLanding = landing.replace(marks, (_, a, b) => a + cards + b);
-if (nextLanding !== landing) writeFileSync(join(ROOT, "index.html"), nextLanding);
+if (nextLanding !== readFileSync(join(ROOT, "index.html"), "utf8")) writeFileSync(join(ROOT, "index.html"), nextLanding);
 // Sitemap: only what should rank (the privacy page stays public but is not listed). lastmod = the post's «updated»; a hub's = the newest of its posts;
 // the landing has no date of its own, so it carries none.
 const lastOf = (list) => list.map((p) => p.meta.updated).filter(Boolean).sort().pop();

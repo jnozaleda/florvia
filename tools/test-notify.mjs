@@ -110,9 +110,9 @@ await test("pruebas desde localhost o sin origen no avisan", async () => {
   assert.equal(emails.length, 0);
 });
 await test("interruptores: se apagan por tipo, y el informe los devuelve", async () => {
-  assert.deepEqual((await admin("/stats2?days=1")).notify, { plant: true, identify: true, diagnose: true });
+  assert.deepEqual((await admin("/stats2?days=1")).notify, { plant: true, identify: true, diagnose: true, rating_up: true, rating_down: true });
   const r = await admin("/notify", { kind: "plant", on: false });
-  assert.deepEqual(r.notify, { plant: false, identify: true, diagnose: true });
+  assert.deepEqual(r.notify, { plant: false, identify: true, diagnose: true, rating_up: true, rating_down: true });
   await event(["plant_add_ai|Olivo"]);
   assert.equal(emails.length, 0);
   await identify();

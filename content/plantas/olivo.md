@@ -5,6 +5,7 @@ description: Cómo cuidar un olivo en maceta o en suelo: sol, riego, abono, poda
 updated: 2026-10-05
 published: 2026-10-05
 plant: Olivo
+popular: 3
 ctaTitle: ¿Tienes un olivo?
 ctaText: Añádelo a Florvia y te diremos cuándo regarlo, abonarlo o podarlo según la época del año y el tiempo donde vives.
 ctaButton: Añadir mi olivo
