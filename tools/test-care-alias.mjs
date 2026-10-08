@@ -73,11 +73,22 @@ const RAW = { isPlant: true, commonName: "Aspidistra", species: "Aspidistra elat
 const setAI = (patch) => { gemini = { m1: { status: 200, json: { ...RAW, ...patch } }, m2: { status: 200, json: { ...RAW, ...patch } } }; };
 const ask = (name, { lat = 40.4, lon = -3.7 } = {}) => call("/care", { name, lat, lon, place: "Madrid" });
 const kvKeys = () => [...kv.keys()];
+// Las fichas viven en D1 (species_parent / species_child / species_alias); lo que había en KV solo se lee y se pasa a D1.
+const parents = () => sqlite.prepare("SELECT species FROM species_parent ORDER BY species").all().map((r) => r.species);
+const children = () => sqlite.prepare("SELECT species || '|' || cell AS k FROM species_child ORDER BY k").all().map((r) => r.k);
+const aliases = () => sqlite.prepare("SELECT name FROM species_alias ORDER BY name").all().map((r) => r.name);
+const wipe = () => sqlite.exec("DELETE FROM species_parent; DELETE FROM species_child; DELETE FROM species_alias");
+const seedSheet = (species, parent, child, cell = "40:-4", { locked = 0, ageDays = 0, childAgeDays = ageDays } = {}) => {
+  const at = Date.now() - ageDays * 86400000;
+  const childAt = Date.now() - childAgeDays * 86400000;
+  sqlite.prepare("INSERT OR REPLACE INTO species_parent (species, data, grounded, locked, status, provenance, created_at, updated_at) VALUES (?, ?, ?, ?, ?, '{}', ?, ?)").run(species, JSON.stringify(parent), parent.grounded ?? "", locked, locked ? "bloqueada" : "generada", at, at);
+  sqlite.prepare("INSERT OR REPLACE INTO species_child (species, cell, data, created_at) VALUES (?, ?, ?, ?)").run(species, cell, JSON.stringify(child), childAt);
+};
 const calls = () => sqlite.prepare("SELECT COUNT(*) AS n FROM events WHERE kind = 'ai' AND name = 'care'").get().n;
 
 let failed = 0;
 async function test(name, fn) {
-  kv = new Map(); emails.length = 0; sqlite.exec("DELETE FROM events; DELETE FROM internal; DELETE FROM meta; DELETE FROM labels;");
+  kv = new Map(); emails.length = 0; sqlite.exec("DELETE FROM events; DELETE FROM internal; DELETE FROM meta; DELETE FROM labels;"); wipe();
   try { await fn(); console.log("ok   ", name); } catch (e) { failed++; console.log("FALLA", name, "\n     ", e.message); }
 }
 
@@ -88,9 +99,10 @@ await test("dos formas de escribir la misma planta dan la misma ficha (la primer
   setAI({ notes: "nota B" });
   const b = await ask("aspidistra aspidistra elatior");
   assert.equal(b.status, 200); assert.equal(b.body.notes, "nota A", "se sirve la ficha que ya existía para la especie");
-  assert.deepEqual(kvKeys().filter((k) => k.startsWith("parent:") || k.startsWith("child:")).sort(), ["child:v16:aspidistra elatior:40:-4", "parent:v16:aspidistra elatior"]);
-  assert.deepEqual(kvKeys().filter((k) => k.startsWith("species:")), [], "ya no se guarda entera");
-  assert.deepEqual(kvKeys().filter((k) => k.startsWith("alias:")).sort(), ["alias:v16:aspidistra aspidistra elatior:40:-4", "alias:v16:aspidistra:40:-4"]);
+  assert.deepEqual(parents(), ["aspidistra elatior"]);
+  assert.deepEqual(children(), ["aspidistra elatior|40:-4"]);
+  assert.deepEqual(aliases(), ["aspidistra", "aspidistra aspidistra elatior"]);
+  assert.deepEqual(kvKeys().filter((k) => /^(species|parent|child|alias):/.test(k)), [], "en KV ya no se escribe nada de esto");
 });
 await test("repetir un nombre ya visto no llama a la IA y entrega la ficha de la especie", async () => {
   setAI({ notes: "nota A" });
@@ -108,7 +120,7 @@ await test("«Citrus × limon», «Citrus limon (L.) Osbeck» y «Citrus limon»
   assert.equal((await ask("limón")).body.notes, "limón 1");
   setAI({ species: "Citrus limon", notes: "limón 3" });
   assert.equal((await ask("citrus limon")).body.notes, "limón 1");
-  assert.equal(kvKeys().filter((k) => k.startsWith("parent:")).length, 1);
+  assert.equal(parents().length, 1);
 });
 await test("especies distintas no se mezclan, y otra zona climática tiene su propia ficha", async () => {
   setAI({ notes: "madrid" });
@@ -118,8 +130,8 @@ await test("especies distintas no se mezclan, y otra zona climática tiene su pr
   setAI({ notes: "málaga", water_spring: 3 });
   const malaga = (await ask("aspidistra", { lat: 36.7, lon: -4.4 })).body;
   assert.deepEqual([malaga.notes, malaga.seasons.spring.water], ["madrid", 3], "otra celda: hija nueva (clima), con el padre de la especie (notas)");
-  assert.equal(kvKeys().filter((k) => k.startsWith("child:")).length, 3);
-  assert.equal(kvKeys().filter((k) => k.startsWith("parent:")).length, 2, "un padre por especie, no por zona");
+  assert.equal(children().length, 3);
+  assert.equal(parents().length, 2, "un padre por especie, no por zona");
 });
 await test("fichas antiguas por nombre escrito: la primera en pedirse se queda como la de la especie y las demás se unen a ella", async () => {
   const sheet = (notes) => JSON.stringify({ ...RAW, notes, seasons: { spring: { water: 10, feed: 30 }, summer: { water: 6, feed: 30 }, autumn: { water: 12, feed: 0 }, winter: { water: 20, feed: 0 } } });
@@ -134,7 +146,7 @@ await test("fichas antiguas por nombre escrito: la primera en pedirse se queda c
 await test("confianza «baja»: no se guarda ni se crea alias (se vuelve a preguntar)", async () => {
   setAI({ confidence: "baja", notes: "dudosa" });
   assert.equal((await ask("aspidistra")).body.notes, "dudosa");
-  assert.deepEqual(kvKeys().filter((k) => /^(species|parent|child|alias|care):/.test(k)), []);
+  assert.deepEqual([parents(), children(), aliases(), kvKeys().filter((k) => /^care:/.test(k))], [[], [], [], []]);
   const n = calls();
   await ask("aspidistra");
   assert.equal(calls(), n + 1);
@@ -176,7 +188,8 @@ await test("fichas enteras de antes (por especie y zona) se parten solas al pedi
   const r = await ask("aspidistra");
   assert.deepEqual([r.body.notes, r.body.seasons.spring.water, r.body.provider], ["entera", 9, "gemini:antiguo"]);
   assert.equal(calls(), n);
-  assert.deepEqual(kvKeys().filter((k) => k.startsWith("parent:") || k.startsWith("child:")).sort(), ["child:v16:aspidistra elatior:40:-4", "parent:v16:aspidistra elatior"]);
+  assert.deepEqual([parents(), children()], [["aspidistra elatior"], ["aspidistra elatior|40:-4"]], "pasa de KV a D1");
+  assert.ok(aliases().includes("aspidistra"));
 });
 
 await test("sinónimos científicos: «Rosmarinus officinalis» y «Salvia rosmarinus» son la misma especie", async () => {
@@ -184,7 +197,7 @@ await test("sinónimos científicos: «Rosmarinus officinalis» y «Salvia rosma
   await ask("romero planta");
   setAI({ species: "Salvia rosmarinus", notes: "romero 2" });
   assert.equal((await ask("rosmarinus planta")).body.notes, "romero 1");
-  assert.deepEqual(kvKeys().filter((k) => k.startsWith("parent:")), ["parent:v16:salvia rosmarinus"], "se guarda con el nombre aceptado");
+  assert.deepEqual(parents(), ["salvia rosmarinus"], "se guarda con el nombre aceptado");
 });
 await test("una ficha guardada con un nombre antiguo se mueve al nombre aceptado al pedirla, sin llamar a la IA", async () => {
   const whole = { ...RAW, species: "Rosmarinus officinalis", commonName: "Romero", notes: "vieja" };
@@ -196,17 +209,17 @@ await test("una ficha guardada con un nombre antiguo se mueve al nombre aceptado
   const r = await ask("romero"); // «romero» es un nombre sembrado: apunta a «salvia rosmarinus»
   assert.deepEqual([r.body.notes, r.body.seasons.spring.water], ["vieja", 7]);
   assert.equal(calls(), n);
-  assert.ok(kvKeys().includes("parent:v16:salvia rosmarinus") && kvKeys().includes("child:v16:salvia rosmarinus:40:-4"), "ya está bajo el nombre aceptado");
+  assert.deepEqual([parents(), children()], [["salvia rosmarinus"], ["salvia rosmarinus|40:-4"]], "ya está en D1 bajo el nombre aceptado");
 });
 await test("nombre común sembrado: «pelargonio» da la ficha del geranio sin consultar a la IA", async () => {
   setAI({ species: "Pelargonium zonale", commonName: "Geranio", notes: "geranio" });
   await ask("geranio");
-  assert.deepEqual(kvKeys().filter((k) => k.startsWith("parent:")), ["parent:v16:pelargonium hortorum"], "«zonale» se guarda como «hortorum»");
+  assert.deepEqual(parents(), ["pelargonium hortorum"], "«zonale» se guarda como «hortorum»");
   setAI({ species: "Pelargonium x hortorum", notes: "otra" });
   const n = calls();
   const r = await ask("pelargonio");
   assert.equal(r.body.notes, "geranio"); assert.equal(calls(), n);
-  assert.ok(kvKeys().includes("alias:v16:pelargonio:40:-4"), "queda el alias para la próxima");
+  assert.ok(aliases().includes("pelargonio"), "queda el alias para la próxima");
 });
 await test("un nombre ambiguo como «jazmín» NO se siembra: es otra planta que el jazmín estrellado", async () => {
   setAI({ species: "Trachelospermum jasminoides", commonName: "Jazmín estrellado", notes: "estrellado" });
@@ -214,14 +227,14 @@ await test("un nombre ambiguo como «jazmín» NO se siembra: es otra planta que
   setAI({ species: "Jasminum officinale", commonName: "Jazmín común", notes: "común" });
   const r = await ask("jazmin");
   assert.equal(r.body.notes, "común");
-  assert.equal(kvKeys().filter((k) => k.startsWith("parent:")).length, 2);
+  assert.equal(parents().length, 2);
 });
 await test("«Rosa spp.», «Rosa × hybrida» y «rosal» comparten ficha", async () => {
   setAI({ species: "Rosa × hybrida", commonName: "Rosal", notes: "rosal" });
   await ask("rosal");
   setAI({ species: "Rosa spp.", notes: "otra rosa" });
   assert.equal((await ask("rosa roja")).body.notes, "rosal");
-  assert.deepEqual(kvKeys().filter((k) => k.startsWith("parent:")), ["parent:v16:rosa"]);
+  assert.deepEqual(parents(), ["rosa"]);
 });
 await test("especies agrupadas en una misma ficha (Bougainvillea glabra y spectabilis) comparten ficha", async () => {
   setAI({ species: "Bougainvillea glabra", commonName: "Buganvilla", notes: "buganvilla" });
@@ -248,7 +261,7 @@ await test("un nombre común sembrado («olivera») y el nombre científico tamb
   setAI({ species: "Olea europaea", notes: "x" });
   lastPrompt = ""; await ask("olivera");
   assert.match(lastPrompt, /DECISIONES CONFIRMADAS/);
-  kv.clear(); lastPrompt = ""; await ask("Olea europaea");
+  kv.clear(); wipe(); lastPrompt = ""; await ask("Olea europaea");
   assert.match(lastPrompt, /DATOS DE REFERENCIA/);
 });
 await test("una especie sin referencia se genera como siempre, sin ese bloque ni marca", async () => {
@@ -267,8 +280,7 @@ await test("el calendario del año de una especie de referencia también recibe 
 
 await test("un padre escrito con la referencia sustituye a uno que no la usaba; uno con referencia no se pisa", async () => {
   // Padre viejo (sin referencia) de una especie que ahora sí tiene referencia, con su hija de Madrid.
-  kv.set("parent:v16:olea europaea", JSON.stringify({ commonName: "Olivo", species: "Olea europaea", notes: "vieja", minTemp: -10, confidence: "alta", provider: "gemini:antiguo" }));
-  kv.set("child:v16:olea europaea:40:-4", JSON.stringify({ seasons: { spring: { water: 7, feed: 30 }, summer: { water: 4, feed: 30 }, autumn: { water: 10, feed: 0 }, winter: { water: 20, feed: 0 } }, provider: "gemini:antiguo" }));
+  seedSheet("olea europaea", { commonName: "Olivo", species: "Olea europaea", notes: "vieja", minTemp: -10, confidence: "alta", provider: "gemini:antiguo" }, { seasons: { spring: { water: 7, feed: 30 }, summer: { water: 4, feed: 30 }, autumn: { water: 10, feed: 0 }, winter: { water: 20, feed: 0 } }, provider: "gemini:antiguo" });
   setAI({ species: "Olea europaea", notes: "con referencia", minTemp: -7, water_spring: 5 });
   const sevilla = await ask("olivo", { lat: 37.4, lon: -5.9 }); // otra zona: se genera una hija nueva, con referencia
   assert.deepEqual([sevilla.body.notes, sevilla.body.minTemp, sevilla.body.grounded], ["con referencia", -7, REFERENCE_VERSION], "el padre nuevo (con referencia) sustituye al viejo");
@@ -277,6 +289,48 @@ await test("un padre escrito con la referencia sustituye a uno que no la usaba; 
   setAI({ species: "Olea europaea", notes: "otra vez", minTemp: -3 });
   const cadiz = await ask("olivo", { lat: 36.5, lon: -6.3 });
   assert.equal(cadiz.body.notes, "con referencia", "un padre con referencia no se pisa");
+});
+
+await test("D1: un padre generado con la referencia guarda su procedencia (fuentes y decisiones) y su estado", async () => {
+  setAI({ species: "Olea europaea", commonName: "Olivo", notes: "olivo", minTemp: -7 });
+  await ask("olivo");
+  const row = sqlite.prepare("SELECT status, grounded, locked, provenance FROM species_parent WHERE species = 'olea europaea'").get();
+  assert.deepEqual([row.status, row.grounded, row.locked], ["con_referencia", REFERENCE_VERSION, 0]);
+  const prov = JSON.parse(row.provenance);
+  assert.equal(prov.planta, "olivo");
+  assert.ok(prov.fuentes.length >= 4 && prov.fuentes.every((f) => /^https:/.test(f.url)), "enlaces de las fuentes");
+  assert.ok(prov.confirmadas.length >= 8 && prov.confirmadas.every((c) => c.por.includes("Noza")), "decisiones confirmadas y por quién");
+});
+await test("D1: un padre BLOQUEADO no se sustituye ni caduca, aunque una ficha nueva venga con referencia", async () => {
+  seedSheet("olea europaea", { commonName: "Olivo", species: "Olea europaea", notes: "bloqueada", minTemp: -7, confidence: "alta", grounded: REFERENCE_VERSION, provider: "x" }, { seasons: { spring: { water: 5, feed: 365 }, summer: { water: 3, feed: 0 }, autumn: { water: 7, feed: 0 }, winter: { water: 12, feed: 0 } }, provider: "x" }, "40:-4", { locked: 1, ageDays: 900, childAgeDays: 10 });
+  setAI({ species: "Olea europaea", notes: "intento de sustituirla", minTemp: -2, water_spring: 9 });
+  const madrid = await ask("olivo");
+  assert.deepEqual([madrid.body.notes, madrid.body.seasons.spring.water], ["bloqueada", 5], "con 900 días sigue sirviéndose");
+  const sevilla = await ask("olivo", { lat: 37.4, lon: -5.9 });
+  assert.equal(sevilla.body.notes, "bloqueada", "en otra zona la hija es nueva, pero el padre bloqueado se queda");
+  assert.equal(sevilla.body.seasons.spring.water, 9);
+  assert.equal(sqlite.prepare("SELECT locked FROM species_parent WHERE species = 'olea europaea'").get().locked, 1);
+});
+await test("D1: padres sin bloquear caducan al año y las hijas a los 180 días, y se regeneran", async () => {
+  seedSheet("zelkova serrata", { commonName: "Zelkova", species: "Zelkova serrata", notes: "vieja", confidence: "alta" }, { seasons: { spring: { water: 4, feed: 30 }, summer: { water: 2, feed: 30 }, autumn: { water: 5, feed: 0 }, winter: { water: 10, feed: 0 } } }, "40:-4", { ageDays: 200 });
+  sqlite.prepare("INSERT INTO species_alias (name, cell, species, ts) VALUES ('zelkova', '40:-4', 'zelkova serrata', ?)").run(Date.now());
+  setAI({ species: "Zelkova serrata", commonName: "Zelkova", notes: "nueva" });
+  const n = calls();
+  const r = await ask("zelkova");
+  assert.equal(r.body.notes, "vieja", "el padre (200 días) sigue valiendo; la hija no, y se regenera");
+  assert.equal(calls(), n + 1);
+  sqlite.prepare("UPDATE species_parent SET created_at = ? WHERE species = 'zelkova serrata'").run(Date.now() - 400 * 86400000);
+  const again = await ask("zelkova", { lat: 37.4, lon: -5.9 });
+  assert.equal(again.body.notes, "nueva", "un padre de más de un año ya no vale");
+});
+
+await test("un nombre científico escrito tal cual encuentra la ficha de su especie sin consultar a la IA", async () => {
+  seedSheet("aspidistra elatior", { commonName: "Aspidistra", species: "Aspidistra elatior", notes: "guardada", confidence: "alta", provider: "x" }, { seasons: { spring: { water: 10, feed: 30 }, summer: { water: 6, feed: 30 }, autumn: { water: 12, feed: 0 }, winter: { water: 20, feed: 0 } }, provider: "x" });
+  setAI({ notes: "nueva" });
+  const n = calls();
+  assert.equal((await ask("Aspidistra elatior")).body.notes, "guardada");
+  assert.equal(calls(), n);
+  assert.ok(aliases().includes("aspidistra elatior"));
 });
 
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }

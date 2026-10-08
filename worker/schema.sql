@@ -117,3 +117,12 @@ CREATE INDEX IF NOT EXISTS idx_invite_uses_code ON invite_uses(code);
 CREATE TABLE IF NOT EXISTS ai_cases (id TEXT PRIMARY KEY, ts INTEGER NOT NULL, day TEXT NOT NULL, src TEXT NOT NULL, kind TEXT NOT NULL, rating INTEGER NOT NULL, reasons TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', name TEXT NOT NULL DEFAULT '', provider TEXT NOT NULL DEFAULT '', version TEXT NOT NULL DEFAULT '', device TEXT NOT NULL DEFAULT '', garden TEXT NOT NULL DEFAULT '', internal INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'new', admin_note TEXT NOT NULL DEFAULT '', input TEXT NOT NULL DEFAULT '{}', output TEXT NOT NULL DEFAULT '{}', has_photo INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_cases_day ON ai_cases(day);
 CREATE INDEX IF NOT EXISTS idx_cases_device ON ai_cases(device);
+
+-- Care sheets of the AI, in two pieces (see PARENT_FIELDS in worker.js): the PARENT is what is true of a species wherever it grows, the CHILD what depends
+-- on the climate of a cell (~100 km). `species` is the accepted name (genus + epithet, lowercase). A locked parent is never replaced and never expires;
+-- status: generada | con_referencia (written with the reference data of content/referencia) | bloqueada. `provenance` lists the sources of a reference sheet.
+-- species_alias maps what people type (per cell) to the species. The Worker creates the tables on first use too (ensureSpecies).
+CREATE TABLE IF NOT EXISTS species_parent (species TEXT PRIMARY KEY, data TEXT NOT NULL, grounded TEXT NOT NULL DEFAULT '', locked INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'generada', provenance TEXT NOT NULL DEFAULT '{}', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS species_child (species TEXT NOT NULL, cell TEXT NOT NULL, data TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (species, cell));
+CREATE TABLE IF NOT EXISTS species_alias (name TEXT NOT NULL, cell TEXT NOT NULL, species TEXT NOT NULL, ts INTEGER NOT NULL, PRIMARY KEY (name, cell));
+CREATE INDEX IF NOT EXISTS idx_species_alias_species ON species_alias(species);

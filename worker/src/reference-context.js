@@ -23,3 +23,456 @@ export const REFERENCE = {
   "solanum lycopersicum": "Planta de referencia: Tomatera (Solanum lycopersicum). Dificultad: media. Ubicación habitual: exterior.\nLuz: Pleno sol: en maceta, a pleno sol; en suelo, el sitio más cálido, soleado y resguardado del viento (RHS).\nTemperatura: Cálida y soleada Frío: Plantar fuera cuando las temperaturas se mantengan por encima de 16 °C (RHS). Las plántulas deben estar a un mínimo de 16 °C. No tolera heladas (conocimiento general).\nSustrato y maceta: Maceta de 30-45 cm de diámetro para una planta, o un saco de cultivo estándar para dos (RHS). Sustrato rico y con buen drenaje. Un tutor es imprescindible en tomateras de cordón.\nPrimavera: riego: Regar bien al plantar y mantener el sustrato uniformemente húmedo. abono: Ninguno hasta que cuajen los primeros frutos (en suelo enriquecido puede no hacer falta). tareas: Endurecer las plantas antes de sacarlas y plantar cuando las temperaturas se mantengan por encima de 16 °C. Poner tutor.\nVerano: riego: Riego regular para mantener el sustrato uniformemente húmedo; en maceta puede ser diario con calor. Las variaciones de humedad rajan los frutos y causan culo negro (RHS). abono: Cuando los primeros frutos empiecen a engordar, abono líquido ecológico rico en potasio cada 10-14 días (RHS). tareas: En variedades de cordón, quitar los chupones (brotes laterales) cada vez que riegues; las variedades arbustivas los conservan. Recoger el fruto cuando esté completamente coloreado, con su rabillo.\nOtoño: riego: Reducir según refresca. abono: Ninguno al final de temporada. tareas: Los frutos verdes pueden madurar en un lugar cálido y oscuro, o junto a un plátano en un cajón (RHS).\nInvierno: riego: Ninguno: la planta no sobrevive al frío. abono: Ninguno. tareas: Retirar la planta.\nPoda: En variedades de cordón: dejar un solo tallo y quitar los chupones a medida que salen. Al llegar al final del tutor, o tras 4 racimos en exterior (7 en invernadero), cortar el punto de crecimiento dos hojas por encima del último racimo. Las variedades arbustivas conservan sus chupones (RHS).\nToxicidad: mascotas: La planta (hojas y tallos) aparece como tóxica para perros y gatos en una lista reproducida con permiso de la ASPCA. personas: El fruto maduro es comestible.\nProblemas frecuentes: Mancha negra en la base del fruto; Frutos rajados; Hojas y frutos con podredumbre; Polvillo blanco que vuela al mover la planta y hojas pegajosas.",
   "trachelospermum jasminoides": "Planta de referencia: Jazmín estrellado (Trachelospermum jasminoides). Dificultad: facil. Ubicación habitual: exterior.\nLuz: Sol o semisombra, con abrigo de vientos fríos y secos. En interior, evitar el sol directo de verano (RHS).\nTemperatura: Templada Frío: Es una trepadora resistente, pero en zonas frías necesita protección en invierno. Con frío intenso las hojas pueden enrojecer, mancharse o caer; las plantas establecidas suelen recuperarse salvo en inviernos muy duros (RHS). La RHS no da cifras.\nSustrato y maceta: Suelo con buen drenaje, fértil o moderadamente fértil. En suelos pesados, húmedos o arcillosos hay riesgo de pudrición por Phytophthora: usar un sitio con buen drenaje o una maceta. Necesita un soporte para trepar (RHS).\nPrimavera: riego: Regular durante el primer año y en periodos secos largos. abono: En suelo fértil normalmente no hace falta. Para favorecer crecimiento o floración, un abono general en primavera; en maceta, abonado regular (RHS). tareas: Poda de mantenimiento: aclarar tallos amontonados, débiles o dañados. Atar los tallos jóvenes hasta que se enreden solos.\nVerano: riego: En maceta se seca rápido: regar con frecuencia. abono: En maceta, abonado regular. tareas: Revisar cochinillas y ácaros, sobre todo en sitios muy calurosos.\nOtoño: riego: Reducir. abono: Ninguno. tareas: Limpiar hojas secas y comprobar el soporte.\nInvierno: riego: Regar menos, pero revisar las macetas. abono: Ninguno. tareas: En zonas frías, proteger la planta o meter la maceta a un sitio resguardado.\nPoda: Se necesita poco. La RHS indica poda de mantenimiento en primavera: aclarar tallos amontonados, débiles o dañados. Las plantas muy crecidas aguantan una poda fuerte en primavera (RHS).\nToxicidad: mascotas: No tóxico para perros, gatos ni caballos según la ASPCA. personas: Sin dato verificado sobre irritación por savia. Por precaución, usar guantes al podar.\nProblemas frecuentes: Cochinillas, ácaros y mosca blanca; Podredumbre de raíz; Hojas rojizas, con manchas o que caen."
 };
+export const REFERENCE_META = {
+  "aloe vera": {
+    "planta": "aloe-vera",
+    "fuentes": [
+      {
+        "titulo": "RHS: Aloe vera",
+        "url": "https://www.rhs.org.uk/plants/981/aloe-vera/details",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "RHS: Aloe, guía de plantas",
+        "url": "https://www.rhs.org.uk/plants/aloe",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "Lista ASPCA de plantas tóxicas para gatos (reproducida por Mahoney's Garden)",
+        "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-Lists-Cats.pdf",
+        "tipo": "Reproducción de ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "bougainvillea glabra": {
+    "planta": "buganvilla",
+    "fuentes": [
+      {
+        "titulo": "RHS: Bougainvillea care",
+        "url": "https://www.rhs.org.uk/plants/bougainvillea/growing-guide",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "RHS: Potentially harmful garden plants",
+        "url": "https://www.rhs.org.uk/prevention-protection/potentially-harmful-garden-plants",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "ASPCA: ficha de buganvilla (sin entrada en la base de datos)",
+        "url": "https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/bougainvillea",
+        "tipo": "ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "citrus limon": {
+    "planta": "limonero",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow citrus",
+        "url": "https://www.rhs.org.uk/fruit/citrus/grow-your-own",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "Infoagro: El cultivo de los limones",
+        "url": "https://infoagro.com/citricos/limon.htm",
+        "tipo": "Fuente agronómica española"
+      },
+      {
+        "titulo": "MAPA: artículo sobre clorosis férrica (Ferti 2006)",
+        "url": "https://www.mapa.gob.es/ministerio/pags/Biblioteca/Revistas/pdf_Ferti/Ferti_2006_25_60_61.pdf",
+        "tipo": "Ministerio de Agricultura (España)"
+      },
+      {
+        "titulo": "Lista ASPCA de plantas tóxicas para gatos (reproducida por Mahoney's Garden)",
+        "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-Lists-Cats.pdf",
+        "tipo": "Reproducción de ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "crassula ovata": {
+    "planta": "crasula-arbol-de-jade",
+    "fuentes": [
+      {
+        "titulo": "RHS: Crassula ovata",
+        "url": "https://www.rhs.org.uk/plants/4739/crassula-ovata/details",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "RHS: How to grow cacti and succulents (houseplants)",
+        "url": "https://www.rhs.org.uk/plants/types/cacti-succulents/houseplants/growing-guide",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "Lista ASPCA de plantas tóxicas para gatos (reproducida por Mahoney's Garden)",
+        "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-Lists-Cats.pdf",
+        "tipo": "Reproducción de ASPCA"
+      },
+      {
+        "titulo": "Sunset: plantas tóxicas para perros (incluye árbol de jade)",
+        "url": "https://sunset.com/garden/flowers-plants/plants-poisonous-to-dogs",
+        "tipo": "Medio divulgativo"
+      }
+    ],
+    "confirmadas": []
+  },
+  "dracaena trifasciata": {
+    "planta": "sansevieria",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow sansevierias",
+        "url": "https://www.rhs.org.uk/plants/sansevieria/growing-guide",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "Lista ASPCA de plantas tóxicas para perros (reproducida por Mahoney's Garden)",
+        "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-List-Dogs.pdf",
+        "tipo": "Reproducción de ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "epipremnum aureum": {
+    "planta": "potos",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow epipremnum",
+        "url": "https://www.rhs.org.uk/plants/epipremnum/growing-guide",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "Lista ASPCA de plantas tóxicas para perros (reproducida por Mahoney's Garden)",
+        "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-List-Dogs.pdf",
+        "tipo": "Reproducción de ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "ficus benjamina": {
+    "planta": "ficus-benjamina",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow ornamental figs",
+        "url": "https://www.rhs.org.uk/advice/profile?PID=669",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "RHS: Potentially harmful garden plants",
+        "url": "https://www.rhs.org.uk/prevention-protection/potentially-harmful-garden-plants",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "Lista ASPCA de plantas tóxicas para gatos (reproducida por Mahoney's Garden)",
+        "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-Lists-Cats.pdf",
+        "tipo": "Reproducción de ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "hydrangea macrophylla": {
+    "planta": "hortensia",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow shrubby hydrangeas",
+        "url": "https://www.rhs.org.uk/advice/profile?PID=122",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "ASPCA: Hydrangea",
+        "url": "https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/hydrangea",
+        "tipo": "ASPCA"
+      },
+      {
+        "titulo": "RHS: Potentially harmful garden plants",
+        "url": "https://www.rhs.org.uk/prevention-protection/potentially-harmful-garden-plants",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "MAPA: artículo sobre clorosis férrica (Ferti 2006)",
+        "url": "https://www.mapa.gob.es/ministerio/pags/Biblioteca/Revistas/pdf_Ferti/Ferti_2006_25_60_61.pdf",
+        "tipo": "Ministerio de Agricultura (España)"
+      }
+    ],
+    "confirmadas": []
+  },
+  "lavandula angustifolia": {
+    "planta": "lavanda",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow lavender",
+        "url": "https://www.rhs.org.uk/advice/profile?pid=127",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "ASPCA: Lavender",
+        "url": "https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/lavender",
+        "tipo": "ASPCA"
+      },
+      {
+        "titulo": "Comunidad de Madrid: Xylella fastidiosa, plan de actuación",
+        "url": "https://www.comunidad.madrid/node/75274",
+        "tipo": "Administración pública (España)"
+      }
+    ],
+    "confirmadas": []
+  },
+  "mentha spicata": {
+    "planta": "hierbabuena",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow mint",
+        "url": "https://www.rhs.org.uk/herbs/mint/grow-your-own",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "ASPCA: Mint",
+        "url": "https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/mint",
+        "tipo": "ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "monstera deliciosa": {
+    "planta": "monstera",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow Swiss cheese plants",
+        "url": "https://www.rhs.org.uk/plants/swiss-cheese-plants/how-to-grow-swiss-cheese-plants",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "RHS: Potentially harmful garden plants",
+        "url": "https://www.rhs.org.uk/prevention-protection/potentially-harmful-garden-plants",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "Lista ASPCA de plantas tóxicas para perros (reproducida por Mahoney's Garden)",
+        "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-List-Dogs.pdf",
+        "tipo": "Reproducción de ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "nerium oleander": {
+    "planta": "adelfa",
+    "fuentes": [
+      {
+        "titulo": "RHS: Nerium oleander",
+        "url": "https://www.rhs.org.uk/plants/98456/nerium-oleander-l/details",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "RHS: Oleander scale",
+        "url": "https://www.rhs.org.uk/biodiversity/oleander-scale",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "RHS: Potentially harmful garden plants",
+        "url": "https://www.rhs.org.uk/prevention-protection/potentially-harmful-garden-plants",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "Ministerio de Justicia: Servicio de Información Toxicológica",
+        "url": "https://www.mjusticia.gob.es/es/institucional/organismos/instituto-nacional/servicios/servicio-informacion/servicio-informacion1",
+        "tipo": "Administración pública (España)"
+      },
+      {
+        "titulo": "Lista ASPCA de plantas tóxicas para perros (reproducida por Mahoney's Garden)",
+        "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-List-Dogs.pdf",
+        "tipo": "Reproducción de ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "ocimum basilicum": {
+    "planta": "albahaca",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow basil",
+        "url": "https://www.rhs.org.uk/herbs/basil/grow-your-own",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "ASPCA: Basil",
+        "url": "https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/basil",
+        "tipo": "ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "olea europaea": {
+    "planta": "olivo",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow olives",
+        "url": "https://www.rhs.org.uk/plants/olives/how-to-grow-olives",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "Comunidad de Madrid: Xylella fastidiosa, plan de actuación",
+        "url": "https://www.comunidad.madrid/node/75274",
+        "tipo": "Administración pública (España)"
+      },
+      {
+        "titulo": "Verdecora: Cuidados del olivo, el símbolo del Mediterráneo",
+        "url": "https://verdecora.es/blog/cuidados-del-olivo",
+        "tipo": "Blog de vivero/tienda (B)"
+      },
+      {
+        "titulo": "Interflora: Cuidados del olivo en maceta",
+        "url": "https://www.interflora.es/blog/cuidados-del-olivo-en-maceta/",
+        "tipo": "Blog de floristería (B)"
+      }
+    ],
+    "confirmadas": [
+      {
+        "dato": "Frío mínimo",
+        "por": "Noza (sin revisor experto)",
+        "fecha": "2026-10-08"
+      },
+      {
+        "dato": "Abono",
+        "por": "Noza (sin revisor experto)",
+        "fecha": "2026-10-08"
+      },
+      {
+        "dato": "Poda (fecha)",
+        "por": "Noza (sin revisor experto)",
+        "fecha": "2026-10-08"
+      },
+      {
+        "dato": "Riego en maceta",
+        "por": "Noza (sin revisor experto)",
+        "fecha": "2026-10-08"
+      },
+      {
+        "dato": "Maceta",
+        "por": "Noza (sin revisor experto)",
+        "fecha": "2026-10-08"
+      },
+      {
+        "dato": "Luz",
+        "por": "Noza (sin revisor experto)",
+        "fecha": "2026-10-08"
+      },
+      {
+        "dato": "Trasplante",
+        "por": "Noza (sin revisor experto)",
+        "fecha": "2026-10-08"
+      },
+      {
+        "dato": "Sustrato",
+        "por": "Noza (sin revisor experto)",
+        "fecha": "2026-10-08"
+      },
+      {
+        "dato": "Ubicación en el jardín",
+        "por": "Noza (sin revisor experto)",
+        "fecha": "2026-10-08"
+      }
+    ]
+  },
+  "pelargonium hortorum": {
+    "planta": "geranio",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow pelargoniums",
+        "url": "https://www.rhs.org.uk/plants/pelargonium/growing-guide",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "EPPO (1992): ficha sobre Cacyreus marshalli",
+        "url": "https://gd.eppo.int/reporting/article-5275",
+        "tipo": "Organización europea de protección de plantas"
+      },
+      {
+        "titulo": "Lista ASPCA de plantas tóxicas para gatos (reproducida por Mahoney's Garden)",
+        "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-Lists-Cats.pdf",
+        "tipo": "Reproducción de ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "phalaenopsis": {
+    "planta": "orquidea-phalaenopsis",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow Phalaenopsis (moth orchids)",
+        "url": "https://www.rhs.org.uk/plants/phalaenopsis/growing-guide",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "ASPCA: Phalaenopsis Orchid",
+        "url": "https://www.aspca.org/pet-care/aspca-poison-control/toxic-and-non-toxic-plants/phalaenopsis-orchid",
+        "tipo": "ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "rosa": {
+    "planta": "rosal",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow roses",
+        "url": "https://www.rhs.org.uk/plants/roses/growing-guide",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "RHS: Rose pruning, general tips",
+        "url": "https://www.rhs.org.uk/plants/roses/pruning-guide",
+        "tipo": "RHS"
+      }
+    ],
+    "confirmadas": []
+  },
+  "salvia rosmarinus": {
+    "planta": "romero",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow rosemary",
+        "url": "https://www.rhs.org.uk/herbs/rosemary/grow-your-own",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "Massachusetts Animal Fund: folleto de plantas seguras para mascotas (atribuido a ASPCA)",
+        "url": "https://www.mass.gov/doc/pet-safe-plants-brochure-2021/download",
+        "tipo": "Folleto de tercero"
+      }
+    ],
+    "confirmadas": []
+  },
+  "solanum lycopersicum": {
+    "planta": "tomatera",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow tomatoes",
+        "url": "https://www.rhs.org.uk/vegetables/tomatoes/grow-your-own",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "Lista de plantas tóxicas para mascotas, reproducida con permiso de la ASPCA (Boulder Humane)",
+        "url": "https://boulderhumane.org/plants-that-are-poisonous-to-animals/",
+        "tipo": "Reproducción de ASPCA"
+      }
+    ],
+    "confirmadas": []
+  },
+  "trachelospermum jasminoides": {
+    "planta": "jazmin-estrellado",
+    "fuentes": [
+      {
+        "titulo": "RHS: How to grow trachelospermum",
+        "url": "https://www.rhs.org.uk/plants/trachelospermum/growing-guide",
+        "tipo": "RHS"
+      },
+      {
+        "titulo": "ASPCA: Star Jasmine",
+        "url": "https://www.aspca.org/pet-care/aspca-poison-control/toxic-and-non-toxic-plants/star-jasmine",
+        "tipo": "ASPCA"
+      }
+    ],
+    "confirmadas": []
+  }
+};

@@ -106,6 +106,9 @@ const referenceText = (p) => {
 };
 const context = {};
 for (const p of doc.plantas) context[canonicalOf[p.id]] = referenceText(p);
+// Procedencia de cada especie de referencia (se guarda junto a su ficha en D1): planta, fuentes y decisiones confirmadas.
+const meta = {};
+for (const p of doc.plantas) meta[canonicalOf[p.id]] = { planta: p.id, fuentes: p.fuentes.map((f) => ({ titulo: f.titulo, url: f.url, tipo: f.tipo })), confirmadas: (p.contraste ?? []).filter((c) => c.estado === "confirmado").map((c) => ({ dato: c.dato, por: c.confirmado_por ?? "", fecha: c.fecha ?? "" })) };
 
 const sort = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)));
 const body = `// Generado por tools/build-species-seed.mjs desde content/referencia/plantas.json: no editar a mano.
@@ -117,6 +120,7 @@ const bodyContext = `// Generado por tools/build-species-seed.mjs desde content/
 // Texto de referencia por especie (clave = especie aceptada), que se añade al prompt de la IA al generar su ficha.
 export const REFERENCE_VERSION = ${JSON.stringify(doc.version)};
 export const REFERENCE = ${JSON.stringify(sort(context), null, 2)};
+export const REFERENCE_META = ${JSON.stringify(sort(meta), null, 2)};
 `;
 if (process.argv.includes("--check")) {
   const read = (f) => { try { return readFileSync(f, "utf8"); } catch { return ""; } };

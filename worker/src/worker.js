@@ -3,7 +3,7 @@ import { verifyGoogleToken } from "./google.js";
 import { EmailMessage } from "cloudflare:email";
 import { fetchWeather } from "../../app/weather.js";
 import { normName, speciesKey, canonicalKey, synonymSources, seedAlias } from "./species.js";
-import { REFERENCE, REFERENCE_VERSION } from "./reference-context.js";
+import { REFERENCE, REFERENCE_VERSION, REFERENCE_META } from "./reference-context.js";
 // my-garden-api (Florvia's backend) — the app's small backend. For now one job: fill in a plant's care sheet from
 // its name ("✨ Rellenar con IA"). The AI provider is a setting (PROVIDER) so moving from the free
 // Cloudflare model to a paid one later only touches this file, never the app.
@@ -389,6 +389,46 @@ const PARENT_TTL = 365 * 86400;
 const pick = (o, keys) => Object.fromEntries(keys.filter((key) => o[key] !== undefined).map((key) => [key, o[key]]));
 const splitSheet = (sheet) => ({ parent: { ...pick(sheet, PARENT_FIELDS), provider: sheet.provider }, child: { ...pick(sheet, CHILD_FIELDS), provider: sheet.provider } });
 const mergeSheet = (parent, child) => ({ ...parent, ...child }); // `provider` is the child's: the model that wrote the climate part
+// ---------- Care sheets in D1 ----------
+// The parent and child pieces and the name → species aliases live in D1 (they can be listed, locked and traced to their sources). What the older versions
+// kept in KV is read once, moved to D1 and no longer written.
+let speciesReady = false;
+async function ensureSpecies(env) {
+  if (speciesReady) return;
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS species_parent (species TEXT PRIMARY KEY, data TEXT NOT NULL, grounded TEXT NOT NULL DEFAULT '', locked INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'generada', provenance TEXT NOT NULL DEFAULT '{}', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS species_child (species TEXT NOT NULL, cell TEXT NOT NULL, data TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (species, cell))"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS species_alias (name TEXT NOT NULL, cell TEXT NOT NULL, species TEXT NOT NULL, ts INTEGER NOT NULL, PRIMARY KEY (name, cell))"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_species_alias_species ON species_alias(species)"),
+  ]);
+  speciesReady = true;
+}
+const referenceProvenance = (sk) => (REFERENCE_META[sk] ? { referencia: REFERENCE_VERSION, ...REFERENCE_META[sk] } : {});
+function sheetStore(env, cell) {
+  const parse = (text) => { try { return JSON.parse(text); } catch { return null; } };
+  return {
+    async alias(name) { return (await env.DB.prepare("SELECT species FROM species_alias WHERE name = ? AND cell = ? AND ts > ?").bind(name, cell, Date.now() - CACHE_TTL * 1000).first())?.species ?? null; },
+    async setAlias(name, species) { await env.DB.prepare("INSERT OR REPLACE INTO species_alias (name, cell, species, ts) VALUES (?, ?, ?, ?)").bind(name, cell, species, Date.now()).run(); },
+    // A locked parent never expires; the others are renewed once a year.
+    async parent(sk) {
+      const row = await env.DB.prepare("SELECT data, locked, grounded, created_at FROM species_parent WHERE species = ?").bind(sk).first();
+      if (!row || (!row.locked && Date.now() - row.created_at > PARENT_TTL * 1000)) return null;
+      const data = parse(row.data);
+      return data ? { data, locked: Boolean(row.locked), grounded: row.grounded } : null;
+    },
+    async child(sk) {
+      const row = await env.DB.prepare("SELECT data, created_at FROM species_child WHERE species = ? AND cell = ?").bind(sk, cell).first();
+      return row && Date.now() - row.created_at <= CACHE_TTL * 1000 ? parse(row.data) : null;
+    },
+    async putParent(sk, parent, { locked = false, provenance = {} } = {}) {
+      const now = Date.now();
+      const status = locked ? "bloqueada" : parent.grounded ? "con_referencia" : "generada";
+      await env.DB.prepare("INSERT OR REPLACE INTO species_parent (species, data, grounded, locked, status, provenance, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(sk, JSON.stringify(parent), parent.grounded ?? "", locked ? 1 : 0, status, JSON.stringify(provenance), now, now).run();
+    },
+    async putChild(sk, child) { await env.DB.prepare("INSERT OR REPLACE INTO species_child (species, cell, data, created_at) VALUES (?, ?, ?, ?)").bind(sk, cell, JSON.stringify(child), Date.now()).run(); },
+  };
+}
 async function handleCare(request, env, headers, ctx) {
   if (!authorized(request, env)) {
     return json({ error: "code" }, 401, headers);
@@ -408,40 +448,56 @@ async function handleCare(request, env, headers, ctx) {
   // universal and, per cell, a child with what depends on the climate (see PARENT_FIELDS). A name → species alias (per cell) saves asking again, so
   // «aspidistra», «Aspidistra elatior» and «aspidistra aspidistra elatior» get one and the same sheet. A species asked for in a new cell keeps its
   // parent and only gets a new child. Sheets saved the older ways (per typed name, or whole per species and cell) are split the first time they are asked for.
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  await ensureSpecies(env);
   const cell = `${Math.round(lat)}:${Math.round(lon)}`;
-  const nameKey = `care:v16:${normName(name)}:${cell}`; // old: one whole sheet per typed name
-  const aliasKey = `alias:v16:${normName(name)}:${cell}`; // typed name → species key
-  const wholeKey = (sk) => `species:v16:${sk}:${cell}`; // older: one whole sheet per species and cell
-  const parentKey = (sk) => `parent:v16:${sk}`;
-  const childKey = (sk) => `child:v16:${sk}:${cell}`;
-  const remember = (sk) => env.CACHE.put(aliasKey, sk, { expirationTtl: CACHE_TTL });
-  // Keeps a whole sheet as parent (unless the species already has one: that one stays) + child, and returns what to serve.
+  const db = sheetStore(env, cell);
+  const typed = normName(name);
+  // What older versions kept in KV (read once and moved to D1): whole sheets per typed name or per species and cell, parent/child pieces, aliases.
+  const nameKey = `care:v16:${typed}:${cell}`;
+  const aliasKey = `alias:v16:${typed}:${cell}`;
+  const wholeKey = (sk) => `species:v16:${sk}:${cell}`;
+  const kvParentKey = (sk) => `parent:v16:${sk}`;
+  const kvChildKey = (sk) => `child:v16:${sk}:${cell}`;
+  const remember = (sk) => db.setAlias(typed, sk);
+  // Keeps a whole sheet as parent (unless the species already has a better one) + child, and returns what to serve.
   const store = async (sk, sheet) => {
     const { parent, child } = splitSheet(sheet);
-    const found = await env.CACHE.get(parentKey(sk), "json");
-    // The species' parent stays, except that one written from the reference data replaces one that was not.
-    const known = found && (found.grounded || !parent.grounded) ? found : null;
-    await Promise.all([known ? null : env.CACHE.put(parentKey(sk), JSON.stringify(parent), { expirationTtl: PARENT_TTL }), env.CACHE.put(childKey(sk), JSON.stringify(child), { expirationTtl: CACHE_TTL })]);
-    return known ? mergeSheet(known, child) : sheet;
+    const found = await db.parent(sk);
+    // The species' parent stays, except that one written from the reference data replaces one that was not (never a locked one).
+    const keep = found && (found.locked || found.data.grounded || !parent.grounded);
+    if (!keep) await db.putParent(sk, parent, { provenance: parent.grounded ? referenceProvenance(sk) : {} });
+    await db.putChild(sk, child);
+    return keep ? mergeSheet(found.data, child) : sheet;
   };
-  const loadSheetAt = async (key) => {
-    const [parent, child] = await Promise.all([env.CACHE.get(parentKey(key), "json"), env.CACHE.get(childKey(key), "json")]);
-    if (parent && child) return mergeSheet(parent, child);
+  const loadSheetAt = async (key, into = key) => {
+    const [parent, child] = await Promise.all([db.parent(key), db.child(key)]);
+    if (parent && child) return mergeSheet(parent.data, child);
+    const [kvParent, kvChild] = await Promise.all([parent ? null : env.CACHE.get(kvParentKey(key), "json"), child ? null : env.CACHE.get(kvChildKey(key), "json")]);
+    const p = parent?.data ?? kvParent;
+    const c = child ?? kvChild;
+    if (p && c) {
+      if (!parent && into === key) await db.putParent(key, p, { provenance: p.grounded ? referenceProvenance(key) : {} });
+      if (!child && into === key) await db.putChild(key, c);
+      return mergeSheet(p, c);
+    }
     const whole = await env.CACHE.get(wholeKey(key), "json");
-    return whole ? store(key, whole) : null;
+    return whole ? store(into, whole) : null;
   };
   // The sheet of a species, under its accepted name; one saved under an old name («rosmarinus officinalis») moves to the accepted one when asked for.
   const loadSheet = async (key) => {
     const sk = canonicalKey(key);
     for (const at of [sk, ...synonymSources(sk)]) {
-      const sheet = await loadSheetAt(at);
+      const sheet = await loadSheetAt(at, sk);
       if (sheet) return at === sk ? sheet : store(sk, sheet);
     }
     return null;
   };
   const findCached = async () => {
-    const alias = await env.CACHE.get(aliasKey);
-    const sk0 = alias ?? seedAlias(name); // the typed name's alias, else a common name we know for sure
+    let alias = await db.alias(typed);
+    if (!alias) { alias = await env.CACHE.get(aliasKey); if (alias) await remember(alias); }
+    // The typed name's alias; else a common name we know for sure; else the name itself when it is a scientific name we already have a sheet for.
+    const sk0 = alias ?? (seedAlias(name) || speciesKey(name));
     if (sk0) {
       const sheet = await loadSheet(sk0);
       if (sheet) { if (!alias) await remember(canonicalKey(sk0)); return sheet; }
@@ -2398,6 +2454,7 @@ export default {
     if (madridNow().hour !== 8) return;
     if (env.DB) ctx.waitUntil(env.DB.batch([env.DB.prepare("DELETE FROM events WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM errors WHERE day < date('now', '-90 days')"), env.DB.prepare("DELETE FROM pv_seen WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_seen_day WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_page WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM pv_site WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM topics WHERE day < date('now', '-400 days')")]).catch(() => {}));
     if (env.DB) ctx.waitUntil(ensureCases(env).then(() => env.DB.prepare("DELETE FROM ai_cases WHERE day < date('now', CASE WHEN rating >= 0 THEN '-180 days' ELSE '-60 days' END)").run()).catch(() => {}));
+    if (env.DB) ctx.waitUntil(ensureSpecies(env).then(() => env.DB.batch([env.DB.prepare("DELETE FROM species_child WHERE created_at < ?").bind(Date.now() - CACHE_TTL * 1000), env.DB.prepare("DELETE FROM species_parent WHERE locked = 0 AND created_at < ?").bind(Date.now() - PARENT_TTL * 1000), env.DB.prepare("DELETE FROM species_alias WHERE ts < ?").bind(Date.now() - CACHE_TTL * 1000)])).catch(() => {}));
     ctx.waitUntil(sendRatingSummary(env).catch((err) => console.error("rating summary", err?.message)));
     console.log("daily push sent:", await sendDaily(env));
   },

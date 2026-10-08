@@ -31,3 +31,13 @@
 
 ## Derechos
 Los datos sueltos (una temperatura, una fecha) se pueden citar con su procedencia; los textos de las fuentes no se copian. Antes de publicar texto de una ficha en la web, reescribirlo con palabras propias.
+
+## Dónde viven las fichas y cómo se bloquean
+Las fichas de la IA se guardan en la base de datos D1 (`florvia-usage`), en tres tablas (definidas en `worker/schema.sql`):
+- `species_parent`: el **padre** de cada especie (lo universal), con su `status` (`generada`, `con_referencia` o `bloqueada`), `grounded` (versión de esta referencia con la que se generó), `locked` y `provenance` (fuentes y decisiones confirmadas).
+- `species_child`: la **hija** por especie y casilla de ubicación (~100 km): riego y abono por estación, consejos, meses.
+- `species_alias`: lo que escribe la gente (por casilla) → la especie.
+
+Un padre **bloqueado** no se sustituye ni caduca (los demás se renuevan al año; las hijas, a los 180 días). Para ver, bloquear o invalidar fichas: `node tools/ficha-admin.mjs listar | ver <especie> | bloquear <especie> | desbloquear <especie> | invalidar <especie>`.
+
+Qué significa «bloqueada» sin revisor: la ficha se generó con los datos de este documento, las decisiones confirmadas se cumplen, y Noza la ha aceptado. **No** es «revisada por un experto».
