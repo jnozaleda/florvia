@@ -100,3 +100,6 @@ El backlog vive en GitHub Issues, en el repositorio privado [jnozaleda/mygarden-
 - El Worker se llama aún `my-garden-api` (nombre interno; la app usa api.florvia.app y `workers_dev = true` mantiene la dirección antigua viva). Este repositorio es ahora su fuente de verdad: `cd worker && npx wrangler deploy`.
 - Las claves de almacenamiento del navegador siguen empezando por `mj_` (cambiarlas borraría datos de la gente).
 - Contacto: hello@florvia.app (Cloudflare Email Routing, reenvía al correo del autor).
+
+## Retomar el trabajo en otra sesión
+`node tools/contexto.mjs "lo que quieres hacer"` imprime un texto listo para pegar en un prompt: el contexto de `docs/CONTEXTO.md` más el estado real del repo (rama, versión, últimos cambios). Con `--copiar` lo copia al portapapeles. Si cambia algo importante del proyecto, actualiza `docs/CONTEXTO.md`.
