@@ -74,6 +74,10 @@ jobs:
         if: always()
         shell: bash
         run: node tools/check-referencia.mjs 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
+      - name: Comprobar que los sinónimos y nombres comunes están al día
+        if: always()
+        shell: bash
+        run: node tools/build-species-seed.mjs --check 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
       - name: Avisar por correo
         if: failure() && env.CI_ALERT_TOKEN != ''
         shell: bash

@@ -174,5 +174,56 @@ await test("fichas enteras de antes (por especie y zona) se parten solas al pedi
   assert.deepEqual(kvKeys().filter((k) => k.startsWith("parent:") || k.startsWith("child:")).sort(), ["child:v16:aspidistra elatior:40:-4", "parent:v16:aspidistra elatior"]);
 });
 
+await test("sinónimos científicos: «Rosmarinus officinalis» y «Salvia rosmarinus» son la misma especie", async () => {
+  setAI({ species: "Rosmarinus officinalis", commonName: "Romero", notes: "romero 1" });
+  await ask("romero planta");
+  setAI({ species: "Salvia rosmarinus", notes: "romero 2" });
+  assert.equal((await ask("rosmarinus planta")).body.notes, "romero 1");
+  assert.deepEqual(kvKeys().filter((k) => k.startsWith("parent:")), ["parent:v16:salvia rosmarinus"], "se guarda con el nombre aceptado");
+});
+await test("una ficha guardada con un nombre antiguo se mueve al nombre aceptado al pedirla, sin llamar a la IA", async () => {
+  const whole = { ...RAW, species: "Rosmarinus officinalis", commonName: "Romero", notes: "vieja" };
+  const { notes, species, commonName, ...rest } = whole;
+  kv.set("parent:v16:rosmarinus officinalis", JSON.stringify({ commonName, species, notes, confidence: "alta", sunNeed: "sun", provider: "gemini:antiguo" }));
+  kv.set("child:v16:rosmarinus officinalis:40:-4", JSON.stringify({ seasons: { spring: { water: 7, feed: 30 }, summer: { water: 4, feed: 30 }, autumn: { water: 9, feed: 0 }, winter: { water: 18, feed: 0 } }, provider: "gemini:antiguo" }));
+  setAI({ species: "Salvia rosmarinus", notes: "nueva" });
+  const n = calls();
+  const r = await ask("romero"); // «romero» es un nombre sembrado: apunta a «salvia rosmarinus»
+  assert.deepEqual([r.body.notes, r.body.seasons.spring.water], ["vieja", 7]);
+  assert.equal(calls(), n);
+  assert.ok(kvKeys().includes("parent:v16:salvia rosmarinus") && kvKeys().includes("child:v16:salvia rosmarinus:40:-4"), "ya está bajo el nombre aceptado");
+});
+await test("nombre común sembrado: «pelargonio» da la ficha del geranio sin consultar a la IA", async () => {
+  setAI({ species: "Pelargonium zonale", commonName: "Geranio", notes: "geranio" });
+  await ask("geranio");
+  assert.deepEqual(kvKeys().filter((k) => k.startsWith("parent:")), ["parent:v16:pelargonium hortorum"], "«zonale» se guarda como «hortorum»");
+  setAI({ species: "Pelargonium x hortorum", notes: "otra" });
+  const n = calls();
+  const r = await ask("pelargonio");
+  assert.equal(r.body.notes, "geranio"); assert.equal(calls(), n);
+  assert.ok(kvKeys().includes("alias:v16:pelargonio:40:-4"), "queda el alias para la próxima");
+});
+await test("un nombre ambiguo como «jazmín» NO se siembra: es otra planta que el jazmín estrellado", async () => {
+  setAI({ species: "Trachelospermum jasminoides", commonName: "Jazmín estrellado", notes: "estrellado" });
+  await ask("jazmin estrellado");
+  setAI({ species: "Jasminum officinale", commonName: "Jazmín común", notes: "común" });
+  const r = await ask("jazmin");
+  assert.equal(r.body.notes, "común");
+  assert.equal(kvKeys().filter((k) => k.startsWith("parent:")).length, 2);
+});
+await test("«Rosa spp.», «Rosa × hybrida» y «rosal» comparten ficha", async () => {
+  setAI({ species: "Rosa × hybrida", commonName: "Rosal", notes: "rosal" });
+  await ask("rosal");
+  setAI({ species: "Rosa spp.", notes: "otra rosa" });
+  assert.equal((await ask("rosa roja")).body.notes, "rosal");
+  assert.deepEqual(kvKeys().filter((k) => k.startsWith("parent:")), ["parent:v16:rosa"]);
+});
+await test("especies agrupadas en una misma ficha (Bougainvillea glabra y spectabilis) comparten ficha", async () => {
+  setAI({ species: "Bougainvillea glabra", commonName: "Buganvilla", notes: "buganvilla" });
+  await ask("buganvilla");
+  setAI({ species: "Bougainvillea spectabilis", notes: "otra buganvilla" });
+  assert.equal((await ask("bugambilia morada")).body.notes, "buganvilla");
+});
+
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
 console.log("\nTodas las pruebas de ficha por especie pasan");

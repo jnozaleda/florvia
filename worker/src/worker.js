@@ -2,6 +2,7 @@ import { dueTasks, weatherAlerts, weatherChecks, plantLabel, monthTasks, groupGa
 import { verifyGoogleToken } from "./google.js";
 import { EmailMessage } from "cloudflare:email";
 import { fetchWeather } from "../../app/weather.js";
+import { normName, speciesKey, canonicalKey, synonymSources, seedAlias } from "./species.js";
 // my-garden-api (Florvia's backend) — the app's small backend. For now one job: fill in a plant's care sheet from
 // its name ("✨ Rellenar con IA"). The AI provider is a setting (PROVIDER) so moving from the free
 // Cloudflare model to a paid one later only touches this file, never the app.
@@ -329,10 +330,6 @@ function cors(request, env) {
 }
 
 const json = (body, status, headers) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
-const normName = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
-// Genus + epithet, lowercase, without hybrid signs, authors, varieties or cultivars: «Citrus × limon», «Citrus limon (L.) Osbeck» and «Citrus limon»
-// are the same plant here. A name with a single word (a genus) stays as it is. Empty when there is no usable species.
-const speciesKey = (species) => normName(String(species ?? "")).split(" ").filter((w) => w && w !== "x").slice(0, 2).join(" ");
 
 // App versions from before the seasonal sheet send `month` and read one waterEvery/feedEvery.
 function withLegacy(care, month, lat) {
@@ -414,15 +411,28 @@ async function handleCare(request, env, headers, ctx) {
     await Promise.all([known ? null : env.CACHE.put(parentKey(sk), JSON.stringify(parent), { expirationTtl: PARENT_TTL }), env.CACHE.put(childKey(sk), JSON.stringify(child), { expirationTtl: CACHE_TTL })]);
     return known ? mergeSheet(known, child) : sheet;
   };
-  const loadSheet = async (sk) => {
-    const [parent, child] = await Promise.all([env.CACHE.get(parentKey(sk), "json"), env.CACHE.get(childKey(sk), "json")]);
+  const loadSheetAt = async (key) => {
+    const [parent, child] = await Promise.all([env.CACHE.get(parentKey(key), "json"), env.CACHE.get(childKey(key), "json")]);
     if (parent && child) return mergeSheet(parent, child);
-    const whole = await env.CACHE.get(wholeKey(sk), "json");
-    return whole ? store(sk, whole) : null;
+    const whole = await env.CACHE.get(wholeKey(key), "json");
+    return whole ? store(key, whole) : null;
+  };
+  // The sheet of a species, under its accepted name; one saved under an old name («rosmarinus officinalis») moves to the accepted one when asked for.
+  const loadSheet = async (key) => {
+    const sk = canonicalKey(key);
+    for (const at of [sk, ...synonymSources(sk)]) {
+      const sheet = await loadSheetAt(at);
+      if (sheet) return at === sk ? sheet : store(sk, sheet);
+    }
+    return null;
   };
   const findCached = async () => {
     const alias = await env.CACHE.get(aliasKey);
-    if (alias) { const sheet = await loadSheet(alias); if (sheet) return sheet; }
+    const sk0 = alias ?? seedAlias(name); // the typed name's alias, else a common name we know for sure
+    if (sk0) {
+      const sheet = await loadSheet(sk0);
+      if (sheet) { if (!alias) await remember(canonicalKey(sk0)); return sheet; }
+    }
     const old = await env.CACHE.get(nameKey, "json");
     if (!old) return null;
     const sk = speciesKey(old.species);
