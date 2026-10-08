@@ -34,7 +34,7 @@ visit("eeeeeeeeeeee", 20); sqlite.prepare("INSERT INTO internal (id, ts) VALUES 
 visit("ffffffffffff", 20, "dev");
 
 const res = await worker.fetch(new Request("https://api.florvia.app/stats2?days=30", { headers: { "X-Access-Code": "test-code", Origin: "https://florvia.app" } }), env, ctx);
-const { retention: r } = await res.json();
+const { retention: r, hours } = await res.json();
 
 let failed = 0;
 function test(name, fn) { try { fn(); console.log("ok   ", name); } catch (e) { failed++; console.log("FALLA", name, "\n     ", e.message); } }
@@ -45,6 +45,8 @@ test("semana: A y B han cumplido 7 días (C no); vuelve solo A", () => assert.de
 test("mes (días 8–30): ninguna cohorte ha cumplido 30 días", () => assert.deepEqual(r.overall.m1, { n: 0, back: 0 }));
 test("las cohortes se agrupan por semana y suman el total", () => assert.equal(r.cohorts.reduce((a, c) => a + c.people, 0), 4));
 test("la persona de hoy no entra en ninguna ventana", () => assert.ok(r.cohorts.every((c) => c.d1.n <= c.people)));
+test("aperturas por hora: cuentan las de las últimas 24 h de personas reales sin jardín (A–D: 7 aperturas)", () => assert.equal(hours.reduce((a, h) => a + h.opens, 0), 7));
+test("aperturas por hora: una persona sin jardín no se pierde por el filtro interno", () => assert.equal(hours.reduce((a, h) => Math.max(a, h.people), 0), 4));
 
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
 console.log("\nTodas las pruebas de retención pasan");

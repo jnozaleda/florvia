@@ -1078,7 +1078,7 @@ async function handleStats2(request, env, headers) {
       COUNT(DISTINCT CASE WHEN e.garden <> '' THEN e.garden WHEN dg.garden IS NOT NULL THEN dg.garden WHEN e.device <> '' THEN e.device ELSE 'anon' END) AS people
     FROM events e LEFT JOIN dg ON dg.device = e.device
     WHERE e.ts >= ? AND e.kind = 'event' AND e.name = 'app_open' AND e.src IN ('prod', 'old') AND e.day >= ?
-      AND NOT (e.garden IN (SELECT id FROM internal) OR e.device IN (SELECT id FROM internal) OR dg.garden IN (SELECT id FROM internal))
+      AND NOT (e.garden IN (SELECT id FROM internal) OR e.device IN (SELECT id FROM internal) OR COALESCE(dg.garden, '-') IN (SELECT id FROM internal))
     GROUP BY hr`).bind(hourStart, cleanStart).all().catch(() => ({ results: [] }))).results ?? [];
   const byHour = Object.fromEntries(hourRows.map((r) => [r.hr, r]));
   const hours = [...Array(24).keys()].map((i) => { const t = hourStart + i * 3600000; const r = byHour[t / 3600000]; return { t, opens: r?.opens ?? 0, people: r?.people ?? 0 }; });
