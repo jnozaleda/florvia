@@ -1,0 +1,2243 @@
+{
+ "version": "0.3",
+ "idioma": "es-ES",
+ "fecha": "2026-10-08",
+ "ambito": "España. Las fuentes principales (RHS) hablan del clima británico: ajustar fechas y temperaturas a la zona (interior, costa, norte).",
+ "notas": [
+  "Contenido orientativo; revisar con un experto antes de publicar.",
+  "Las frecuencias de riego en días, cuando aparecen, son orientativas y no vienen de las fuentes: dependen de clima, maceta y sustrato.",
+  "Cada planta lleva 'fuentes' con enlaces y 'verificacion' con lo contrastado y lo pendiente.",
+  "La toxicidad para mascotas se contrastó con fichas de la ASPCA leídas directamente (lavanda, albahaca, hierbabuena, hortensia, orquídea, jazmín estrellado) y con listas de la ASPCA reproducidas por terceros (el resto). No pude leer las fichas de rosal y romero (límite de consultas del servidor).",
+  "La ausencia de una planta en la ASPCA no significa que sea segura (olivo y buganvilla no tienen ficha).",
+  "Emergencias por ingestión: Servicio de Información Toxicológica, 91 562 04 20 (24 h).",
+  "Las descripciones generales de comportamiento, floración y cómo reconocer cada planta son conocimiento general salvo donde se cita la RHS; las fichas de cada planta indican qué está verificado y qué queda pendiente.",
+  "Estado: borrador contrastado con fuentes, NO revisado por un experto. Las decisiones marcadas como «propuesta» las toma Claude con la regla de content/referencia/README.md y pueden cambiarse cuando haya más fuentes."
+ ],
+ "plantas": [
+  {
+   "id": "geranio",
+   "nombre_comun": "Geranio",
+   "otros_nombres": [
+    "Pelargonio",
+    "Geranio de balcón"
+   ],
+   "nombre_cientifico": "Pelargonium x hortorum / Pelargonium peltatum",
+   "familia": "Geraniaceae",
+   "tipo": "Perenne de flor (se cultiva como planta de temporada en zonas frías)",
+   "ubicacion": "exterior",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas redondeadas y algo aterciopeladas, con borde ondulado y a veces una mancha más oscura en el centro",
+    "Flores en ramillete redondo (rojo, rosa, blanco, salmón)",
+    "Tallos algo carnosos que se vuelven leñosos con el tiempo",
+    "Olor fuerte al rozar las hojas",
+    "La variedad colgante (peltatum) tiene hojas más lisas, tipo hiedra"
+   ],
+   "comportamiento": "Florece desde primavera hasta bien entrado el otoño si se le quitan las flores secas. Tolera bien la sequía pero no las heladas (RHS). En invierno frena casi del todo si se mantiene fresco.",
+   "luz": "La mayoría florece mejor a pleno sol; los de tipo regal prefieren semisombra y los zonales toleran algo de sombra. En interior, dar luz pero proteger del sol fuerte de mediodía (RHS).",
+   "temperatura": {
+    "ideal": "Templada; muchos siguen floreciendo con 7-10 °C (RHS)",
+    "resistencia_frio": "No tolera heladas (RHS). Plantar fuera solo cuando haya pasado el riesgo de helada y resguardarlo antes de las primeras heladas."
+   },
+   "sustrato_y_maceta": "Sustrato universal de calidad con algo de perlita o arena. Maceta con agujeros de drenaje. Trasplantar en primavera si las raíces llenan la maceta.",
+   "estaciones": {
+    "primavera": {
+     "riego": "2-3 veces por semana. Regar cuando los 2-3 cm superiores del sustrato estén secos.",
+     "abono": "Abono líquido equilibrado cada 10-14 días. Cuando se formen las flores, cambiar a uno rico en potasio (tipo abono de tomate).",
+     "tareas": "Pinzar las puntas de los tallos en primavera o a inicios de verano para que ramifique. Quitar flores marchitas con frecuencia."
+    },
+    "verano": {
+     "riego": "Cada 1-2 días en maceta si hace mucho calor. Mojar el sustrato, no las hojas ni las flores.",
+     "abono": "Abono rico en potasio (tipo abono de tomate) cada 2 semanas.",
+     "tareas": "Revisar los tallos cada semana por si hay oruga (ver problemas). Quitar flores secas. Dar sombra en olas de calor."
+    },
+    "otono": {
+     "riego": "1-2 veces por semana, bajando según refresca.",
+     "abono": "Una vez al mes en otoño e invierno; nada si la planta está en reposo (RHS).",
+     "tareas": "Antes de las primeras heladas, resguardar la maceta en un sitio luminoso y sin heladas. Se puede podar fuerte en otoño."
+    },
+    "invierno": {
+     "riego": "Muy poco: dejar que el sustrato se seque entre riegos (RHS).",
+     "abono": "Como máximo una vez al mes; nada si está en reposo.",
+     "tareas": "Mantener en un sitio luminoso y protegido de heladas. Retirar hojas amarillas."
+    }
+   },
+   "poda": "Quitar flores marchitas con regularidad. Pinzar las puntas en primavera o a inicios de verano para que ramifique. Poda fuerte en otoño, o en primavera si la planta sigue creciendo todo el año (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Oruga del geranio (Cacyreus marshalli)",
+     "causa": "La larva entra por los botones florales y después perfora el tallo. Daña flores y pedúnculos y se nota más en la época cálida (EPPO).",
+     "que_hacer": "Revisar cada semana en verano; cortar y desechar los botones y tallos con agujeros. Los insecticidas solo actúan sobre el huevo; la ficha EPPO consideraba imposible erradicarla."
+    },
+    {
+     "problema": "Manchas en hojas o moho gris",
+     "causa": "Roya y botritis, favorecidas por poca circulación de aire y humedad (RHS).",
+     "que_hacer": "Mejorar la ventilación, no mojar hojas ni flores y retirar las partes afectadas."
+    },
+    {
+     "problema": "Planta que se marchita sin causa aparente en maceta",
+     "causa": "Las larvas del gorgojo de la vid comen las raíces de las plantas en maceta (RHS).",
+     "que_hacer": "Sacar el cepellón y revisar las raíces."
+    },
+    {
+     "problema": "Pocas flores",
+     "causa": "Poca luz (florece mejor a pleno sol) o abono sin potasio (RHS).",
+     "que_hacer": "Más sol y abono rico en potasio cuando aparezcan los botones."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Aparece como tóxico para gatos en la lista de la ASPCA (reproducida por terceros). No he podido confirmar el dato para perros directamente.",
+    "personas": "No comestible."
+   },
+   "errores_comunes": [
+    "Regar por encima de flores y hojas",
+    "Dejar el plato lleno de agua",
+    "No quitar las flores secas",
+    "Sacarlo fuera con riesgo de helada"
+   ],
+   "consejo_clave": "Riego moderado, flores secas fuera, abono de potasio cuando salgan los botones y revisión semanal de tallos en verano por si hay oruga.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow pelargoniums",
+     "url": "https://www.rhs.org.uk/plants/pelargonium/growing-guide",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "EPPO (1992): ficha sobre Cacyreus marshalli",
+     "url": "https://gd.eppo.int/reporting/article-5275",
+     "tipo": "Organización europea de protección de plantas"
+    },
+    {
+     "titulo": "Lista ASPCA de plantas tóxicas para gatos (reproducida por Mahoney's Garden)",
+     "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-Lists-Cats.pdf",
+     "tipo": "Reproducción de ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, riego, abono, poda, frío y plagas generales (RHS)",
+     "Biología y daño de la oruga del geranio (EPPO)",
+     "Toxicidad para gatos (lista ASPCA reproducida)"
+    ],
+    "pendiente": [
+     "Toxicidad para perros: confirmar en la ficha de la ASPCA",
+     "Calendario de poda ajustado a España (la RHS habla del Reino Unido)"
+    ]
+   }
+  },
+  {
+   "id": "lavanda",
+   "nombre_comun": "Lavanda",
+   "otros_nombres": [
+    "Espliego",
+    "Cantueso (Lavandula stoechas)"
+   ],
+   "nombre_cientifico": "Lavandula angustifolia / L. x intermedia / L. stoechas",
+   "familia": "Lamiaceae",
+   "tipo": "Arbusto aromático perenne",
+   "ubicacion": "exterior",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas estrechas, alargadas, gris-verdosas y algo peludas",
+    "Espigas de flores moradas o lilas en la punta de tallos largos y finos",
+    "En la variedad stoechas (cantueso) las flores tienen 'orejitas' o brácteas arriba",
+    "Aroma intenso y característico",
+    "Base del tallo leñosa"
+   ],
+   "comportamiento": "Planta mediterránea que ama el sol, el calor seco y los suelos pobres. Florece de finales de primavera a verano. Con el tiempo se vuelve leñosa y se abre por el centro si no se poda. Odia el encharcamiento y el exceso de abono.",
+   "luz": "Pleno sol (RHS): en sombra o humedad sufre.",
+   "temperatura": {
+    "ideal": "Cálida y seca",
+    "resistencia_frio": "La lavanda inglesa (angustifolia) y sus híbridos (intermedia) son las más resistentes y pueden quedarse fuera en suelo con buen drenaje. Las francesas, como la stoechas (cantueso), resisten menos el frío (RHS). La RHS no da cifras."
+   },
+   "sustrato_y_maceta": "Suelo con buen drenaje; en suelo pesado, plantar sobre un montículo de 20-30 cm. En maceta de 30-40 cm con orificios grandes y sustrato universal con hasta un 25% de grava gruesa (RHS). No plantar en invierno: las plantas jóvenes se pudren en suelo frío y mojado.",
+   "estaciones": {
+    "primavera": {
+     "riego": "En maceta, 1-2 veces por semana si hace calor; en suelo establecido, casi nunca.",
+     "abono": "Ninguno: prefiere suelos pobres (RHS).",
+     "tareas": "Se puede recortar el follaje si está desordenado o dañado por una helada."
+    },
+    "verano": {
+     "riego": "En maceta, 1-2 veces por semana con calor; en suelo establecido, casi nada salvo sequía severa (RHS).",
+     "abono": "Ninguno.",
+     "tareas": "Quitar flores secas. Poda anual justo después de florecer, a finales de verano (ver poda)."
+    },
+    "otono": {
+     "riego": "Muy poco; solo si no llueve.",
+     "abono": "Ninguno.",
+     "tareas": "No cortar en tallos leñosos: no rebrotan con facilidad."
+    },
+    "invierno": {
+     "riego": "Mantenerla bastante seca (RHS): en maceta, riego mínimo.",
+     "abono": "Ninguno.",
+     "tareas": "En maceta, protegerla de lluvia continua y de frío intenso."
+    }
+   },
+   "poda": "Cada año, justo después de florecer (finales de verano): cortar los tallos de flor y unos 2,5 cm de hoja. No cortar en madera leñosa, porque no rebrota con facilidad. Las plantas viejas se vuelven leñosas aunque se poden: lo mejor es reponerlas con esquejes (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Planta que se marchita o amarillea desde la base",
+     "causa": "Pudrición de raíz por suelo pesado o encharcado (RHS).",
+     "que_hacer": "Plantar en montículo o en maceta con mezcla drenante y reducir el riego."
+    },
+    {
+     "problema": "Planta leñosa, abierta y con poca flor",
+     "causa": "Planta vieja o sin poda anual (RHS).",
+     "que_hacer": "Podar cada año tras florecer y renovar con esquejes cuando esté muy leñosa."
+    },
+    {
+     "problema": "Escarabajo del romero, cigarritas o espuma blanca en tallos",
+     "causa": "Insectos que causan sobre todo daño estético (RHS).",
+     "que_hacer": "Normalmente no hace falta tratar; la espuma (salivazo) se quita con agua."
+    },
+    {
+     "problema": "Marchitez o secado de ramas sin causa clara",
+     "causa": "La lavanda es hospedador de alto riesgo de Xylella fastidiosa (RHS).",
+     "que_hacer": "Comprar en viveros de confianza (la RHS recomienda cautela con plantas importadas). Si sospechas, avisar a la Oficina Comarcal Agraria; en Madrid: 91 438 22 17 o 91 438 30 55 (Comunidad de Madrid)."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Tóxica para perros, gatos y caballos según la ASPCA (linalol y acetato de linalilo): náuseas, vómitos e inapetencia.",
+    "personas": "Se usa en infusión y cosmética, pero el aceite esencial concentrado no se debe ingerir."
+   },
+   "errores_comunes": [
+    "Regarla como una planta de interior",
+    "Abonarla",
+    "Podar en madera vieja",
+    "Plantarla en suelo pesado sin montículo ni mezcla drenante"
+   ],
+   "consejo_clave": "Sol, poco riego, suelo pobre y poda justo tras florecer sin tocar la madera vieja.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow lavender",
+     "url": "https://www.rhs.org.uk/advice/profile?pid=127",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "ASPCA: Lavender",
+     "url": "https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/lavender",
+     "tipo": "ASPCA"
+    },
+    {
+     "titulo": "Comunidad de Madrid: Xylella fastidiosa, plan de actuación",
+     "url": "https://www.comunidad.madrid/node/75274",
+     "tipo": "Administración pública (España)"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, sustrato, riego, abono, poda, plagas y frío (cualitativo) según la RHS",
+     "Toxicidad en ASPCA (ficha leída directamente)",
+     "Riesgo de Xylella (RHS) y contacto en Madrid"
+    ],
+    "pendiente": [
+     "Resistencia al frío en °C: la RHS no da cifras",
+     "Seguridad del aceite esencial para personas (conocimiento general, sin fuente)"
+    ]
+   }
+  },
+  {
+   "id": "olivo",
+   "nombre_comun": "Olivo",
+   "otros_nombres": [
+    "Olivo ornamental",
+    "Olivera"
+   ],
+   "nombre_cientifico": "Olea europaea",
+   "familia": "Oleaceae",
+   "tipo": "Árbol perenne",
+   "ubicacion": "exterior",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas alargadas, lanceoladas, de color verde grisáceo por el haz y plateadas por el envés",
+    "Tronco que se retuerce y engrosa con los años",
+    "Flores diminutas blanco-crema en racimos en primavera",
+    "Frutos: aceitunas verdes que maduran a negro-violáceo en otoño"
+   ],
+   "comportamiento": "Árbol muy longevo y de crecimiento lento. Adaptado a veranos secos y calurosos. Florece en mayo-junio y fructifica en otoño. En maceta crece menos, pero se mantiene bien durante años. El mayor riesgo es el encharcamiento y las heladas fuertes en macetas pequeñas.",
+   "luz": "Sitio soleado y resguardado del viento frío (RHS).",
+   "temperatura": {
+    "ideal": "Cálida y soleada, en sitio resguardado del viento frío",
+    "resistencia_frio": "Muchos olivos toleran entre -5 y -10 °C. En maceta sufren más: con heladas de -5 °C o más fuertes, envolver la copa con dos capas de tela o resguardar la maceta (RHS)."
+   },
+   "sustrato_y_maceta": "Maceta de al menos 30-35 cm de ancho y profundidad, con muchos orificios y elevada sobre patas para que no se empape. Sustrato de base tierra con un 20% aproximado de grava gruesa. Cada primavera, cambiar los 5 cm superiores por sustrato nuevo (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "En maceta, riego regular desde abril hasta finales de septiembre; en suelo, no necesita una vez establecido.",
+     "abono": "En suelo, normalmente ninguno. En maceta, renovar los 5 cm superiores de sustrato (RHS).",
+     "tareas": "Plantar en primavera. Poda a finales de primavera o a inicios de verano (ver poda)."
+    },
+    "verano": {
+     "riego": "En maceta, riego regular, más frecuente con calor. En suelo, solo en periodos largos de calor y sequía.",
+     "abono": "Ninguno.",
+     "tareas": "En macetas, pinzar las puntas al llegar a unos 1,5 m para que ramifique. No podar después de agosto."
+    },
+    "otono": {
+     "riego": "Ir reduciendo; en suelo, solo si hay sequía larga.",
+     "abono": "Ninguno.",
+     "tareas": "Revisar cochinillas y manchas en hojas. Preparar protección contra heladas en macetas."
+    },
+    "invierno": {
+     "riego": "En maceta, mantener el sustrato apenas húmedo (RHS).",
+     "abono": "Ninguno.",
+     "tareas": "Proteger la maceta y la copa si se esperan heladas fuertes. No dejar la maceta empapada."
+    }
+   },
+   "poda": "A finales de primavera o a inicios de verano: quitar ramas muertas, enfermas o dañadas cortando sobre una rama lateral, y aclarar el centro para que entre luz. No podar más fuerte de lo necesario, porque saca brotes verticales muy vigorosos. No podar después de agosto (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Cochinillas en ramas y hojas",
+     "causa": "Insectos chupadores (RHS).",
+     "que_hacer": "Revisar con regularidad y retirar a mano las pequeñas infestaciones."
+    },
+    {
+     "problema": "Manchas en las hojas",
+     "causa": "Repilo; la RHS lo llama «olive scab».",
+     "que_hacer": "Retirar las hojas caídas y mejorar la ventilación."
+    },
+    {
+     "problema": "Marchitez y secado de ramas sin causa clara",
+     "causa": "El olivo es hospedador de alto riesgo de Xylella fastidiosa (RHS). En la Comunidad de Madrid hubo un caso en un olivo en Villarejo de Salvanés, con plan de actuación en 2018.",
+     "que_hacer": "Si sospechas, avisar a la Oficina Comarcal Agraria; en Madrid: 91 438 22 17 o 91 438 30 55."
+    },
+    {
+     "problema": "Hojas marrones o caída de hojas inferiores en maceta",
+     "causa": "Sequedad en el sustrato, sobre todo en el lado soleado. La pérdida de hojas en primavera también puede ser natural (RHS).",
+     "que_hacer": "Regar de forma regular entre abril y septiembre."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Sin dato fiable: la ASPCA no tiene ficha de Olea europaea (solo de otras plantas llamadas «olive»). Evitar que la mastiquen.",
+    "personas": "El polen puede dar alergia en primavera a personas sensibles."
+   },
+   "errores_comunes": [
+    "Regar en exceso en invierno",
+    "Dejar agua estancada en el plato",
+    "Podar de forma drástica",
+    "Maceta pequeña o sin patas para drenar"
+   ],
+   "consejo_clave": "Es un árbol de secano: riego regular en maceta durante la temporada de crecimiento, casi seco en invierno, y drenaje excelente.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow olives",
+     "url": "https://www.rhs.org.uk/plants/olives/how-to-grow-olives",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "Comunidad de Madrid: Xylella fastidiosa, plan de actuación",
+     "url": "https://www.comunidad.madrid/node/75274",
+     "tipo": "Administración pública (España)"
+    },
+    {
+     "titulo": "Verdecora: Cuidados del olivo, el símbolo del Mediterráneo",
+     "url": "https://verdecora.es/blog/cuidados-del-olivo",
+     "tipo": "Blog de vivero/tienda (B)"
+    },
+    {
+     "titulo": "Interflora: Cuidados del olivo en maceta",
+     "url": "https://www.interflora.es/blog/cuidados-del-olivo-en-maceta/",
+     "tipo": "Blog de floristería (B)"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Sustrato, maceta, riego, abono, poda, frío y plagas generales (RHS)",
+     "Riesgo de Xylella y caso en Madrid",
+     "Contraste con Verdecora e Interflora: frío, abono, poda, riego, maceta, luz, sustrato (ver «contraste»)"
+    ],
+    "pendiente": [
+     "Toxicidad para mascotas: la ASPCA no tiene ficha de Olea europaea",
+     "Alergia al polen (conocimiento general)",
+     "Mosca del olivo (no verificada; no incluida)",
+     "Equivalencia exacta entre repilo y «olive scab»",
+     "Calendario de poda: la RHS (clima británico) y las fuentes españolas difieren; se usa el español"
+    ]
+   },
+   "contraste": [
+    {
+     "dato": "Frío mínimo",
+     "fuentes": {
+      "RHS": "-5 a -10 °C; en maceta sufren más, proteger con -5 °C o menos",
+      "Verdecora": "hasta -7 °C",
+      "Interflora": "proteger de heladas (sin cifra)"
+     },
+     "decision": "-7 °C en suelo; proteger la maceta a partir de -5 °C",
+     "estado": "propuesta"
+    },
+    {
+     "dato": "Abono",
+     "fuentes": {
+      "RHS": "ninguno en suelo; en maceta, renovar los 5 cm superiores del sustrato cada primavera",
+      "Verdecora": "una vez al año, abono orgánico (final del invierno en frío; otoño en clima cálido)",
+      "Interflora": "en maceta, cada 4-6 semanas en primavera-verano; nada en otoño-invierno"
+     },
+     "decision": "Mínimo: nada en suelo; en maceta, renovar sustrato superior cada primavera y, como mucho, un abono orgánico al año. No mensual (RHS y Verdecora coinciden; solo Interflora lo recomienda)",
+     "estado": "propuesta"
+    },
+    {
+     "dato": "Poda (fecha)",
+     "fuentes": {
+      "RHS": "finales de primavera o inicios de verano; no después de agosto (clima británico)",
+      "Verdecora": "entre finales de febrero y marzo",
+      "Interflora": "poda ligera anual a finales del invierno"
+     },
+     "decision": "Finales de invierno (febrero-marzo) por ser las fuentes españolas; evitar podar tras agosto (RHS)",
+     "estado": "propuesta"
+    },
+    {
+     "dato": "Riego en maceta",
+     "fuentes": {
+      "RHS": "regular de abril a septiembre; en invierno, sustrato apenas húmedo (sin cifras)",
+      "Verdecora": "adulto en suelo casi sin riego; joven, regular dejando secar entre riegos (sin cifras)",
+      "Interflora": "1-2 veces por semana en primavera-verano; invierno al mínimo, solo con el sustrato seco del todo"
+     },
+     "decision": "Orientativo, solo para maceta: 1-2 veces por semana en primavera-verano dejando secar la capa superior; invierno al mínimo. Una sola fuente da cifras",
+     "estado": "propuesta"
+    },
+    {
+     "dato": "Maceta",
+     "fuentes": {
+      "RHS": "mínimo 30-35 cm de ancho y profundidad, elevada sobre patas",
+      "Interflora": "al menos 40-50 cm de profundidad, con agujeros en la base"
+     },
+     "decision": "Profundidad y ancho de 30-50 cm como mínimo; buen drenaje",
+     "estado": "propuesta"
+    },
+    {
+     "dato": "Luz",
+     "fuentes": {
+      "RHS": "sitio soleado y resguardado del viento frío",
+      "Interflora": "pleno sol, al menos 6 h de luz directa"
+     },
+     "decision": "Pleno sol (6 h o más), resguardado del viento frío",
+     "estado": "propuesta"
+    },
+    {
+     "dato": "Trasplante",
+     "fuentes": {
+      "Interflora": "cada 2-3 años a una maceta algo mayor o renovar parcialmente el sustrato"
+     },
+     "decision": "Cada 2-3 años (una sola fuente)",
+     "estado": "propuesta"
+    },
+    {
+     "dato": "Sustrato",
+     "fuentes": {
+      "RHS": "base de tierra con ~20 % de grava gruesa",
+      "Interflora": "aireado y suelto; tierra universal con arena de río o perlita; ligeramente alcalino"
+     },
+     "decision": "Aireado y con buen drenaje (arena, perlita o grava); ligeramente alcalino",
+     "estado": "propuesta"
+    },
+    {
+     "dato": "Ubicación en el jardín",
+     "fuentes": {
+      "Verdecora": "no plantarlo en medio de un césped (exceso de humedad: hongos y raíces podridas)"
+     },
+     "decision": "Evitar el césped; mejor junto a plantas de clima mediterráneo (una sola fuente)",
+     "estado": "propuesta"
+    },
+    {
+     "dato": "Toxicidad",
+     "fuentes": {
+      "ASPCA": "sin ficha de Olea europaea"
+     },
+     "decision": "Sin dato fiable; evitar que la mastiquen",
+     "estado": "sin_fuente"
+    }
+   ]
+  },
+  {
+   "id": "limonero",
+   "nombre_comun": "Limonero",
+   "otros_nombres": [
+    "Limonero en maceta"
+   ],
+   "nombre_cientifico": "Citrus x limon",
+   "familia": "Rutaceae",
+   "tipo": "Árbol frutal perenne",
+   "ubicacion": "exterior",
+   "dificultad": "media",
+   "como_reconocerla": [
+    "Hojas ovaladas, verde oscuro y brillantes, con olor cítrico al estrujarlas",
+    "Ramas con algunas espinas",
+    "Flores blancas con tinte morado (azahar) muy perfumadas",
+    "Frutos amarillos ovalados con pezón en la punta",
+    "Convive fruta verde, amarilla y flor en la misma época"
+   ],
+   "comportamiento": "Perenne y siempre verde. Florece y fructifica varias veces al año, sobre todo en primavera y otoño. Es exigente con la luz, el abono y el drenaje, y sensible a las heladas. En maceta produce menos que en suelo pero es perfectamente viable.",
+   "luz": "Sitio soleado y resguardado en verano; en invierno necesita también mucha luz (RHS).",
+   "temperatura": {
+    "ideal": "Cálida y soleada",
+    "resistencia_frio": "No es resistente al frío. La RHS indica que tolera hasta unos 5 °C y recomienda resguardarlo en cuanto bajen las noches en otoño. Infoagro señala como más adecuado el clima mediterráneo libre de heladas."
+   },
+   "sustrato_y_maceta": "Sustrato para cítricos, o de base tierra (tipo John Innes nº 2 o 3) con un 20% de arena gruesa o grava. Cambiar de maceta en primavera solo cuando asomen raíces por los orificios, a una algo mayor. Entre trasplantes, renovar la capa superior de sustrato (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Regular: sustrato apenas húmedo, nunca encharcado. Mejor con agua de lluvia.",
+     "abono": "Desde finales de marzo hasta octubre, abono de cítricos de verano (rico en nitrógeno) (RHS).",
+     "tareas": "Sacarlo a un sitio soleado y resguardado cuando pase el riesgo de frío."
+    },
+    "verano": {
+     "riego": "Revisar a diario con calor y mantener el sustrato apenas húmedo (RHS).",
+     "abono": "Abono de cítricos de verano.",
+     "tareas": "Podar los brotes nuevos muy vigorosos y quitar los que salgan por debajo de la copa. Revisar pulgones, ácaros y cochinillas."
+    },
+    "otono": {
+     "riego": "Reducir; dejar que la superficie se seque un poco antes de volver a regar.",
+     "abono": "Abono de cítricos de verano hasta octubre; en noviembre pasar al de invierno.",
+     "tareas": "Resguardarlo en cuanto bajen las temperaturas nocturnas."
+    },
+    "invierno": {
+     "riego": "Dejar que la superficie se seque parcialmente y regar a fondo con agua templada; mejor pecar de seco. Nunca con el plato lleno (RHS).",
+     "abono": "De noviembre a mediados de marzo, abono de cítricos de invierno (más equilibrado) (RHS).",
+     "tareas": "En febrero, aclarar ramas apretadas y quitar brotes sueltos (ver poda)."
+    }
+   },
+   "poda": "En febrero: aclarar ramas amontonadas y quitar brotes sueltos; los tallos largos y desnudos se pueden recortar hasta dos tercios. No sobrepodar: florece en las puntas de los brotes nuevos. Usar guantes gruesos, porque tiene espinas (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Hojas amarillas o que se caen",
+     "causa": "Exceso de riego o falta de nutrientes (RHS).",
+     "que_hacer": "Dejar secar la superficie, comprobar el drenaje y usar abono de cítricos."
+    },
+    {
+     "problema": "Hojas amarillas con nervios verdes",
+     "causa": "Clorosis férrica: la planta no absorbe bien el hierro, típico de suelos o aguas calizas (MAPA).",
+     "que_hacer": "Aplicar un quelato de hierro y usar agua de lluvia si es posible. La fuente consultada no da dosis."
+    },
+    {
+     "problema": "Caída de hojas, flores o frutos pequeños",
+     "causa": "Temperaturas frescas o cambiantes, aire seco o corrientes frías (RHS).",
+     "que_hacer": "Evitar cambios bruscos y mantener riego y abono regulares."
+    },
+    {
+     "problema": "Insectos chupadores",
+     "causa": "Pulgón, araña roja, cochinilla algodonosa, cochinillas y orugas de tortrix (RHS).",
+     "que_hacer": "Revisar con frecuencia, sobre todo en los brotes nuevos y si está en interior."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Los cítricos aparecen como tóxicos para perros y gatos en las listas de la ASPCA (reproducidas por terceros).",
+    "personas": "Fruto comestible. Tiene espinas."
+   },
+   "errores_comunes": [
+    "Dejar que se seque del todo y regar de golpe",
+    "Encharcar la maceta",
+    "Usar el mismo abono todo el año (la RHS distingue abono de verano y de invierno)",
+    "Ponerlo en sombra"
+   ],
+   "consejo_clave": "Mucha luz, riego regular sin encharcar, abono de cítricos (de verano y de invierno) y resguardo del frío. Hojas amarillas con nervios verdes suelen indicar falta de hierro.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow citrus",
+     "url": "https://www.rhs.org.uk/fruit/citrus/grow-your-own",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "Infoagro: El cultivo de los limones",
+     "url": "https://infoagro.com/citricos/limon.htm",
+     "tipo": "Fuente agronómica española"
+    },
+    {
+     "titulo": "MAPA: artículo sobre clorosis férrica (Ferti 2006)",
+     "url": "https://www.mapa.gob.es/ministerio/pags/Biblioteca/Revistas/pdf_Ferti/Ferti_2006_25_60_61.pdf",
+     "tipo": "Ministerio de Agricultura (España)"
+    },
+    {
+     "titulo": "Lista ASPCA de plantas tóxicas para gatos (reproducida por Mahoney's Garden)",
+     "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-Lists-Cats.pdf",
+     "tipo": "Reproducción de ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, sustrato, riego, abono de verano e invierno, poda y plagas (RHS)",
+     "Clorosis férrica y quelatos de hierro (MAPA, en general, no específico del limonero)"
+    ],
+    "pendiente": [
+     "Daño por helada en °C en clima español (la RHS habla de 5 °C como mínimo; no hay otra cifra verificada)",
+     "Minador de los cítricos (conocimiento general; no incluido)",
+     "Dosis de quelato de hierro"
+    ]
+   }
+  },
+  {
+   "id": "rosal",
+   "nombre_comun": "Rosal",
+   "otros_nombres": [
+    "Rosa",
+    "Rosal arbustivo"
+   ],
+   "nombre_cientifico": "Rosa spp.",
+   "familia": "Rosaceae",
+   "tipo": "Arbusto caducifolio o semicaducifolio",
+   "ubicacion": "exterior",
+   "dificultad": "media",
+   "como_reconocerla": [
+    "Tallos con espinas",
+    "Hojas compuestas, con 5-7 foliolos dentados",
+    "Flores de muchos pétalos en varios colores, a menudo perfumadas",
+    "Tras la flor aparecen escaramujos (frutos rojos)"
+   ],
+   "comportamiento": "Los rosales remontantes florecen de primavera a otoño en oleadas. En invierno pierden hojas o entran en reposo. Necesitan sol, riego regular y poda anual para florecer bien. Son sensibles a hongos cuando el follaje está mojado.",
+   "luz": "Al menos 4 horas de sol directo al día; evitar sitios muy expuestos al viento (RHS). En zonas muy calurosas agradece sombra por la tarde.",
+   "temperatura": {
+    "ideal": "Templada",
+    "resistencia_frio": "Sin dato verificado: la ficha de la RHS consultada no da cifras de resistencia al frío."
+   },
+   "sustrato_y_maceta": "Suelo con buen drenaje que no se seque del todo en verano. Los rosales de tipo patio y miniatura se adaptan bien a maceta; la RHS no indica tamaño. En maceta, no dejar que se seque ni que se encharque.",
+   "estaciones": {
+    "primavera": {
+     "riego": "En maceta, riego frecuente; en suelo, solo en periodos secos.",
+     "abono": "En suelo: abono general o de rosales en marzo-abril, antes de florecer (unos 70 g por m²). En maceta: abono líquido general cada 2 semanas desde mediados de primavera; al salir los botones, cambiar a uno rico en potasio (RHS).",
+     "tareas": "Poda a finales de invierno (febrero-marzo). Quitar flores marchitas cada semana."
+    },
+    "verano": {
+     "riego": "En suelo, riego profundo de 5-10 litros por planta, hasta una vez por semana en verano seco. En maceta puede ser diario con calor. Regar al pie, no sobre hojas ni flores.",
+     "abono": "En suelo, segunda aplicación a mediados de verano tras la primera floración. En maceta, cada 2 semanas con abono rico en potasio hasta finales de verano.",
+     "tareas": "Cortar flores marchitas cada semana. Si quieres escaramujos, dejar de hacerlo a mitad de verano."
+    },
+    "otono": {
+     "riego": "Solo si no llueve.",
+     "abono": "Ninguno.",
+     "tareas": "Desde finales de otoño, acolchar con 5 cm o más de compost o estiércol maduro, dejando unos 10 cm libres alrededor de los tallos."
+    },
+    "invierno": {
+     "riego": "Solo si no llueve.",
+     "abono": "Ninguno.",
+     "tareas": "Poda en febrero-marzo (ver poda). Mantener el acolchado."
+    }
+   },
+   "poda": "Cada año, en febrero-marzo: quitar tallos secos, enfermos o dañados y abrir el centro para que circule el aire. En rosales de arbusto o de tipo desconocido, quitar uno o dos tallos desde la base y acortar el resto entre un tercio y la mitad. Cortar a no más de 5 mm sobre una yema, en bisel, y preferiblemente sobre una yema que mire hacia fuera (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Brotes cubiertos de bichitos verdes",
+     "causa": "Pulgón (RHS).",
+     "que_hacer": "Revisar con frecuencia y mejorar la ventilación con la poda."
+    },
+    {
+     "problema": "Manchas negras y hojas que caen",
+     "causa": "Mancha negra, un hongo (RHS).",
+     "que_hacer": "Regar al pie, no sobre las hojas, y retirar las hojas afectadas."
+    },
+    {
+     "problema": "Polvo blanco en hojas y brotes",
+     "causa": "Oídio (RHS).",
+     "que_hacer": "Podar para que circule el aire y regar al pie."
+    },
+    {
+     "problema": "Ramas que se secan",
+     "causa": "Muerte regresiva (dieback), problema descrito por la RHS.",
+     "que_hacer": "Cortar las ramas afectadas hasta madera sana."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Sin dato verificado: no pude leer la ficha de la ASPCA (el servidor limitó las consultas) y el folleto consultado no la clasifica con claridad.",
+    "personas": "Tiene espinas."
+   },
+   "errores_comunes": [
+    "Mojar las hojas al regar",
+    "No podar o podar tarde",
+    "Poco sol",
+    "No retirar las hojas enfermas"
+   ],
+   "consejo_clave": "Sol, riego al pie, poda en febrero-marzo y abono ajustado: potasio cuando salgan los botones.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow roses",
+     "url": "https://www.rhs.org.uk/plants/roses/growing-guide",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "RHS: Rose pruning, general tips",
+     "url": "https://www.rhs.org.uk/plants/roses/pruning-guide",
+     "tipo": "RHS"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, riego, abono, acolchado, poda y plagas principales (RHS)"
+    ],
+    "pendiente": [
+     "Toxicidad para mascotas: confirmar en la ficha de la ASPCA",
+     "Resistencia al frío",
+     "Araña roja (no figura en la ficha de la RHS; no incluida)",
+     "Tamaño de maceta recomendado"
+    ]
+   }
+  },
+  {
+   "id": "hortensia",
+   "nombre_comun": "Hortensia",
+   "otros_nombres": [
+    "Hydrangea"
+   ],
+   "nombre_cientifico": "Hydrangea macrophylla",
+   "familia": "Hydrangeaceae",
+   "tipo": "Arbusto caducifolio",
+   "ubicacion": "exterior",
+   "dificultad": "media",
+   "como_reconocerla": [
+    "Hojas anchas, ovaladas, verde brillante y con borde dentado",
+    "Grandes bolas o cabezuelas de flores de color rosa, azul, blanco o morado",
+    "Tallos que se agostan en invierno",
+    "Pierde las hojas en otoño"
+   ],
+   "comportamiento": "Florece desde finales de primavera hasta verano sobre los tallos del año anterior. Necesita humedad y luz suave. El color de la flor depende del suelo: azul en suelo ácido (pH de unos 4,5-5), lila en suelo ligeramente ácido o neutro y rosa en suelo alcalino. Los cultivares blancos, rojos y verdes no cambian de color (RHS).",
+   "luz": "Semisombra es lo ideal. Tolera sitios más soleados si el suelo no se seca en verano (RHS).",
+   "temperatura": {
+    "ideal": "Templada y fresca",
+    "resistencia_frio": "Los brotes nuevos de primavera son vulnerables a heladas tardías; evitar zonas expuestas y, en maceta, resguardar. La RHS no da cifras."
+   },
+   "sustrato_y_maceta": "Suelo húmedo con buen drenaje. En maceta, sustrato para acidófilas si quieres flores azules y agua de lluvia si es posible. No dejar que la maceta se seque; en verano, ponerla en un sitio más sombreado (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Plantas nuevas: regar si pasan 7-10 días sin lluvia importante. Plantas establecidas: regar en periodos secos y calurosos. En maceta, no dejar que se seque (RHS).",
+     "abono": "Las plantas establecidas normalmente no necesitan abono regular: el exceso da hojas blandas y menos flores. Si está en suelo ligero o flojea, un abono general en primavera (RHS).",
+     "tareas": "A mediados de primavera, podar ligeramente (ver poda)."
+    },
+    "verano": {
+     "riego": "Regar a fondo en periodos secos y calurosos; en maceta, a diario si hace falta.",
+     "abono": "Ninguno.",
+     "tareas": "Dar sombra en las horas de sol fuerte. Acolchar la base."
+    },
+    "otono": {
+     "riego": "Reducir según refresca y llueva.",
+     "abono": "Ninguno.",
+     "tareas": "Dejar las flores secas en la planta: ayudan a proteger los brotes nuevos del frío."
+    },
+    "invierno": {
+     "riego": "Solo si no llueve.",
+     "abono": "Ninguno.",
+     "tareas": "Acolchar con al menos 5 cm de materia orgánica desde finales de otoño hasta finales de invierno (RHS). No podar todavía."
+    }
+   },
+   "poda": "A mediados de primavera, podar de forma ligera y regular: cortar hasta el primer o segundo par de yemas sanas bajo la flor seca. La flor sale en brotes nacidos de los tallos del año anterior, así que una poda fuerte quita las flores. Cada año, quitar uno o dos de los tallos más viejos desde la base. No quitar las flores secas hasta la primavera (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Hojas amarillas con nervios verdes",
+     "causa": "Clorosis férrica, frecuente con exceso de cal (MAPA, información general). La ficha de la RHS consultada no la menciona.",
+     "que_hacer": "Usar agua de lluvia, sustrato para acidófilas y un quelato de hierro."
+    },
+    {
+     "problema": "Brotes nuevos negros o dañados en primavera",
+     "causa": "Helada tardía (RHS).",
+     "que_hacer": "Cortar los brotes dañados hasta justo encima del primer par de yemas sanas."
+    },
+    {
+     "problema": "Bultos blancos y cerosos aplanados en tallos y hojas, a inicios de verano",
+     "causa": "Cochinilla de la hortensia (RHS).",
+     "que_hacer": "Revisar tallos y hojas y retirar las que veas."
+    },
+    {
+     "problema": "Planta marchita en horas de calor",
+     "causa": "Falta de agua o demasiado sol (RHS recomienda semisombra y riego en sequía).",
+     "que_hacer": "Regar a fondo y dar sombra."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Tóxica para perros, gatos y caballos según la ASPCA (glucósido cianogénico): vómitos, depresión y diarrea. La intoxicación por cianuro es poco frecuente.",
+    "personas": "Alérgeno cutáneo (RHS). No ingerir."
+   },
+   "errores_comunes": [
+    "Ponerla a pleno sol en verano",
+    "Regar poco",
+    "Podar fuerte, que quita las flores",
+    "Abonar en exceso"
+   ],
+   "consejo_clave": "Semisombra, agua abundante (mejor de lluvia) y poda ligera a mediados de primavera. Si hay hojas amarillas con nervios verdes, piensa en la cal.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow shrubby hydrangeas",
+     "url": "https://www.rhs.org.uk/advice/profile?PID=122",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "ASPCA: Hydrangea",
+     "url": "https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/hydrangea",
+     "tipo": "ASPCA"
+    },
+    {
+     "titulo": "RHS: Potentially harmful garden plants",
+     "url": "https://www.rhs.org.uk/prevention-protection/potentially-harmful-garden-plants",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "MAPA: artículo sobre clorosis férrica (Ferti 2006)",
+     "url": "https://www.mapa.gob.es/ministerio/pags/Biblioteca/Revistas/pdf_Ferti/Ferti_2006_25_60_61.pdf",
+     "tipo": "Ministerio de Agricultura (España)"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, riego, abono, poda, color y pH, heladas y cochinilla (RHS)",
+     "Toxicidad en ASPCA (ficha leída directamente) y alergia cutánea (RHS)"
+    ],
+    "pendiente": [
+     "Clorosis férrica en hortensia (fuente general del MAPA; no figura en la ficha de la RHS)",
+     "Resistencia al frío en °C"
+    ]
+   }
+  },
+  {
+   "id": "buganvilla",
+   "nombre_comun": "Buganvilla",
+   "otros_nombres": [
+    "Bugambilia",
+    "Trinitaria"
+   ],
+   "nombre_cientifico": "Bougainvillea glabra / B. spectabilis",
+   "familia": "Nyctaginaceae",
+   "tipo": "Trepadora leñosa",
+   "ubicacion": "exterior",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Tallos largos y flexibles con espinas",
+    "Hojas verdes ovaladas con punta",
+    "Brácteas de papel (rosa fucsia, morado, naranja, blanco) que parecen flores; las flores reales son pequeñas y blancas en el centro"
+   ],
+   "comportamiento": "Trepadora vigorosa de sol y calor. Florece sobre el crecimiento del año. Las «flores» de colores son brácteas. Pierde hojas si las noches bajan de 10 °C. La RHS aconseja trasplantarla solo si es necesario.",
+   "luz": "Sitio luminoso y soleado (RHS).",
+   "temperatura": {
+    "ideal": "Cálida, con noches de al menos 10 °C",
+    "resistencia_frio": "Mantener noches de al menos 10 °C evita que pierda hojas en invierno. Puede conservarse por encima de 0 °C con el sustrato bastante seco, pero perderá hojas (RHS). Sin heladas."
+   },
+   "sustrato_y_maceta": "En maceta, sustrato de base tierra enriquecido (tipo John Innes nº 3). En suelo, enriquecer con compost bien descompuesto. Trasplantar solo si es necesario, a inicios de primavera (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Subir el riego entre febrero y marzo según suben luz y temperatura; regar abundante cuando el crecimiento sea fuerte, a mediados de abril.",
+     "abono": "Al plantar, abono equilibrado de liberación lenta. Desde mediados de abril, abono líquido rico en nitrógeno cada semana. Cuando las brácteas muestren color, pasar a uno rico en potasio (RHS, en entorno de invernadero).",
+     "tareas": "Poda a finales de invierno o inicio de primavera, justo antes de que brote. Atar los brotes laterales jóvenes y fuertes para estimular las brácteas."
+    },
+    "verano": {
+     "riego": "Riego abundante durante el crecimiento y la floración.",
+     "abono": "Abono rico en potasio mientras haya brácteas. Si caen, volver al rico en nitrógeno para una segunda floración (RHS).",
+     "tareas": "Tras caer las brácteas, cortar a la mitad el crecimiento largo para favorecer una floración a finales de verano."
+    },
+    "otono": {
+     "riego": "Tras la floración (normalmente septiembre), regar menos y dejar secar el sustrato entre riegos.",
+     "abono": "Parar el abono en otoño.",
+     "tareas": "Preparar protección para que las noches no bajen de 10 °C."
+    },
+    "invierno": {
+     "riego": "Desde noviembre, riego ocasional pero a fondo.",
+     "abono": "Ninguno.",
+     "tareas": "Evitar heladas. Si pierde hojas por el frío, es una respuesta esperable."
+    }
+   },
+   "poda": "A finales de invierno o inicio de primavera, justo antes de brotar. Después de que caigan las brácteas, cortar a la mitad el crecimiento largo. Tolera podas fuertes, pero las plantas viejas conviene reponerlas. Si no florece, podar en mayo y exponer a temperaturas más frescas (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Pérdida de hojas en invierno",
+     "causa": "Noches por debajo de 10 °C (RHS).",
+     "que_hacer": "Mantener noches de 10 °C o más, con el día unos grados más cálido."
+    },
+    {
+     "problema": "Insectos chupadores",
+     "causa": "Mosca blanca, cochinilla algodonosa, pulgón y araña roja (RHS).",
+     "que_hacer": "Revisar con regularidad, sobre todo si está en interior o en invernadero."
+    },
+    {
+     "problema": "No florece",
+     "causa": "Según la RHS, en plantas que no florecen conviene podar en mayo y exponerlas a temperaturas más frescas.",
+     "que_hacer": "Podar en mayo y dar temperaturas más frescas."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Sin dato fiable: la ASPCA no tiene ficha de buganvilla y la RHS no la incluye entre las plantas potencialmente dañinas. La ausencia en una lista no demuestra que sea segura.",
+    "personas": "Sin dato verificado. Tiene espinas (conocimiento general)."
+   },
+   "errores_comunes": [
+    "Dejar que las noches bajen de 10 °C",
+    "Poca luz",
+    "Regar mucho en invierno",
+    "Trasplantarla sin necesidad"
+   ],
+   "consejo_clave": "Sol, noches cálidas, poda a finales de invierno y abono con ritmo: nitrógeno para crecer y potasio cuando salgan las brácteas.",
+   "fuentes": [
+    {
+     "titulo": "RHS: Bougainvillea care",
+     "url": "https://www.rhs.org.uk/plants/bougainvillea/growing-guide",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "RHS: Potentially harmful garden plants",
+     "url": "https://www.rhs.org.uk/prevention-protection/potentially-harmful-garden-plants",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "ASPCA: ficha de buganvilla (sin entrada en la base de datos)",
+     "url": "https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/bougainvillea",
+     "tipo": "ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, riego, abono, poda, temperatura mínima y plagas (RHS)",
+     "No consta en la ASPCA ni en la lista de plantas dañinas de la RHS"
+    ],
+    "pendiente": [
+     "Toxicidad para mascotas y personas",
+     "Espinas (conocimiento general)",
+     "La RHS describe cultivo bajo cristal en clima británico: ajustar fechas y frecuencias a exterior en España"
+    ]
+   }
+  },
+  {
+   "id": "jazmin-estrellado",
+   "nombre_comun": "Jazmín estrellado",
+   "otros_nombres": [
+    "Falso jazmín",
+    "Trachelospermum"
+   ],
+   "nombre_cientifico": "Trachelospermum jasminoides",
+   "familia": "Apocynaceae",
+   "tipo": "Trepadora perenne",
+   "ubicacion": "exterior",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas ovaladas, verde oscuro, brillantes y algo coriáceas; en invierno pueden tomar tonos rojizos",
+    "Flores blancas con forma de hélice o estrella, muy perfumadas",
+    "Tallos finos que trepan y sueltan un látex blanco al cortarlos",
+    "Frutos como vainas largas y finas (poco habituales)"
+   ],
+   "comportamiento": "Trepadora de crecimiento medio-rápido. Florece de mayo a julio con un perfume muy intenso. Mantiene el follaje todo el año. Resiste bien el frío moderado y se adapta a sol y semisombra.",
+   "luz": "Sol o semisombra, con abrigo de vientos fríos y secos. En interior, evitar el sol directo de verano (RHS).",
+   "temperatura": {
+    "ideal": "Templada",
+    "resistencia_frio": "Es una trepadora resistente, pero en zonas frías necesita protección en invierno. Con frío intenso las hojas pueden enrojecer, mancharse o caer; las plantas establecidas suelen recuperarse salvo en inviernos muy duros (RHS). La RHS no da cifras."
+   },
+   "sustrato_y_maceta": "Suelo con buen drenaje, fértil o moderadamente fértil. En suelos pesados, húmedos o arcillosos hay riesgo de pudrición por Phytophthora: usar un sitio con buen drenaje o una maceta. Necesita un soporte para trepar (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Regular durante el primer año y en periodos secos largos.",
+     "abono": "En suelo fértil normalmente no hace falta. Para favorecer crecimiento o floración, un abono general en primavera; en maceta, abonado regular (RHS).",
+     "tareas": "Poda de mantenimiento: aclarar tallos amontonados, débiles o dañados. Atar los tallos jóvenes hasta que se enreden solos."
+    },
+    "verano": {
+     "riego": "En maceta se seca rápido: regar con frecuencia.",
+     "abono": "En maceta, abonado regular.",
+     "tareas": "Revisar cochinillas y ácaros, sobre todo en sitios muy calurosos."
+    },
+    "otono": {
+     "riego": "Reducir.",
+     "abono": "Ninguno.",
+     "tareas": "Limpiar hojas secas y comprobar el soporte."
+    },
+    "invierno": {
+     "riego": "Regar menos, pero revisar las macetas.",
+     "abono": "Ninguno.",
+     "tareas": "En zonas frías, proteger la planta o meter la maceta a un sitio resguardado."
+    }
+   },
+   "poda": "Se necesita poco. La RHS indica poda de mantenimiento en primavera: aclarar tallos amontonados, débiles o dañados. Las plantas muy crecidas aguantan una poda fuerte en primavera (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Cochinillas, ácaros y mosca blanca",
+     "causa": "En interior: cochinilla algodonosa, araña roja, cochinilla y mosca blanca. En sitios calurosos de exterior: cochinillas y araña roja (RHS).",
+     "que_hacer": "Revisar con regularidad."
+    },
+    {
+     "problema": "Podredumbre de raíz",
+     "causa": "Phytophthora, favorecida por suelos pesados, húmedos o con nivel de agua cambiante (RHS).",
+     "que_hacer": "Elegir un sitio con buen drenaje o cultivar en maceta."
+    },
+    {
+     "problema": "Hojas rojizas, con manchas o que caen",
+     "causa": "Frío intenso (RHS).",
+     "que_hacer": "Proteger en olas de frío; las plantas establecidas suelen recuperarse."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "No tóxico para perros, gatos ni caballos según la ASPCA.",
+    "personas": "Sin dato verificado sobre irritación por savia. Por precaución, usar guantes al podar."
+   },
+   "errores_comunes": [
+    "Dejarla sin soporte",
+    "Plantarla en suelo pesado y encharcado",
+    "Podar fuerte sin necesidad",
+    "Dejar la maceta sin protección en olas de frío"
+   ],
+   "consejo_clave": "Dale un soporte, drenaje y poda ligera en primavera: es una trepadora agradecida y de poco mantenimiento.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow trachelospermum",
+     "url": "https://www.rhs.org.uk/plants/trachelospermum/growing-guide",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "ASPCA: Star Jasmine",
+     "url": "https://www.aspca.org/pet-care/aspca-poison-control/toxic-and-non-toxic-plants/star-jasmine",
+     "tipo": "ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, sustrato, riego, abono, poda, frío y plagas (RHS)",
+     "No tóxico para perros, gatos y caballos (ASPCA, ficha leída directamente)"
+    ],
+    "pendiente": [
+     "Irritación por látex en personas (la RHS no lo cubre)",
+     "Resistencia al frío en °C",
+     "Época de poda en España: algunas fuentes aconsejan podar tras florecer en verano"
+    ]
+   }
+  },
+  {
+   "id": "adelfa",
+   "nombre_comun": "Adelfa",
+   "otros_nombres": [
+    "Baladre",
+    "Oleandro"
+   ],
+   "nombre_cientifico": "Nerium oleander",
+   "familia": "Apocynaceae",
+   "tipo": "Arbusto perenne",
+   "ubicacion": "exterior",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas lanceoladas, largas, coriáceas, verde oscuro, dispuestas de a tres o a pares",
+    "Flores rosas, blancas, rojas o amarillas en ramilletes",
+    "Frutos en vaina alargada",
+    "Savia lechosa"
+   ],
+   "comportamiento": "Arbusto de sol que tolera la sequía y la poda fuerte (RHS). Florece en verano. Es tóxica si se ingiere.",
+   "luz": "Sol directo.",
+   "temperatura": {
+    "ideal": "Cálida y soleada, mejor orientada al sur y resguardada (RHS)",
+    "resistencia_frio": "La RHS le da la categoría H3, con mínimo entre -5 y 1 °C aproximadamente en clima británico templado."
+   },
+   "sustrato_y_maceta": "Tolera suelos calizos, arcillosos, francos y arenosos. Prefiere suelo que se mantenga húmedo pero con buen drenaje (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "En maceta, riego regular; en suelo establecido, no suele necesitar.",
+     "abono": "Sin dato verificado.",
+     "tareas": "Revisar cochinillas en brotes nuevos."
+    },
+    "verano": {
+     "riego": "En maceta, riego regular con calor. En suelo establecido, solo en sequías largas: tolera la sequía (RHS).",
+     "abono": "Sin dato verificado.",
+     "tareas": "Quitar flores secas con guantes."
+    },
+    "otono": {
+     "riego": "En maceta, reducir.",
+     "abono": "Ninguno.",
+     "tareas": "Si hace falta, poda de formación (tolera poda fuerte). No quemar los restos."
+    },
+    "invierno": {
+     "riego": "Solo si no llueve.",
+     "abono": "Ninguno.",
+     "tareas": "En zonas frías, proteger la maceta."
+    }
+   },
+   "poda": "Tolera la poda fuerte (RHS). Siempre con guantes y protección. No quemar los restos: el humo de la combustión es perjudicial (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Escamas aplanadas, ovaladas y blanquecinas de unos 2 mm en hojas y tallos",
+     "causa": "Cochinilla de la adelfa (Aspidiotus nerii), insecto chupador que no produce melaza (RHS).",
+     "que_hacer": "Tolerar infestaciones leves; retirar a mano las escamas y masas de huevos."
+    },
+    {
+     "problema": "Cochinillas, cochinilla algodonosa y araña roja",
+     "causa": "Plagas posibles bajo cristal (RHS).",
+     "que_hacer": "Revisar con regularidad si la cultivas en interior o en invernadero."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Tóxica para perros y gatos si se ingiere (RHS; también aparece en las listas de la ASPCA reproducidas por terceros).",
+    "personas": "Tóxica si se ingiere; el humo de quemarla es perjudicial (RHS). Usar guantes y protección al manipularla. En caso de ingestión, llamar al Servicio de Información Toxicológica: 91 562 04 20 (24 h)."
+   },
+   "errores_comunes": [
+    "Tenerla al alcance de niños o mascotas",
+    "Quemar los restos de poda",
+    "Podar sin guantes",
+    "Plantarla donde los animales puedan mordisquearla"
+   ],
+   "consejo_clave": "Es fácil de mantener, pero tóxica si se ingiere: guantes al podarla, nunca quemar los restos y fuera del alcance de niños y mascotas.",
+   "fuentes": [
+    {
+     "titulo": "RHS: Nerium oleander",
+     "url": "https://www.rhs.org.uk/plants/98456/nerium-oleander-l/details",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "RHS: Oleander scale",
+     "url": "https://www.rhs.org.uk/biodiversity/oleander-scale",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "RHS: Potentially harmful garden plants",
+     "url": "https://www.rhs.org.uk/prevention-protection/potentially-harmful-garden-plants",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "Ministerio de Justicia: Servicio de Información Toxicológica",
+     "url": "https://www.mjusticia.gob.es/es/institucional/organismos/instituto-nacional/servicios/servicio-informacion/servicio-informacion1",
+     "tipo": "Administración pública (España)"
+    },
+    {
+     "titulo": "Lista ASPCA de plantas tóxicas para perros (reproducida por Mahoney's Garden)",
+     "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-List-Dogs.pdf",
+     "tipo": "Reproducción de ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, suelo, poda, hardiness y cochinilla (RHS)",
+     "Toxicidad (RHS y ASPCA reproducida) y teléfono de Toxicología (Ministerio de Justicia)"
+    ],
+    "pendiente": [
+     "Abonado y calendario de riego",
+     "Época óptima de poda en exterior en España",
+     "Pulgón amarillo y tuberculosis de la adelfa (conocimiento general; no incluidos)",
+     "Efectos concretos de la toxicidad (p. ej. cardiotoxicidad): no verificados"
+    ]
+   }
+  },
+  {
+   "id": "romero",
+   "nombre_comun": "Romero",
+   "otros_nombres": [
+    "Rosmarinus"
+   ],
+   "nombre_cientifico": "Salvia rosmarinus (antes Rosmarinus officinalis)",
+   "familia": "Lamiaceae",
+   "tipo": "Arbusto aromático perenne",
+   "ubicacion": "exterior",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas finas como agujas, verde oscuro por el haz y blanquecinas por el envés",
+    "Aroma resinoso muy característico",
+    "Flores pequeñas azul-lila a lo largo de los tallos",
+    "Porte erguido o rastrero según variedad"
+   ],
+   "comportamiento": "Arbusto mediterráneo muy rústico. Florece a finales de invierno y primavera, y a veces en otoño. Prefiere sol, suelos pobres y poco riego. Vive muchos años.",
+   "luz": "Sol directo.",
+   "temperatura": {
+    "ideal": "Cálida y soleada",
+    "resistencia_frio": "Las plantas establecidas aguantan unos -8 °C. En maceta son más vulnerables: agruparlas, envolver las macetas o resguardarlas. El sustrato frío y mojado pudre las raíces (RHS)."
+   },
+   "sustrato_y_maceta": "Maceta de al menos 30 cm de ancho y de profundidad, con muchos orificios y sustrato de base tierra con hasta un 25% de grava. Plantar poco profundo y dejar al menos 45 cm entre plantas (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "En maceta, según calor y lluvia; no dejar que se encharque. En suelo establecido, no suele necesitar.",
+     "abono": "En maceta con más de un año en el mismo recipiente, un abono granulado general a finales de primavera o inicio de verano (RHS).",
+     "tareas": "Poda ligera tras la floración. Cosechar tallos tiernos."
+    },
+    "verano": {
+     "riego": "Las macetas pueden necesitar más agua con calor y sequedad, sin encharcar.",
+     "abono": "Ninguno adicional.",
+     "tareas": "Revisar escarabajo del romero y cigarritas."
+    },
+    "otono": {
+     "riego": "Solo si no llueve.",
+     "abono": "Ninguno.",
+     "tareas": "Proteger las macetas de heladas si se esperan."
+    },
+    "invierno": {
+     "riego": "Evitar sustrato frío y mojado: las raíces se pudren (RHS).",
+     "abono": "Ninguno.",
+     "tareas": "En olas de frío, cubrir con tela o agrupar y envolver las macetas."
+    }
+   },
+   "poda": "Una vez al año, ligera y tras la floración, para mantenerlo compacto. Evitar cortar en madera vieja. Las plantas desgarbadas suelen no recuperarse tras una poda fuerte: conviene reponerlas con esquejes, normalmente cada 7 u 8 años (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Hojas comidas, con bichos brillantes",
+     "causa": "Escarabajo del romero, plaga frecuente originaria del sur de Europa (RHS).",
+     "que_hacer": "Retirar adultos y larvas a mano."
+    },
+    {
+     "problema": "Motas pálidas en primavera y verano",
+     "causa": "Cigarrita de la salvia y de Liguria (RHS).",
+     "que_hacer": "Revisar el envés de las hojas."
+    },
+    {
+     "problema": "Planta marchita o con raíces podridas",
+     "causa": "Sustrato frío y mojado, sobre todo en invierno (RHS).",
+     "que_hacer": "Mejorar el drenaje y reducir el riego."
+    },
+    {
+     "problema": "Espuma blanca en tallos",
+     "causa": "Ninfas del salivazo, inofensivas (RHS).",
+     "que_hacer": "No hace falta tratar."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Sin verificación directa: no pude leer la ficha de la ASPCA (el servidor limitó las consultas). Un folleto de Massachusetts Animal Fund atribuye a la ASPCA que no es tóxico para perros y gatos.",
+    "personas": "Comestible como condimento."
+   },
+   "errores_comunes": [
+    "Plantarla en suelo pesado y húmedo",
+    "Regarla como una planta de interior",
+    "Podar en madera vieja",
+    "Dejar la maceta sin protección en olas de frío"
+   ],
+   "consejo_clave": "Sol, buen drenaje y poda ligera tras florecer. Lo que más la mata es tener las raíces mojadas en invierno.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow rosemary",
+     "url": "https://www.rhs.org.uk/herbs/rosemary/grow-your-own",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "Massachusetts Animal Fund: folleto de plantas seguras para mascotas (atribuido a ASPCA)",
+     "url": "https://www.mass.gov/doc/pet-safe-plants-brochure-2021/download",
+     "tipo": "Folleto de tercero"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Sustrato, maceta, riego, abono, poda, frío y plagas (RHS)"
+    ],
+    "pendiente": [
+     "Toxicidad para mascotas: confirmar en la ficha de la ASPCA (hoy solo fuente secundaria)",
+     "Fechas de poda en España"
+    ]
+   }
+  },
+  {
+   "id": "albahaca",
+   "nombre_comun": "Albahaca",
+   "otros_nombres": [
+    "Basílico"
+   ],
+   "nombre_cientifico": "Ocimum basilicum",
+   "familia": "Lamiaceae",
+   "tipo": "Hierba aromática anual",
+   "ubicacion": "exterior",
+   "dificultad": "media",
+   "como_reconocerla": [
+    "Hojas ovaladas, tiernas y brillantes, de verde claro (o moradas en algunas variedades)",
+    "Tallos cuadrados, verdes y tiernos",
+    "Aroma dulce e intenso al rozarla",
+    "Espigas de flores blancas o rosadas en verano"
+   ],
+   "comportamiento": "Es una planta de temporada: nace en primavera, crece a lo largo del verano y muere con el frío. Ama el calor y odia el frío, incluso por debajo de 10 °C. Si deja florecer, las hojas pierden sabor y la planta se agota.",
+   "luz": "Sitio cálido, soleado y resguardado (RHS).",
+   "temperatura": {
+    "ideal": "Cálida y soleada",
+    "resistencia_frio": "No tolera heladas. Plantar fuera cuando las noches se mantengan por encima de 10 °C (RHS)."
+   },
+   "sustrato_y_maceta": "Maceta de al menos 20 cm de ancho y profundidad, con sustrato universal sin turba y buen drenaje. En maceta es más fácil protegerla de caracoles y babosas (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Regar bien al plantar y después mantener el sustrato uniformemente húmedo.",
+     "abono": "En maceta, abono líquido equilibrado de base orgánica. Evitar abonos ricos en potasio (tipo abono de tomate), porque favorecen la floración (RHS).",
+     "tareas": "Sembrar en interior desde marzo a unos 20 °C. Plantar fuera cuando las noches superen los 10 °C."
+    },
+    "verano": {
+     "riego": "Mantener el sustrato húmedo; regar por la mañana y sin mojar las hojas. No tolera raíces mojadas durante la noche. El suelo seco acelera la floración.",
+     "abono": "En maceta, abono líquido equilibrado de base orgánica.",
+     "tareas": "Pellizcar las puntas con regularidad y quitar las flores en cuanto salgan para prolongar la calidad de las hojas."
+    },
+    "otono": {
+     "riego": "Reducir según baja la temperatura.",
+     "abono": "Ninguno.",
+     "tareas": "Cosechar antes del frío. Si quieres alargar la temporada, meterla en interior o cubrirla."
+    },
+    "invierno": {
+     "riego": "Solo si se mantiene en interior muy luminoso, poco y sin encharcar.",
+     "abono": "Ninguno.",
+     "tareas": "Normalmente se cultiva como anual y se tira en otoño. Resembrar en primavera."
+    }
+   },
+   "poda": "No es poda propiamente: pellizcar las puntas con regularidad para que ramifique, o cosechar la planta entera cuando necesites mucha hoja, por ejemplo para pesto. Quitar los tallos de flor al aparecer (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Hojas comidas o con agujeros",
+     "causa": "Caracoles, babosas y pulgones (RHS).",
+     "que_hacer": "Cultivarla en maceta y revisarla al atardecer."
+    },
+    {
+     "problema": "Plántulas que se caen y se pudren",
+     "causa": "Damping off, favorecido por exceso de riego en semillero (RHS).",
+     "que_hacer": "No encharcar el semillero."
+    },
+    {
+     "problema": "Florece pronto y la hoja pierde calidad",
+     "causa": "Sequedad o plantas demasiado juntas (RHS).",
+     "que_hacer": "Regar de forma regular, dejar espacio entre plantas y quitar las flores."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "No tóxica para perros ni gatos según la ASPCA.",
+    "personas": "Comestible (hojas y flores)."
+   },
+   "errores_comunes": [
+    "Plantarla fuera demasiado pronto",
+    "Dejarla florecer sin quitar las flores",
+    "Regarla en las hojas o por la tarde-noche",
+    "Usar abono rico en potasio"
+   ],
+   "consejo_clave": "Calor, sol, riego por la mañana y pellizcos: así da hoja todo el verano.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow basil",
+     "url": "https://www.rhs.org.uk/herbs/basil/grow-your-own",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "ASPCA: Basil",
+     "url": "https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/basil",
+     "tipo": "ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Siembra, plantación, sustrato, riego, abono, poda y plagas (RHS)",
+     "No tóxica para perros ni gatos (ASPCA, ficha leída directamente)"
+    ],
+    "pendiente": [
+     "Mildiu de la albahaca: la RHS no lo menciona en su ficha de cultivo (no incluido)"
+    ]
+   }
+  },
+  {
+   "id": "hierbabuena",
+   "nombre_comun": "Hierbabuena",
+   "otros_nombres": [
+    "Menta verde",
+    "Menta"
+   ],
+   "nombre_cientifico": "Mentha spicata (y otras Mentha)",
+   "familia": "Lamiaceae",
+   "tipo": "Hierba aromática perenne",
+   "ubicacion": "exterior",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas ovaladas, arrugadas y con borde dentado, de verde medio",
+    "Tallos cuadrados que se extienden por el suelo",
+    "Aroma fresco mentolado muy marcado",
+    "Pequeñas flores lilas o blancas en espiga en verano"
+   ],
+   "comportamiento": "Crece muy rápido y se expande con rizomas, hasta ser invasiva en suelo. En maceta se controla fácil. Pierde parte aérea en invierno y rebrota en primavera. Le gusta la humedad.",
+   "luz": "Pleno sol o semisombra (RHS). En calor fuerte, moverla a sitio más sombreado reduce el riego.",
+   "temperatura": {
+    "ideal": "Templada",
+    "resistencia_frio": "La mayoría de las mentas son perennes resistentes: la parte aérea se seca en invierno y rebrota en primavera (RHS)."
+   },
+   "sustrato_y_maceta": "Sustrato universal sin turba o de base tierra. Mejor en maceta: se extiende con rizomas subterráneos y puede ser invasiva. Si la plantas en suelo, hundir una maceta sin fondo o con orificios grandes (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Mantener el sustrato uniformemente húmedo.",
+     "abono": "No imprescindible (la RHS no menciona el abonado).",
+     "tareas": "Dividir las matas establecidas en primavera u otoño. Cosechar tallos tiernos."
+    },
+    "verano": {
+     "riego": "Las macetas se secan antes que el suelo: revisarlas con frecuencia y mantener el sustrato húmedo.",
+     "abono": "No imprescindible.",
+     "tareas": "Cosechar con regularidad para mantenerla frondosa."
+    },
+    "otono": {
+     "riego": "Reducir.",
+     "abono": "Ninguno.",
+     "tareas": "Desde finales de otoño hasta primavera, cortar los tallos viejos y marchitos."
+    },
+    "invierno": {
+     "riego": "Poco: la planta está en reposo.",
+     "abono": "Ninguno.",
+     "tareas": "Las macetas pueden pasar a una ventana soleada para cosechar en invierno."
+    }
+   },
+   "poda": "Tras florecer, cortarla hasta unos 5 cm sobre la base para que salgan hojas jóvenes. Cortar los tallos viejos desde finales de otoño hasta primavera. Cosechar con regularidad la mantiene frondosa. Dividir o trasplantar cada pocos años (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Manchas naranjas, amarillas y negras en las hojas",
+     "causa": "Roya de la menta, un hongo (RHS).",
+     "que_hacer": "Retirar y desechar las hojas afectadas."
+    },
+    {
+     "problema": "Invade la maceta o el suelo",
+     "causa": "Rizomas muy vigorosos (RHS).",
+     "que_hacer": "Cultivarla en maceta y dividirla cada pocos años. Para eliminarla del suelo, sacar el rizoma entero."
+    },
+    {
+     "problema": "Daños ocasionales en hojas",
+     "causa": "Pulgones, orugas de la polilla de la menta y cigarritas (RHS).",
+     "que_hacer": "Revisar con regularidad; la RHS la considera generalmente sana."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Tóxica para perros, gatos y caballos según la ASPCA (aceites esenciales): vómitos y diarrea con ingestas grandes. La ficha es de «Mentha sp.».",
+    "personas": "Comestible."
+   },
+   "errores_comunes": [
+    "Plantarla en suelo sin contener los rizomas",
+    "Dejar que se seque",
+    "No cortarla nunca",
+    "Dejarla a pleno sol en calor extremo sin agua"
+   ],
+   "consejo_clave": "Siempre en maceta, con humedad constante y cortes regulares: es muy fácil de cultivar, pero se expande.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow mint",
+     "url": "https://www.rhs.org.uk/herbs/mint/grow-your-own",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "ASPCA: Mint",
+     "url": "https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/mint",
+     "tipo": "ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, sustrato, riego, poda, división y plagas (RHS)",
+     "Toxicidad para perros, gatos y caballos (ASPCA, ficha leída directamente)"
+    ],
+    "pendiente": [
+     "Abonado: la RHS no lo cubre",
+     "Oídio y otros problemas (conocimiento general; no incluidos)"
+    ]
+   }
+  },
+  {
+   "id": "tomatera",
+   "nombre_comun": "Tomatera",
+   "otros_nombres": [
+    "Tomate",
+    "Planta de tomate"
+   ],
+   "nombre_cientifico": "Solanum lycopersicum",
+   "familia": "Solanaceae",
+   "tipo": "Hortaliza anual de fruto",
+   "ubicacion": "exterior",
+   "dificultad": "media",
+   "como_reconocerla": [
+    "Hojas compuestas con foliolos dentados, verde oscuro y algo vellosas",
+    "Tallos con pelitos que huelen fuerte y manchan las manos",
+    "Flores amarillas en ramillete",
+    "Frutos que pasan de verde a rojo (o amarillo, naranja, rosado según variedad)"
+   ],
+   "comportamiento": "Se planta cuando pasa el frío y da fruto en verano y otoño. Necesita sol y calor. Las variedades de cordón necesitan tutor. Los cambios de humedad rajan los frutos y causan culo negro (RHS).",
+   "luz": "Pleno sol: en maceta, a pleno sol; en suelo, el sitio más cálido, soleado y resguardado del viento (RHS).",
+   "temperatura": {
+    "ideal": "Cálida y soleada",
+    "resistencia_frio": "Plantar fuera cuando las temperaturas se mantengan por encima de 16 °C (RHS). Las plántulas deben estar a un mínimo de 16 °C. No tolera heladas (conocimiento general)."
+   },
+   "sustrato_y_maceta": "Maceta de 30-45 cm de diámetro para una planta, o un saco de cultivo estándar para dos (RHS). Sustrato rico y con buen drenaje. Un tutor es imprescindible en tomateras de cordón.",
+   "estaciones": {
+    "primavera": {
+     "riego": "Regar bien al plantar y mantener el sustrato uniformemente húmedo.",
+     "abono": "Ninguno hasta que cuajen los primeros frutos (en suelo enriquecido puede no hacer falta).",
+     "tareas": "Endurecer las plantas antes de sacarlas y plantar cuando las temperaturas se mantengan por encima de 16 °C. Poner tutor."
+    },
+    "verano": {
+     "riego": "Riego regular para mantener el sustrato uniformemente húmedo; en maceta puede ser diario con calor. Las variaciones de humedad rajan los frutos y causan culo negro (RHS).",
+     "abono": "Cuando los primeros frutos empiecen a engordar, abono líquido ecológico rico en potasio cada 10-14 días (RHS).",
+     "tareas": "En variedades de cordón, quitar los chupones (brotes laterales) cada vez que riegues; las variedades arbustivas los conservan. Recoger el fruto cuando esté completamente coloreado, con su rabillo."
+    },
+    "otono": {
+     "riego": "Reducir según refresca.",
+     "abono": "Ninguno al final de temporada.",
+     "tareas": "Los frutos verdes pueden madurar en un lugar cálido y oscuro, o junto a un plátano en un cajón (RHS)."
+    },
+    "invierno": {
+     "riego": "Ninguno: la planta no sobrevive al frío.",
+     "abono": "Ninguno.",
+     "tareas": "Retirar la planta."
+    }
+   },
+   "poda": "En variedades de cordón: dejar un solo tallo y quitar los chupones a medida que salen. Al llegar al final del tutor, o tras 4 racimos en exterior (7 en invernadero), cortar el punto de crecimiento dos hojas por encima del último racimo. Las variedades arbustivas conservan sus chupones (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Mancha negra en la base del fruto",
+     "causa": "Culo negro, ligado a riego irregular (RHS).",
+     "que_hacer": "Mantener el riego uniforme."
+    },
+    {
+     "problema": "Frutos rajados",
+     "causa": "Cambios de humedad, frecuentes a finales de verano (RHS).",
+     "que_hacer": "Riego regular; es difícil evitarlo del todo."
+    },
+    {
+     "problema": "Hojas y frutos con podredumbre",
+     "causa": "Mildiu del tomate, más frecuente con tiempo cálido y húmedo (RHS).",
+     "que_hacer": "Retirar las partes afectadas y evitar la humedad persistente."
+    },
+    {
+     "problema": "Polvillo blanco que vuela al mover la planta y hojas pegajosas",
+     "causa": "Mosca blanca, sobre todo en invernadero (RHS).",
+     "que_hacer": "Revisar el envés de las hojas con regularidad."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "La planta (hojas y tallos) aparece como tóxica para perros y gatos en una lista reproducida con permiso de la ASPCA.",
+    "personas": "El fruto maduro es comestible."
+   },
+   "errores_comunes": [
+    "Plantar antes de que pase el frío",
+    "Riego irregular",
+    "No poner tutor",
+    "Quitar los chupones a variedades arbustivas"
+   ],
+   "consejo_clave": "Sol, riego constante y abono de potasio cuando engorden los primeros frutos. La regularidad del riego importa más que la cantidad.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow tomatoes",
+     "url": "https://www.rhs.org.uk/vegetables/tomatoes/grow-your-own",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "Lista de plantas tóxicas para mascotas, reproducida con permiso de la ASPCA (Boulder Humane)",
+     "url": "https://boulderhumane.org/plants-that-are-poisonous-to-animals/",
+     "tipo": "Reproducción de ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Plantación, maceta, riego, abono, chupones, tutor y problemas (RHS)",
+     "Toxicidad de la planta para mascotas (lista ASPCA reproducida)"
+    ],
+    "pendiente": [
+     "Fecha de plantación ajustada al clima de España (la RHS habla del Reino Unido; el criterio es 16 °C)",
+     "Toxicidad del fruto maduro para mascotas",
+     "Rotación de cultivos (conocimiento general; no incluida)"
+    ]
+   }
+  },
+  {
+   "id": "potos",
+   "nombre_comun": "Potos",
+   "otros_nombres": [
+    "Poto",
+    "Pothos",
+    "Planta del diablo",
+    "Epipremnum"
+   ],
+   "nombre_cientifico": "Epipremnum aureum",
+   "familia": "Araceae",
+   "tipo": "Trepadora o colgante de interior",
+   "ubicacion": "interior",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas en forma de corazón, brillantes, con vetas o manchas amarillas, blancas o verde claro",
+    "Tallos largos que cuelgan o trepan con raíces aéreas",
+    "Hojas más grandes al trepar que al colgar"
+   ],
+   "comportamiento": "Planta de crecimiento rápido y muy tolerante. Soporta poca luz, olvidos de riego y trasplantes. Crece todo el año en interior, más en primavera y verano. En interior apenas florece.",
+   "luz": "Luz indirecta brillante, por ejemplo en una ventana al este u oeste. El sol directo de verano quema las hojas; con poca luz se pierde el variegado (RHS).",
+   "temperatura": {
+    "ideal": "Entre 18 y 30 °C, lejos de corrientes frías y de radiadores (RHS)",
+    "resistencia_frio": "La RHS no da un mínimo."
+   },
+   "sustrato_y_maceta": "Sustrato aireado, con buen drenaje. Trasplantar en primavera cada 2 o 3 años a una maceta un tamaño mayor. No dejar la planta en agua (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Regar cuando el sustrato esté casi seco; comprobar antes con el dedo.",
+     "abono": "Una vez al mes, de abril a octubre, con abono general para plantas de interior (RHS).",
+     "tareas": "Trasplantar si hace falta. Esquejar para obtener plantas nuevas."
+    },
+    "verano": {
+     "riego": "Regar cuando el sustrato esté casi seco; no dejar agua en el plato.",
+     "abono": "Una vez al mes.",
+     "tareas": "Evitar el sol directo."
+    },
+    "otono": {
+     "riego": "Regar cuando el sustrato esté casi seco, normalmente con menos frecuencia.",
+     "abono": "Una vez al mes hasta octubre; después, nada.",
+     "tareas": "Mantener lejos de corrientes frías."
+    },
+    "invierno": {
+     "riego": "Con menos frecuencia, esperando a que el sustrato esté casi seco.",
+     "abono": "Ninguno.",
+     "tareas": "Alejar de radiadores y de ventanas frías."
+    }
+   },
+   "poda": "Cortar los tallos justo por encima de una hoja para que ramifique. Los esquejes de tallo se cortan justo bajo un nudo y enraízan en agua; también se pueden acodar tallos largos sobre sustrato (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Raíz podrida o hojas amarillas y blandas",
+     "causa": "Exceso de riego, el principal riesgo (RHS).",
+     "que_hacer": "Dejar secar, revisar el drenaje y retirar hojas dañadas."
+    },
+    {
+     "problema": "Puntas secas y quebradizas",
+     "causa": "Aire seco (RHS).",
+     "que_hacer": "Aumentar la humedad ambiental con pulverizaciones o agrupando plantas."
+    },
+    {
+     "problema": "Hojas sin variegado",
+     "causa": "Poca luz (RHS).",
+     "que_hacer": "Acercar a una ventana luminosa, sin sol directo."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Tóxico para perros y gatos (listas de la ASPCA reproducidas por terceros) y para otros animales: irritación de boca, vómitos.",
+    "personas": "Tóxico e irritante para la piel (RHS): usar guantes al manipularlo, podarlo o esquejarlo, y mantenerlo fuera del alcance de niños y mascotas."
+   },
+   "errores_comunes": [
+    "Regar con el plato siempre lleno",
+    "Ponerlo a sol directo",
+    "Dejarlo en rincones sin luz",
+    "Tenerlo al alcance de mascotas y niños"
+   ],
+   "consejo_clave": "Riega solo cuando el sustrato esté casi seco. Es difícil de matar, pero muy fácil de pudrir con exceso de agua.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow epipremnum",
+     "url": "https://www.rhs.org.uk/plants/epipremnum/growing-guide",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "Lista ASPCA de plantas tóxicas para perros (reproducida por Mahoney's Garden)",
+     "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-List-Dogs.pdf",
+     "tipo": "Reproducción de ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, temperatura, riego, abono, trasplante, poda y problemas (RHS)",
+     "Toxicidad (RHS y ASPCA reproducida)"
+    ],
+    "pendiente": [
+     "Temperatura mínima",
+     "Frecuencias de riego en días (orientativas)"
+    ]
+   }
+  },
+  {
+   "id": "monstera",
+   "nombre_comun": "Monstera",
+   "otros_nombres": [
+    "Costilla de Adán"
+   ],
+   "nombre_cientifico": "Monstera deliciosa",
+   "familia": "Araceae",
+   "tipo": "Trepadora de interior",
+   "ubicacion": "interior",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas grandes, en forma de corazón, con cortes profundos y agujeros (fenestraciones) en las adultas",
+    "Las hojas jóvenes son enteras y sin agujeros",
+    "Raíces aéreas marrones que cuelgan del tallo",
+    "Tallo grueso que sube con apoyo"
+   ],
+   "comportamiento": "Crece más en primavera y verano. Los agujeros aparecen cuando la planta tiene unos años y sobre todo al trepar; con muy poca luz salen menos. Los tallos nuevos tras podar tienen hojas más pequeñas y con menos agujeros hasta que la planta se asienta (RHS). Necesita un soporte.",
+   "luz": "Luz indirecta, por ejemplo cerca de una ventana al oeste o al este. El sol directo puede quemar las hojas; con muy poca luz salen menos agujeros (RHS).",
+   "temperatura": {
+    "ideal": "Entre 18 y 25 °C todo el año, lejos de corrientes frías y radiadores (RHS)",
+    "resistencia_frio": "La RHS no da un mínimo."
+   },
+   "sustrato_y_maceta": "Mezcla abierta y con buen drenaje, ligeramente ácida (pH 5-6), por ejemplo 1 parte de sustrato para acidófilas y 2 de sustrato para orquídeas. Maceta pesada, solo unos centímetros mayor que la anterior: la planta se vuelve pesada arriba. Trasplantar cada pocos años (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Dejar que el sustrato se seque casi del todo y regar a fondo, con agua de lluvia o filtrada si puedes.",
+     "abono": "Abono líquido equilibrado, de abril a septiembre (dosis del fabricante).",
+     "tareas": "Trasplantar y colocar un tutor de musgo, que se mantenga húmedo para que los tallos enraícen. Podar si se sale de su espacio."
+    },
+    "verano": {
+     "riego": "Dejar que el sustrato se seque casi del todo antes de regar a fondo. No dejar agua en el plato.",
+     "abono": "Abono líquido equilibrado hasta septiembre.",
+     "tareas": "Vaporizar las hojas o agrupar plantas para subir la humedad. Evitar el sol directo."
+    },
+    "otono": {
+     "riego": "Con menos frecuencia, esperando a que el sustrato esté casi seco.",
+     "abono": "Parar en septiembre.",
+     "tareas": "Mantener lejos de corrientes frías."
+    },
+    "invierno": {
+     "riego": "Un poco menos que en verano (RHS).",
+     "abono": "Ninguno.",
+     "tareas": "Alejar de radiadores. El aire seco de la calefacción puede marronear los bordes."
+    }
+   },
+   "poda": "En primavera, si se sale de espacio. Los esquejes con nudo y raíz aérea enraízan en agua o sustrato (conocimiento general). Usar guantes: la planta es irritante (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Hojas amarillas, planta que se desploma",
+     "causa": "Exceso de riego o sustrato encharcado, que pudre las raíces (RHS).",
+     "que_hacer": "Dejar secar, revisar las raíces y mejorar el drenaje."
+    },
+    {
+     "problema": "Bordes marrones",
+     "causa": "Aire demasiado seco, sobre todo con calefacción (RHS).",
+     "que_hacer": "Subir la humedad con pulverizaciones, plato con grava húmeda o agrupando plantas."
+    },
+    {
+     "problema": "Hojas nuevas sin agujeros",
+     "causa": "Poca luz o planta joven (RHS).",
+     "que_hacer": "Más luz y soporte para que trepe."
+    },
+    {
+     "problema": "Residuo pegajoso y planta debilitada",
+     "causa": "Cochinilla algodonosa y otros insectos chupadores (RHS).",
+     "que_hacer": "Limpiar las hojas con un paño."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Tóxica para perros y gatos (ASPCA, en listas reproducidas por terceros): irritación y quemazón en boca y labios, babeo y dificultad para tragar.",
+    "personas": "Venenosa si se ingiere; irrita piel y ojos (RHS): usar guantes y mantenerla fuera del alcance de niños y mascotas. El fruto inmaduro también es tóxico."
+   },
+   "errores_comunes": [
+    "Regar con calendario fijo",
+    "Ponerla a sol directo",
+    "No darle soporte",
+    "Dejar agua en el plato"
+   ],
+   "consejo_clave": "Luz brillante sin sol directo, riego solo cuando el sustrato esté casi seco, humedad ambiental y un tutor.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow Swiss cheese plants",
+     "url": "https://www.rhs.org.uk/plants/swiss-cheese-plants/how-to-grow-swiss-cheese-plants",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "RHS: Potentially harmful garden plants",
+     "url": "https://www.rhs.org.uk/prevention-protection/potentially-harmful-garden-plants",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "Lista ASPCA de plantas tóxicas para perros (reproducida por Mahoney's Garden)",
+     "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-List-Dogs.pdf",
+     "tipo": "Reproducción de ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, temperatura, riego, abono, sustrato, poda y problemas (RHS)",
+     "Toxicidad (RHS y ASPCA reproducida)"
+    ],
+    "pendiente": [
+     "Temperatura mínima",
+     "Esquejes con raíz aérea (conocimiento general)"
+    ]
+   }
+  },
+  {
+   "id": "ficus-benjamina",
+   "nombre_comun": "Ficus benjamina",
+   "otros_nombres": [
+    "Ficus",
+    "Ficus de interior"
+   ],
+   "nombre_cientifico": "Ficus benjamina",
+   "familia": "Moraceae",
+   "tipo": "Árbol de interior (en exterior en zonas muy cálidas)",
+   "ubicacion": "interior",
+   "dificultad": "media",
+   "como_reconocerla": [
+    "Hojas pequeñas, ovaladas, con punta, brillantes y de verde medio",
+    "Ramas finas y colgantes",
+    "Tronco liso y grisáceo; a veces trenzado",
+    "Savia blanca lechosa al cortar o romper hojas"
+   ],
+   "comportamiento": "Sensible a los cambios: si se cambia de sitio o hay corrientes de aire, frío, poca luz o exceso o falta de riego, puede tirar muchas hojas de golpe. El ficus benjamina es especialmente propenso a esto (RHS). Necesita humedad ambiental media o alta.",
+   "luz": "Luz brillante sin sol fuerte. Algunas especies toleran unas horas de sol de mañana o tarde, sobre todo en invierno. Las variegadas necesitan más luz que las verdes (RHS).",
+   "temperatura": {
+    "ideal": "Cálida y estable, sin corrientes",
+    "resistencia_frio": "La mayoría necesita mantenerse por encima de 10-13 °C (RHS)."
+   },
+   "sustrato_y_maceta": "Sustrato de base tierra con algo de corteza fina, o sustrato universal sin turba. Pasar a una maceta algo mayor cada pocos años en primavera. Si no se puede, sustituir los 2,5 cm superiores (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Regar con regularidad y con agua a temperatura ambiente, dejando que el sustrato se seque un poco entre riegos.",
+     "abono": "Abono rico en nitrógeno de primavera a finales de verano (RHS).",
+     "tareas": "Trasplantar si hace falta. Podar si es necesario (ver poda)."
+    },
+    "verano": {
+     "riego": "Regar con regularidad, dejando secar ligeramente el sustrato entre riegos.",
+     "abono": "Abono rico en nitrógeno hasta finales de verano.",
+     "tareas": "Subir la humedad con pulverizaciones o un plato con grava húmeda. Evitar corrientes de aire acondicionado."
+    },
+    "otono": {
+     "riego": "Reducir.",
+     "abono": "Ninguno.",
+     "tareas": "No cambiarlo de sitio."
+    },
+    "invierno": {
+     "riego": "Mantener el sustrato solo húmedo, sin encharcar (RHS).",
+     "abono": "Ninguno.",
+     "tareas": "Lejos de radiadores y ventanas frías. Mantener buena luz."
+    }
+   },
+   "poda": "Necesita poca o ninguna poda; los ejemplares con tronco trenzado conviene no podarlos. Si hace falta, acortar los tallos largos a finales de invierno o inicios de primavera, cortando justo encima de una hoja. Usar guantes: la savia blanca puede irritar la piel o agravar alergias (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Caída repentina de hojas",
+     "causa": "Exceso de riego, frío invernal, poca luz, exceso de abono, corrientes o cambio de sitio (RHS).",
+     "que_hacer": "Mantenerlo en un lugar estable y ajustar el riego."
+    },
+    {
+     "problema": "Hojas amarillas o con manchas oscuras",
+     "causa": "Exceso de riego; las hojas viejas de abajo pueden amarillear de forma natural (RHS).",
+     "que_hacer": "Dejar secar el sustrato."
+    },
+    {
+     "problema": "Hojas secas y arrugadas",
+     "causa": "Poca humedad, sustrato seco o demasiado sol directo (RHS).",
+     "que_hacer": "Regar, subir la humedad y apartar del sol fuerte."
+    },
+    {
+     "problema": "Ácaros, cochinilla algodonosa y escamas",
+     "causa": "Insectos chupadores habituales en interior (RHS).",
+     "que_hacer": "Revisar con regularidad y tratar a tiempo."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "El género Ficus aparece como tóxico para gatos en la lista de la ASPCA (reproducida por terceros).",
+    "personas": "La RHS indica que el ficus benjamina puede producir alergia cutánea y que es perjudicial si se ingiere. La savia blanca puede irritar la piel."
+   },
+   "errores_comunes": [
+    "Cambiarlo de sitio con frecuencia",
+    "Ponerlo en corrientes de aire",
+    "Regar con calendario fijo",
+    "Podar sin guantes"
+   ],
+   "consejo_clave": "Dale un lugar luminoso y estable y no lo muevas. Si tira hojas tras un cambio, no lo riegues más para compensar.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow ornamental figs",
+     "url": "https://www.rhs.org.uk/advice/profile?PID=669",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "RHS: Potentially harmful garden plants",
+     "url": "https://www.rhs.org.uk/prevention-protection/potentially-harmful-garden-plants",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "Lista ASPCA de plantas tóxicas para gatos (reproducida por Mahoney's Garden)",
+     "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-Lists-Cats.pdf",
+     "tipo": "Reproducción de ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, temperatura mínima, riego, abono, trasplante, poda, hojas y plagas (RHS)",
+     "Toxicidad (RHS y ASPCA reproducida)"
+    ],
+    "pendiente": [
+     "Frecuencias exactas de riego (orientativas)"
+    ]
+   }
+  },
+  {
+   "id": "sansevieria",
+   "nombre_comun": "Sansevieria",
+   "otros_nombres": [
+    "Lengua de suegra",
+    "Espada de San Jorge",
+    "Lengua de tigre"
+   ],
+   "nombre_cientifico": "Dracaena trifasciata (antes Sansevieria trifasciata)",
+   "familia": "Asparagaceae",
+   "tipo": "Suculenta de interior",
+   "ubicacion": "interior",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas largas, rígidas, erguidas, en forma de espada",
+    "Verde oscuro con bandas transversales más claras; a veces bordes amarillos",
+    "Crece en rosetas desde la base, sin tronco"
+   ],
+   "comportamiento": "Planta casi indestructible: tolera poca luz, sequía y descuido. Crece despacio. Almacena agua en las hojas. Su mayor enemigo es el exceso de riego.",
+   "luz": "Sitios luminosos con algo de sombra ligera, aunque tolera menos luz. En sombra las hojas crecen más altas; con más sol, más compactas. Evitar el sol de mediodía en verano (RHS).",
+   "temperatura": {
+    "ideal": "Entre 15 y 24 °C (RHS)",
+    "resistencia_frio": "La RHS no da un mínimo; recomienda evitar corrientes frías y radiadores, y meterla en casa mucho antes de que haya heladas."
+   },
+   "sustrato_y_maceta": "Sustrato para cactus con buen drenaje, o 2 partes de sustrato de base tierra y 1 de grava. Maceta con orificios, solo ligeramente mayor que la anterior. Trasplantar solo cuando las raíces y hojas llenen la maceta (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Solo cuando el sustrato se haya secado. Regar por arriba, sin mojar el centro de la roseta, y vaciar el plato.",
+     "abono": "Una vez al mes, de abril a septiembre, con abono líquido de plantas de interior o de cactus (RHS).",
+     "tareas": "Mejor época para multiplicar (marzo a mayo): separar hijuelos, dividir matas o esquejar hojas."
+    },
+    "verano": {
+     "riego": "Solo cuando el sustrato se haya secado.",
+     "abono": "Una vez al mes.",
+     "tareas": "Evitar el sol de mediodía."
+    },
+    "otono": {
+     "riego": "Con menos frecuencia.",
+     "abono": "Ninguno a partir de septiembre.",
+     "tareas": "Meterla en casa mucho antes de las primeras heladas si estaba fuera."
+    },
+    "invierno": {
+     "riego": "Muy poco, salvo en un sitio especialmente cálido (RHS).",
+     "abono": "Ninguno.",
+     "tareas": "Evitar corrientes frías y radiadores."
+    }
+   },
+   "poda": "No necesita poda. Se multiplica por hijuelos, división de la mata o esquejes de hoja (los esquejes de hojas variegadas suelen volver a verde) (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Hojas blandas o amarillas, base podrida",
+     "causa": "Pudrición de raíz por exceso de riego o plato con agua, el principal problema (RHS).",
+     "que_hacer": "Parar el riego y revisar las raíces."
+    },
+    {
+     "problema": "Insectos chupadores o larvas",
+     "causa": "Cochinilla algodonosa, araña roja (en ambiente cálido y seco) y larvas de gorgojo en las raíces (RHS).",
+     "que_hacer": "Revisar con regularidad."
+    },
+    {
+     "problema": "Hojas más altas y estrechas",
+     "causa": "Poca luz: la sombra produce hojas más altas (RHS).",
+     "que_hacer": "Más luz si prefieres crecimiento compacto."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Venenosa para perros y gatos (RHS; también ASPCA, en listas reproducidas): náuseas, vómitos y diarrea.",
+    "personas": "Venenosa; la savia puede irritar la piel, así que usar guantes al podar o multiplicar (RHS)."
+   },
+   "errores_comunes": [
+    "Regar demasiado",
+    "Maceta sin drenaje o plato lleno",
+    "Regar en invierno como en verano",
+    "Mojar el centro de la roseta"
+   ],
+   "consejo_clave": "En caso de duda, no riegues: el único problema serio de esta planta es el exceso de agua.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow sansevierias",
+     "url": "https://www.rhs.org.uk/plants/sansevieria/growing-guide",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "Lista ASPCA de plantas tóxicas para perros (reproducida por Mahoney's Garden)",
+     "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-List-Dogs.pdf",
+     "tipo": "Reproducción de ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, temperatura, sustrato, riego, abono, multiplicación y plagas (RHS)",
+     "Toxicidad (RHS y ASPCA reproducida)"
+    ],
+    "pendiente": [
+     "Temperatura mínima",
+     "Frecuencias de riego en días (orientativas)"
+    ]
+   }
+  },
+  {
+   "id": "aloe-vera",
+   "nombre_comun": "Aloe vera",
+   "otros_nombres": [
+    "Sábila",
+    "Aloe"
+   ],
+   "nombre_cientifico": "Aloe vera (Aloe barbadensis)",
+   "familia": "Asphodelaceae",
+   "tipo": "Suculenta perenne",
+   "ubicacion": "interior o exterior protegido",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas gruesas, carnosas, en roseta, verde grisáceo, con bordes con pequeñas espinas blandas",
+    "Gel transparente dentro de la hoja",
+    "En adultos, espiga alta con flores amarillas o naranjas"
+   ],
+   "comportamiento": "Almacena agua en las hojas. Crece mejor en primavera y verano y saca hijuelos por la base. No aguanta heladas ni sustrato continuamente mojado, y no le gusta la humedad ambiental (RHS).",
+   "luz": "Mucha luz y buena ventilación (RHS). La ficha de Aloe vera indica pleno sol.",
+   "temperatura": {
+    "ideal": "Cálida y luminosa",
+    "resistencia_frio": "No resiste heladas. La RHS le da la categoría H1c, con mínimo de 5 a 10 °C, y puede ir fuera en verano."
+   },
+   "sustrato_y_maceta": "Sustrato para cactus sin turba, o de base tierra con grava para drenar. Maceta con orificios (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Moderado durante el crecimiento, dejando secar entre riegos.",
+     "abono": "Abono líquido general una vez al mes, de mayo a agosto (RHS).",
+     "tareas": "Separar hijuelos en primavera o a inicios de verano."
+    },
+    "verano": {
+     "riego": "Moderado durante el crecimiento, dejando secar entre riegos.",
+     "abono": "Una vez al mes hasta agosto.",
+     "tareas": "Puede pasar el verano fuera; aclimatar poco a poco al sol fuerte."
+    },
+    "otono": {
+     "riego": "Reducir.",
+     "abono": "Ninguno.",
+     "tareas": "Meterla dentro si las noches se acercan a 5-10 °C."
+    },
+    "invierno": {
+     "riego": "Muy escaso: la planta está en reposo (RHS).",
+     "abono": "Ninguno.",
+     "tareas": "Mantenerla en un sitio luminoso, sin heladas y sin humedad."
+    }
+   },
+   "poda": "No necesita poda (RHS). Cortar las hojas dañadas a ras de la base y separar los hijuelos para multiplicarla.",
+   "plagas_y_problemas": [
+    {
+     "problema": "Hojas blandas, aguadas o marrones",
+     "causa": "Sustrato continuamente mojado (RHS).",
+     "que_hacer": "Dejar secar y comprobar el drenaje."
+    },
+    {
+     "problema": "Cochinillas",
+     "causa": "Cochinilla de escama y algodonosa (RHS).",
+     "que_hacer": "Revisar con regularidad y limpiar a mano."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Perjudicial para perros, gatos y conejos si se ingiere (RHS); también aparece como tóxica en las listas de la ASPCA reproducidas por terceros.",
+    "personas": "Perjudicial si se ingiere. Usar guantes y protección al manipularla (RHS). El gel de la hoja se usa en cosmética y se aplica sobre quemaduras."
+   },
+   "errores_comunes": [
+    "Regar en exceso",
+    "Maceta sin agujeros",
+    "Dejarla fuera con heladas",
+    "Ponerla en un sitio sin luz"
+   ],
+   "consejo_clave": "Mucha luz, sustrato drenante y riego muy escaso en invierno. Si dudas, espera otra semana.",
+   "fuentes": [
+    {
+     "titulo": "RHS: Aloe vera",
+     "url": "https://www.rhs.org.uk/plants/981/aloe-vera/details",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "RHS: Aloe, guía de plantas",
+     "url": "https://www.rhs.org.uk/plants/aloe",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "Lista ASPCA de plantas tóxicas para gatos (reproducida por Mahoney's Garden)",
+     "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-Lists-Cats.pdf",
+     "tipo": "Reproducción de ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, sustrato, riego, abono, hijuelos y plagas (RHS)",
+     "Toxicidad (RHS y ASPCA reproducida)"
+    ],
+    "pendiente": [
+     "Frecuencias de riego en días (la RHS solo dice moderado en crecimiento y muy escaso en invierno)"
+    ]
+   }
+  },
+  {
+   "id": "orquidea-phalaenopsis",
+   "nombre_comun": "Orquídea mariposa",
+   "otros_nombres": [
+    "Orquídea Phalaenopsis",
+    "Orquídea"
+   ],
+   "nombre_cientifico": "Phalaenopsis spp.",
+   "familia": "Orchidaceae",
+   "tipo": "Epífita de interior",
+   "ubicacion": "interior",
+   "dificultad": "media",
+   "como_reconocerla": [
+    "Hojas anchas, gruesas y carnosas, en dos filas opuestas, sin tallo visible",
+    "Raíces gruesas, plateadas o verdes, que sobresalen de la maceta (raíces aéreas)",
+    "Flores grandes y planas en una vara larga arqueada; color blanco, rosa, morado o moteado"
+   ],
+   "comportamiento": "No crece en tierra sino sobre árboles: sus raíces necesitan aire. Las flores duran meses y la planta puede perderlas y seguir sana. Si no florece, la RHS aconseja trasladarla un mes a un sitio unos 5 °C más fresco.",
+   "luz": "En invierno, luz brillante, por ejemplo en una ventana al este u oeste. En verano, sin sol directo, que quema las hojas (RHS).",
+   "temperatura": {
+    "ideal": "De día, entre 19 y 30 °C; de noche, entre 16 y 19 °C (RHS)",
+    "resistencia_frio": "Mantenerla por encima de 16 °C y lejos de radiadores, calefactores y corrientes (RHS)."
+   },
+   "sustrato_y_maceta": "Solo sustrato específico de orquídeas a base de corteza; nunca sustrato de base tierra ni universal. Maceta transparente para ver la humedad y las raíces. No usar una maceta demasiado grande. Trasplantar cuando se quede pequeña o lleve unos 2 años con el mismo sustrato; se puede hacer en cualquier época si las raíces están activas, con puntas verdes (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Una vez por semana en la época de crecimiento (primavera a otoño), por arriba sin mojar la corona o por inmersión, y vaciar bien el plato (RHS).",
+     "abono": "Abono específico para orquídeas, poco pero con regularidad, según el fabricante. Cada cuatro riegos, regar solo con agua para evitar acumulación de sales (RHS).",
+     "tareas": "Trasplantar si el sustrato está descompuesto o la planta se queda pequeña."
+    },
+    "verano": {
+     "riego": "Semanal; nunca dejar que las raíces se sequen del todo ni que la planta esté en agua. Con agua templada, mejor de lluvia.",
+     "abono": "Como en primavera.",
+     "tareas": "Evitar el sol directo. Con calor, vaporizar follaje y raíces aéreas, o ponerla sobre un plato con grava húmeda."
+    },
+    "otono": {
+     "riego": "Semanal hasta que baje la temperatura; después, algo menos.",
+     "abono": "Como en primavera hasta que la planta entre en reposo.",
+     "tareas": "Si no florece, trasladarla un mes a un sitio unos 5 °C más fresco."
+    },
+    "invierno": {
+     "riego": "Algo menos que en verano (RHS).",
+     "abono": "Poco o nada.",
+     "tareas": "Evitar radiadores y corrientes de aire frío."
+    }
+   },
+   "poda": "Cuando caen las flores, cortar la vara justo por encima del segundo nudo (o por encima de un nudo sano más abajo): puede salir una nueva vara con flores. Si toda la vara se seca y se vuelve pálida, cortar a ras de la base (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Raíces blandas, marrones o podridas",
+     "causa": "Sustrato que se mantiene demasiado mojado o maceta demasiado grande (RHS).",
+     "que_hacer": "Cortar las raíces dañadas con herramienta limpia y cambiar el sustrato; mantenerlo ligeramente húmedo, sin encharcar."
+    },
+    {
+     "problema": "Planta sin flores",
+     "causa": "Falta de contraste de temperatura (RHS).",
+     "que_hacer": "Trasladarla un mes a un sitio unos 5 °C más fresco."
+    },
+    {
+     "problema": "Cochinilla algodonosa",
+     "causa": "Plaga frecuente; es más fácil de eliminar si se detecta pronto (RHS).",
+     "que_hacer": "Revisar la planta con regularidad y tratar a tiempo."
+    },
+    {
+     "problema": "Hojas con daño de caracoles o babosas",
+     "causa": "Si está en invernadero o fuera en verano (RHS).",
+     "que_hacer": "Revisar al atardecer."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "No tóxica para perros, gatos ni caballos según la ASPCA (Phalaenopsis sp.).",
+    "personas": "No comestible."
+   },
+   "errores_comunes": [
+    "Regar en exceso",
+    "Dejar agua en el cubremacetas",
+    "Usar tierra normal",
+    "Dejarla al sol directo"
+   ],
+   "consejo_clave": "Sustrato de corteza, maceta transparente y riego semanal sin encharcar. Si no florece, dale un mes más fresca.",
+   "fuentes": [
+    {
+     "titulo": "RHS: How to grow Phalaenopsis (moth orchids)",
+     "url": "https://www.rhs.org.uk/plants/phalaenopsis/growing-guide",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "ASPCA: Phalaenopsis Orchid",
+     "url": "https://www.aspca.org/pet-care/aspca-poison-control/toxic-and-non-toxic-plants/phalaenopsis-orchid",
+     "tipo": "ASPCA"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, temperatura, riego, abono, sustrato, trasplante, poda y plagas (RHS)",
+     "No tóxica para perros, gatos y caballos (ASPCA, ficha leída directamente)"
+    ],
+    "pendiente": [
+     "Algunas guías en español recomiendan reposo sin abono en otoño-invierno: la RHS indica abonar poco o nada solo en invierno. Se sigue la RHS",
+     "Humedad ambiental ideal (algunas fuentes dan 50-80%)"
+    ]
+   }
+  },
+  {
+   "id": "crasula-arbol-de-jade",
+   "nombre_comun": "Árbol de jade",
+   "otros_nombres": [
+    "Crásula",
+    "Planta del dinero",
+    "Crassula"
+   ],
+   "nombre_cientifico": "Crassula ovata",
+   "familia": "Crassulaceae",
+   "tipo": "Suculenta arbustiva",
+   "ubicacion": "interior o exterior protegido",
+   "dificultad": "facil",
+   "como_reconocerla": [
+    "Hojas gruesas, ovaladas, carnosas y brillantes, de verde intenso, a veces con borde rojizo",
+    "Tronco y ramas leñosos que engrosan con los años, como un mini árbol",
+    "En adultos con mucha luz, saca pequeñas flores blancas o rosadas en invierno"
+   ],
+   "comportamiento": "Crece lento y vive muchos años. Almacena agua en hojas y tronco. No tolera heladas. No necesita poda (RHS).",
+   "luz": "Pleno sol, con orientación oeste o sur y en sitio resguardado (RHS).",
+   "temperatura": {
+    "ideal": "Cálida y luminosa",
+    "resistencia_frio": "La RHS le da la categoría H2: tolera temperaturas bajas pero no sobrevive si se hiela (de 1 a 5 °C). Las suculentas de interior deben mantenerse con noches de 8-10 °C (RHS)."
+   },
+   "sustrato_y_maceta": "Sustrato para cactus con buen drenaje. Maceta con orificios y no demasiado grande, para evitar exceso de humedad. Trasplantar en primavera cuando las raíces llenen la maceta (RHS).",
+   "estaciones": {
+    "primavera": {
+     "riego": "Mantener el sustrato ligeramente húmedo durante el crecimiento, dejando que se seque la superficie entre riegos.",
+     "abono": "Abono líquido general una vez al mes, de primavera a verano (RHS).",
+     "tareas": "Trasplantar si hace falta."
+    },
+    "verano": {
+     "riego": "Mantener el sustrato ligeramente húmedo durante el crecimiento.",
+     "abono": "Una vez al mes.",
+     "tareas": "Aclimatar poco a poco al sol fuerte."
+    },
+    "otono": {
+     "riego": "Reducir.",
+     "abono": "Ninguno.",
+     "tareas": "Resguardar si hay riesgo de heladas."
+    },
+    "invierno": {
+     "riego": "Muy escaso en reposo (RHS).",
+     "abono": "Ninguno.",
+     "tareas": "Mantenerla en un sitio luminoso, sin heladas. Evitar radiadores."
+    }
+   },
+   "poda": "No necesita poda (RHS).",
+   "plagas_y_problemas": [
+    {
+     "problema": "Hojas arrugadas y flojas",
+     "causa": "Falta de agua; las suculentas se arrugan si se les riega muy poco (RHS).",
+     "que_hacer": "Regar a fondo y volver a un ritmo regular."
+    },
+    {
+     "problema": "Hojas blandas, amarillas y que caen, o base podrida",
+     "causa": "Exceso de riego, que causa podredumbre (RHS).",
+     "que_hacer": "Dejar secar y comprobar el drenaje."
+    },
+    {
+     "problema": "Tallos largos y flojos",
+     "causa": "Poca luz; las suculentas crecen débiles y deformes (RHS).",
+     "que_hacer": "Más luz y recortar o reponer con esquejes."
+    },
+    {
+     "problema": "Insectos chupadores",
+     "causa": "Cochinilla algodonosa, gorgojo de la vid y pulgón (RHS).",
+     "que_hacer": "Revisar con regularidad."
+    }
+   ],
+   "toxicidad": {
+    "mascotas": "Tóxica para gatos según la ASPCA (lista reproducida por terceros) y para perros según otras fuentes veterinarias: vómitos, apatía y falta de coordinación.",
+    "personas": "Sin dato verificado en la RHS. No comestible."
+   },
+   "errores_comunes": [
+    "Regar con calendario fijo",
+    "Maceta sin drenaje",
+    "Poca luz",
+    "Mantenerla húmeda en invierno"
+   ],
+   "consejo_clave": "Riega cuando el sustrato esté seco y las hojas empiecen a arrugarse un poco. En invierno, casi nada.",
+   "fuentes": [
+    {
+     "titulo": "RHS: Crassula ovata",
+     "url": "https://www.rhs.org.uk/plants/4739/crassula-ovata/details",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "RHS: How to grow cacti and succulents (houseplants)",
+     "url": "https://www.rhs.org.uk/plants/types/cacti-succulents/houseplants/growing-guide",
+     "tipo": "RHS"
+    },
+    {
+     "titulo": "Lista ASPCA de plantas tóxicas para gatos (reproducida por Mahoney's Garden)",
+     "url": "https://www.mahoneysgarden.com/wp-content/uploads/2023/09/Safe-Toxic-Plant-Lists-Cats.pdf",
+     "tipo": "Reproducción de ASPCA"
+    },
+    {
+     "titulo": "Sunset: plantas tóxicas para perros (incluye árbol de jade)",
+     "url": "https://sunset.com/garden/flowers-plants/plants-poisonous-to-dogs",
+     "tipo": "Medio divulgativo"
+    }
+   ],
+   "verificacion": {
+    "verificado": [
+     "Luz, hardiness, sustrato, riego, abono, poda y problemas (RHS)",
+     "Toxicidad para gatos (lista ASPCA reproducida)"
+    ],
+    "pendiente": [
+     "Toxicidad para perros: confirmar en la ficha de la ASPCA",
+     "Toxicidad para personas"
+    ]
+   }
+  }
+ ],
+ "historial": [
+  {
+   "version": "0.2",
+   "fecha": "2026-10-08",
+   "cambios": "Documento original: 20 plantas con fuentes y verificación (generado por Claude en otra sesión a partir de fuentes web; sin revisión de un experto)."
+  },
+  {
+   "version": "0.3",
+   "fecha": "2026-10-08",
+   "cambios": "Entra en el repositorio. Olivo: contrastado además con Verdecora e Interflora (blogs de tienda, tipo B); se añade «contraste» con las discrepancias y la decisión propuesta."
+  }
+ ]
+}

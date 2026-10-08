@@ -70,6 +70,10 @@ jobs:
           fail=0
           for t in test-rain test-sun test-coords test-retention test-notify test-ratings test-care-alias; do node tools/$t.mjs 2>&1 | tee -a blog-check.log; [ "${PIPESTATUS[0]}" = 0 ] || fail=1; done
           exit $fail
+      - name: Comprobar las fichas de referencia (fuentes y procedencia)
+        if: always()
+        shell: bash
+        run: node tools/check-referencia.mjs 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
       - name: Avisar por correo
         if: failure() && env.CI_ALERT_TOKEN != ''
         shell: bash
