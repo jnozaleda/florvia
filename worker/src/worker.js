@@ -3,6 +3,7 @@ import { verifyGoogleToken } from "./google.js";
 import { EmailMessage } from "cloudflare:email";
 import { fetchWeather } from "../../app/weather.js";
 import { normName, speciesKey, canonicalKey, synonymSources, seedAlias } from "./species.js";
+import { REFERENCE, REFERENCE_VERSION } from "./reference-context.js";
 // my-garden-api (Florvia's backend) — the app's small backend. For now one job: fill in a plant's care sheet from
 // its name ("✨ Rellenar con IA"). The AI provider is a setting (PROVIDER) so moving from the free
 // Cloudflare model to a paid one later only touches this file, never the app.
@@ -30,7 +31,7 @@ const CARE_SCHEMA = {
       [`feedtype_${k}`, { type: "string", description: `Qué tipo de abono usar en ${SEASON_ES[k]} para esta planta (p. ej. «Abono para cítricos, rico en nitrógeno», «Rico en potasio para la floración»); vacío si no se abona` }],
       [`tip_${k}`, { type: "string", description: `Una frase corta (menos de 140 caracteres) con lo más importante en ${SEASON_ES[k]} para esta planta en ese clima` }],
     ])),
-    frostSensitive: { type: "boolean", description: "Si sufre con temperaturas bajo 0 °C" },
+    frostSensitive: { type: "boolean", description: "true solo si sufre daños con heladas débiles (hacia 0 °C o poco por debajo); false si aguanta -3 °C o menos aunque en maceta convenga protegerla" },
     sunNeed: { type: "string", enum: ["sol", "media_sombra", "sombra"], description: "Luz que pide en exterior: sol (6 h o más de sol directo), media_sombra (sol suave o unas horas) o sombra" },
     sunSensitive: { type: "boolean", description: "true solo si el sol directo le quema o la perjudica claramente y debe estar en sombra o media sombra (helechos, hostas, aspidistra, begonias…)" },
     minTemp: { type: "integer", minimum: -40, maximum: 25, description: "Temperatura mínima que aguanta, en °C (p. ej. 5 para una planta que sufre con 5 °C, -15 para una muy resistente)" },
@@ -96,7 +97,7 @@ const CALENDAR_SCHEMA = {
   additionalProperties: false,
 };
 
-function calendarMessages({ name, species, place, lat }) {
+function calendarMessages({ name, species, place, lat, reference = "" }) {
   return [
     {
       role: "system",
@@ -107,16 +108,19 @@ function calendarMessages({ name, species, place, lat }) {
         "contra una plaga concreta, acolchar, proteger del frío, limpiar hojas secas, cosechar. Nunca fases del año. " +
         "Marca matureOnly en las tareas que solo tienen sentido en un ejemplar adulto y asentado (aclarar frutos o uvas, " +
         "cosechar, podas de fructificación): una planta pequeña o joven no las necesita. " +
-        "Responde siempre en español.",
+        "Responde siempre en español, con ortografía correcta (con tildes y ñ) y tuteando a quien lee.",
     },
     {
       role: "user",
-      content: `Planta: «${name}»${species ? ` (${species})` : ""}.\nLugar: ${place || "sin nombre"} (hemisferio ${lat < 0 ? "sur" : "norte"}).\nDa su calendario de tareas del año y sus riesgos.`,
+      content: `Planta: «${name}»${species ? ` (${species})` : ""}.\nLugar: ${place || "sin nombre"} (hemisferio ${lat < 0 ? "sur" : "norte"}).\nDa su calendario de tareas del año y sus riesgos.` +
+        (reference ? `\n\nDATOS DE REFERENCIA contrastados con fuentes: úsalos para las tareas y sus meses. Lo que figura como DECISIONES CONFIRMADAS es definitivo (por ejemplo, la fecha de poda para España). Varias fechas vienen de fuentes del Reino Unido: ajústalas al lugar indicado.\n${reference}` : ""),
     },
   ];
 }
 
-function careMessages({ name, place, lat, lon }) {
+// The reference text of the species a name stands for (content/referencia/plantas.json), or "" when we have none.
+const referenceFor = (name) => REFERENCE[seedAlias(name) || speciesKey(name)] ?? "";
+function careMessages({ name, place, lat, lon, reference = "" }) {
   const south = lat < 0;
   return [
     {
@@ -143,13 +147,20 @@ function careMessages({ name, place, lat, lon }) {
         "(maceta o suelo) y un consejo de maceta/sustrato, si el viento la daña, los meses mejores para comprarla y plantarla " +
         "en ese clima, su tamaño adulto, los meses de flor o fruto notable, lo exigente que es de cuidar, de 3 a 4 consejos " +
         "para elegir un buen ejemplar en el vivero, si es tóxica para mascotas o personas y si es invasora en España. " +
-        "Responde siempre en español.",
+        "Responde siempre en español, con ortografía correcta (con tildes y ñ) y tuteando a quien lee.",
     },
     {
       role: "user",
       content:
         `Planta: «${name}».\nLugar: ${place || "sin nombre"} (lat ${lat}, lon ${lon}, hemisferio ${south ? "sur" : "norte"}).\n` +
-        `Rellena su ficha de cuidados para todo el año.`,
+        `Rellena su ficha de cuidados para todo el año.` +
+        (reference
+          ? "\n\nDATOS DE REFERENCIA contrastados con fuentes. Úsalos como base de la ficha: si algo de lo que sabes los contradice, prevalecen ellos, y lo que figura como DECISIONES CONFIRMADAS es definitivo " +
+            "(por ejemplo, si da una temperatura mínima, esa es la que va en minTemp). Convierte lo que dicen a nuestros campos (días de riego y de abono por estación para maceta mediana, " +
+            "luz, meses…) con criterio prudente; si no dicen nada de un dato, no lo inventes con falsa precisión. Varias fechas y temperaturas vienen de fuentes del Reino Unido: " +
+            "ajústalas al lugar indicado y, cuando haya una decisión confirmada para España, usa esa. Lo que figure como «Sin dato fiable» (por ejemplo la toxicidad) no lo des por seguro: " +
+            "dilo así en la nota correspondiente (toxicNote) y recomienda cautela en vez de afirmar que no es tóxica.\n" + reference
+          : ""),
     },
   ];
 }
@@ -372,7 +383,7 @@ async function takeQuota(request, env, ctx = null) {
 // A care sheet in two pieces: the PARENT is what is true of the species wherever it grows (name, light, hardiness, toxicity, size, how to water,
 // notes…) and the CHILD what depends on the climate of the cell (watering and feeding by season, seasonal tips, planting and flowering months, fit).
 // The Worker joins them when it serves a sheet, so the app still gets the same flat sheet. A species has one parent; each cell has its own child.
-const PARENT_FIELDS = ["commonName", "species", "confidence", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives", "isPlant"];
+const PARENT_FIELDS = ["commonName", "species", "confidence", "grounded", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives", "isPlant"];
 const CHILD_FIELDS = ["seasons", "feedTypes", "tips", "climateFit", "climateNote", "plantMonths", "plantWhen", "bloomMonths", "bloomWhat"];
 const PARENT_TTL = 365 * 86400;
 const pick = (o, keys) => Object.fromEntries(keys.filter((key) => o[key] !== undefined).map((key) => [key, o[key]]));
@@ -407,7 +418,9 @@ async function handleCare(request, env, headers, ctx) {
   // Keeps a whole sheet as parent (unless the species already has one: that one stays) + child, and returns what to serve.
   const store = async (sk, sheet) => {
     const { parent, child } = splitSheet(sheet);
-    const known = await env.CACHE.get(parentKey(sk), "json");
+    const found = await env.CACHE.get(parentKey(sk), "json");
+    // The species' parent stays, except that one written from the reference data replaces one that was not.
+    const known = found && (found.grounded || !parent.grounded) ? found : null;
     await Promise.all([known ? null : env.CACHE.put(parentKey(sk), JSON.stringify(parent), { expirationTtl: PARENT_TTL }), env.CACHE.put(childKey(sk), JSON.stringify(child), { expirationTtl: CACHE_TTL })]);
     return known ? mergeSheet(known, child) : sheet;
   };
@@ -452,10 +465,11 @@ async function handleCare(request, env, headers, ctx) {
   let care, aiUsage;
   const t0 = Date.now();
   try {
-    const { from, out, usage, quotaHit } = await askAI(env, careMessages({ name, place, lat, lon }));
+    const reference = referenceFor(name);
+    const { from, out, usage, quotaHit } = await askAI(env, careMessages({ name, place, lat, lon, reference }));
     noteQuota(env, ctx, quotaHit);
     aiUsage = usage;
-    care = { ...sanitize(out), provider: from };
+    care = { ...sanitize(out), provider: from, ...(reference ? { grounded: REFERENCE_VERSION } : {}) };
   } catch (err) {
     console.error("care failed", env.PROVIDER, err?.message);
     return aiFail(env, ctx, request, kind, err, headers);
@@ -1585,7 +1599,8 @@ async function handleCalendar(request, env, headers, ctx) {
   let cal, aiUsage;
   const t0 = Date.now();
   try {
-    const { from, out, usage, quotaHit } = await askAI(env, calendarMessages({ name: subject, species: "", place, lat }), CALENDAR_SCHEMA, "calendario");
+    const reference = referenceFor(subject);
+    const { from, out, usage, quotaHit } = await askAI(env, calendarMessages({ name: subject, species: "", place, lat, reference }), CALENDAR_SCHEMA, "calendario");
     noteQuota(env, ctx, quotaHit);
     aiUsage = usage;
     cal = { ...sanitizeCalendar(out), provider: from };

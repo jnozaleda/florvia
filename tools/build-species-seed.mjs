@@ -1,4 +1,5 @@
-// Genera worker/src/species-seed.js (sinónimos científicos y nombres comunes) a partir de content/referencia/plantas.json.
+// Genera, a partir de content/referencia/plantas.json, worker/src/species-seed.js (sinónimos científicos y nombres comunes) y
+// worker/src/reference-context.js (el texto de referencia de cada especie, que el Worker da a la IA al generar su ficha).
 // Uso: node tools/build-species-seed.mjs          → escribe el archivo
 //      node tools/build-species-seed.mjs --check  → sale con código 1 si el archivo no está al día (se usa en las pruebas)
 import { readFileSync, writeFileSync } from "node:fs";
@@ -7,6 +8,7 @@ import { rawSpeciesKey, normName } from "../worker/src/species.js";
 // species.js importa species-seed.js, que aún puede no existir o estar viejo: aquí solo se usan las funciones de normalización puras.
 const doc = JSON.parse(readFileSync(new URL("../content/referencia/plantas.json", import.meta.url), "utf8"));
 const OUT = new URL("../worker/src/species-seed.js", import.meta.url);
+const OUT_CONTEXT = new URL("../worker/src/reference-context.js", import.meta.url);
 
 // Nombres comunes que NO se siembran: cubren varias plantas distintas y servirían la ficha equivocada.
 const AMBIGUOUS = new Set(["ficus", "orquidea", "hydrangea", "menta", "crassula"]);
@@ -80,19 +82,49 @@ for (const p of doc.plantas) {
 for (const [n, k] of Object.entries(EXTRA_ALIASES)) { aliases[normName(n)] = k; notes.push(`«${n}» → ${k} (añadido a mano)`); }
 for (const n of Object.keys(aliases)) if (aliases[n] === null) delete aliases[n];
 
+
+// Texto de referencia de una planta, compacto, para el prompt de la IA. Lo «confirmado» va aparte y prevalece.
+const clip = (t, n) => { const s = String(t ?? "").replace(/\s+/g, " ").trim(); return s.length > n ? `${s.slice(0, n - 1)}…` : s; };
+const referenceText = (p) => {
+  const lines = [`Planta de referencia: ${p.nombre_comun} (${p.nombre_cientifico}). Dificultad: ${p.dificultad}. Ubicación habitual: ${p.ubicacion}.`];
+  lines.push(`Luz: ${clip(p.luz, 400)}`);
+  lines.push(`Temperatura: ${clip(p.temperatura?.ideal, 200)} Frío: ${clip(p.temperatura?.resistencia_frio, 400)}`);
+  lines.push(`Sustrato y maceta: ${clip(p.sustrato_y_maceta, 400)}`);
+  for (const [k, label] of [["primavera", "Primavera"], ["verano", "Verano"], ["otono", "Otoño"], ["invierno", "Invierno"]]) {
+    const e = p.estaciones?.[k];
+    if (e) lines.push(`${label}: riego: ${clip(e.riego, 260)} abono: ${clip(e.abono, 260)} tareas: ${clip(e.tareas, 260)}`);
+  }
+  lines.push(`Poda: ${clip(p.poda, 450)}`);
+  const tox = p.toxicidad ?? {};
+  lines.push(`Toxicidad: mascotas: ${clip(tox.mascotas, 250)} personas: ${clip(tox.personas, 150)}`);
+  if (p.plagas_y_problemas?.length) lines.push(`Problemas frecuentes: ${p.plagas_y_problemas.map((x) => clip(x.problema, 70)).join("; ")}.`);
+  const decided = (p.contraste ?? []).filter((c) => c.estado === "confirmado");
+  if (decided.length) lines.push(`DECISIONES CONFIRMADAS (prevalecen sobre todo lo anterior): ${decided.map((c) => `${c.dato}: ${clip(c.decision, 300)}`).join(" | ")}`);
+  const unknown = (p.contraste ?? []).filter((c) => c.estado === "sin_fuente");
+  if (unknown.length) lines.push(`Sin dato fiable: ${unknown.map((c) => `${c.dato} (${clip(c.decision, 120)})`).join("; ")}.`);
+  return lines.join("\n");
+};
+const context = {};
+for (const p of doc.plantas) context[canonicalOf[p.id]] = referenceText(p);
+
 const sort = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)));
 const body = `// Generado por tools/build-species-seed.mjs desde content/referencia/plantas.json: no editar a mano.
 // SYNONYMS: nombre científico antiguo o alternativo → especie aceptada. ALIASES: nombre común (sin tildes) → especie.
 export const SYNONYMS = ${JSON.stringify(sort(synonyms), null, 2)};
 export const ALIASES = ${JSON.stringify(sort(aliases), null, 2)};
 `;
+const bodyContext = `// Generado por tools/build-species-seed.mjs desde content/referencia/plantas.json (v${doc.version}): no editar a mano.
+// Texto de referencia por especie (clave = especie aceptada), que se añade al prompt de la IA al generar su ficha.
+export const REFERENCE_VERSION = ${JSON.stringify(doc.version)};
+export const REFERENCE = ${JSON.stringify(sort(context), null, 2)};
+`;
 if (process.argv.includes("--check")) {
-  let current = "";
-  try { current = readFileSync(OUT, "utf8"); } catch { /* no existe */ }
-  if (current !== body) { console.log("worker/src/species-seed.js no está al día: ejecuta node tools/build-species-seed.mjs"); process.exit(1); }
-  console.log(`Semillas de especies al día: ${Object.keys(synonyms).length} sinónimos · ${Object.keys(aliases).length} nombres comunes`);
+  const read = (f) => { try { return readFileSync(f, "utf8"); } catch { return ""; } };
+  if (read(OUT) !== body || read(OUT_CONTEXT) !== bodyContext) { console.log("worker/src/species-seed.js o reference-context.js no están al día: ejecuta node tools/build-species-seed.mjs"); process.exit(1); }
+  console.log(`Semillas de especies al día: ${Object.keys(synonyms).length} sinónimos · ${Object.keys(aliases).length} nombres comunes · ${Object.keys(context).length} textos de referencia (v${doc.version})`);
 } else {
   writeFileSync(OUT, body);
+  writeFileSync(OUT_CONTEXT, bodyContext);
   console.log(notes.join("\n"));
-  console.log(`\nEscrito worker/src/species-seed.js: ${Object.keys(synonyms).length} sinónimos · ${Object.keys(aliases).length} nombres comunes`);
+  console.log(`\nEscrito worker/src/species-seed.js (${Object.keys(synonyms).length} sinónimos · ${Object.keys(aliases).length} nombres comunes) y worker/src/reference-context.js (${Object.keys(context).length} especies, ${Math.round(bodyContext.length / 1024)} KB)`);
 }

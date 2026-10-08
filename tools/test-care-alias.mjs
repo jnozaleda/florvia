@@ -63,6 +63,11 @@ const aiEvents = () => sqlite.prepare("SELECT name, COUNT(*) AS n FROM events WH
 
 // La KV simulada del encabezado devuelve texto: aquí hace falta que, con el tipo «json», devuelva el objeto como la real.
 env.CACHE.get = async (k, type) => { const v = kv.get(k) ?? null; return type === "json" && v !== null ? JSON.parse(v) : v; };
+const { REFERENCE_VERSION } = await import(new URL("../worker/src/reference-context.js", import.meta.url));
+// Guardamos lo que se le pide al modelo para comprobar si lleva los datos de referencia.
+let lastPrompt = "";
+const fetchBefore = globalThis.fetch;
+globalThis.fetch = async (url, init) => { if (/generativelanguage/.test(String(url))) lastPrompt = String(init?.body ?? ""); return fetchBefore(url, init); };
 const RAW = { isPlant: true, commonName: "Aspidistra", species: "Aspidistra elatior", confidence: "alta", sunNeed: "sombra", sunSensitive: true, frostSensitive: true, minTemp: -5, climateFit: "bien", climateNote: "Aguanta.",
   water_spring: 10, water_summer: 6, water_autumn: 12, water_winter: 20, feed_spring: 30, feed_summer: 30, feed_autumn: 0, feed_winter: 0, notes: "nota A" };
 const setAI = (patch) => { gemini = { m1: { status: 200, json: { ...RAW, ...patch } }, m2: { status: 200, json: { ...RAW, ...patch } } }; };
@@ -223,6 +228,55 @@ await test("especies agrupadas en una misma ficha (Bougainvillea glabra y specta
   await ask("buganvilla");
   setAI({ species: "Bougainvillea spectabilis", notes: "otra buganvilla" });
   assert.equal((await ask("bugambilia morada")).body.notes, "buganvilla");
+});
+
+await test("las 20 especies de referencia: la IA recibe sus datos contrastados y las decisiones confirmadas (olivo: -7 °C)", async () => {
+  setAI({ species: "Olea europaea", commonName: "Olivo", minTemp: -7, notes: "olivo" });
+  lastPrompt = "";
+  const r = await ask("olivo");
+  assert.equal(r.status, 200);
+  assert.match(lastPrompt, /DATOS DE REFERENCIA/);
+  assert.match(lastPrompt, /DECISIONES CONFIRMADAS/);
+  assert.match(lastPrompt, /-7 °C en suelo; proteger la maceta a partir de -5 °C/);
+  assert.match(lastPrompt, /Frío mínimo/);
+  assert.match(lastPrompt, /Sin dato fiable/, "lo que no tiene dato fiable se dice, no se afirma");
+  assert.match(lastPrompt, /toxicNote/);
+  assert.equal(r.body.grounded, REFERENCE_VERSION, "la ficha queda marcada como basada en la referencia");
+  assert.equal((await ask("olivo")).body.grounded, REFERENCE_VERSION, "y la marca se conserva al servirla de la caché");
+});
+await test("un nombre común sembrado («olivera») y el nombre científico también llevan la referencia", async () => {
+  setAI({ species: "Olea europaea", notes: "x" });
+  lastPrompt = ""; await ask("olivera");
+  assert.match(lastPrompt, /DECISIONES CONFIRMADAS/);
+  kv.clear(); lastPrompt = ""; await ask("Olea europaea");
+  assert.match(lastPrompt, /DATOS DE REFERENCIA/);
+});
+await test("una especie sin referencia se genera como siempre, sin ese bloque ni marca", async () => {
+  setAI({ species: "Zelkova serrata", commonName: "Zelkova", notes: "zelkova" });
+  lastPrompt = "";
+  const r = await ask("bonsai zelkova");
+  assert.doesNotMatch(lastPrompt, /DATOS DE REFERENCIA/);
+  assert.equal(r.body.grounded, undefined);
+});
+await test("el calendario del año de una especie de referencia también recibe sus datos", async () => {
+  lastPrompt = "";
+  await call("/calendar", { name: "Olivo", species: "Olea europaea", lat: 40.4, lon: -3.7, place: "Madrid" });
+  assert.match(lastPrompt, /DATOS DE REFERENCIA/);
+  assert.match(lastPrompt, /Finales de invierno \(febrero-marzo\)/);
+});
+
+await test("un padre escrito con la referencia sustituye a uno que no la usaba; uno con referencia no se pisa", async () => {
+  // Padre viejo (sin referencia) de una especie que ahora sí tiene referencia, con su hija de Madrid.
+  kv.set("parent:v16:olea europaea", JSON.stringify({ commonName: "Olivo", species: "Olea europaea", notes: "vieja", minTemp: -10, confidence: "alta", provider: "gemini:antiguo" }));
+  kv.set("child:v16:olea europaea:40:-4", JSON.stringify({ seasons: { spring: { water: 7, feed: 30 }, summer: { water: 4, feed: 30 }, autumn: { water: 10, feed: 0 }, winter: { water: 20, feed: 0 } }, provider: "gemini:antiguo" }));
+  setAI({ species: "Olea europaea", notes: "con referencia", minTemp: -7, water_spring: 5 });
+  const sevilla = await ask("olivo", { lat: 37.4, lon: -5.9 }); // otra zona: se genera una hija nueva, con referencia
+  assert.deepEqual([sevilla.body.notes, sevilla.body.minTemp, sevilla.body.grounded], ["con referencia", -7, REFERENCE_VERSION], "el padre nuevo (con referencia) sustituye al viejo");
+  const madrid = await ask("olivo");
+  assert.equal(madrid.body.notes, "con referencia", "Madrid usa ya el padre nuevo, con su hija antigua");
+  setAI({ species: "Olea europaea", notes: "otra vez", minTemp: -3 });
+  const cadiz = await ask("olivo", { lat: 36.5, lon: -6.3 });
+  assert.equal(cadiz.body.notes, "con referencia", "un padre con referencia no se pisa");
 });
 
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }

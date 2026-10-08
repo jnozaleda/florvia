@@ -1,5 +1,5 @@
 {
- "version": "0.3",
+ "version": "0.4",
  "idioma": "es-ES",
  "fecha": "2026-10-08",
  "ambito": "España. Las fuentes principales (RHS) hablan del clima británico: ajustar fechas y temperaturas a la zona (interior, costa, norte).",
@@ -362,7 +362,9 @@
       "Interflora": "proteger de heladas (sin cifra)"
      },
      "decision": "-7 °C en suelo; proteger la maceta a partir de -5 °C",
-     "estado": "propuesta"
+     "estado": "confirmado",
+     "confirmado_por": "Noza (sin revisor experto)",
+     "fecha": "2026-10-08"
     },
     {
      "dato": "Abono",
@@ -372,7 +374,9 @@
       "Interflora": "en maceta, cada 4-6 semanas en primavera-verano; nada en otoño-invierno"
      },
      "decision": "Mínimo: nada en suelo; en maceta, renovar sustrato superior cada primavera y, como mucho, un abono orgánico al año. No mensual (RHS y Verdecora coinciden; solo Interflora lo recomienda)",
-     "estado": "propuesta"
+     "estado": "confirmado",
+     "confirmado_por": "Noza (sin revisor experto)",
+     "fecha": "2026-10-08"
     },
     {
      "dato": "Poda (fecha)",
@@ -382,7 +386,9 @@
       "Interflora": "poda ligera anual a finales del invierno"
      },
      "decision": "Finales de invierno (febrero-marzo) por ser las fuentes españolas; evitar podar tras agosto (RHS)",
-     "estado": "propuesta"
+     "estado": "confirmado",
+     "confirmado_por": "Noza (sin revisor experto)",
+     "fecha": "2026-10-08"
     },
     {
      "dato": "Riego en maceta",
@@ -392,7 +398,9 @@
       "Interflora": "1-2 veces por semana en primavera-verano; invierno al mínimo, solo con el sustrato seco del todo"
      },
      "decision": "Orientativo, solo para maceta: 1-2 veces por semana en primavera-verano dejando secar la capa superior; invierno al mínimo. Una sola fuente da cifras",
-     "estado": "propuesta"
+     "estado": "confirmado",
+     "confirmado_por": "Noza (sin revisor experto)",
+     "fecha": "2026-10-08"
     },
     {
      "dato": "Maceta",
@@ -401,7 +409,9 @@
       "Interflora": "al menos 40-50 cm de profundidad, con agujeros en la base"
      },
      "decision": "Profundidad y ancho de 30-50 cm como mínimo; buen drenaje",
-     "estado": "propuesta"
+     "estado": "confirmado",
+     "confirmado_por": "Noza (sin revisor experto)",
+     "fecha": "2026-10-08"
     },
     {
      "dato": "Luz",
@@ -410,7 +420,9 @@
       "Interflora": "pleno sol, al menos 6 h de luz directa"
      },
      "decision": "Pleno sol (6 h o más), resguardado del viento frío",
-     "estado": "propuesta"
+     "estado": "confirmado",
+     "confirmado_por": "Noza (sin revisor experto)",
+     "fecha": "2026-10-08"
     },
     {
      "dato": "Trasplante",
@@ -418,7 +430,9 @@
       "Interflora": "cada 2-3 años a una maceta algo mayor o renovar parcialmente el sustrato"
      },
      "decision": "Cada 2-3 años (una sola fuente)",
-     "estado": "propuesta"
+     "estado": "confirmado",
+     "confirmado_por": "Noza (sin revisor experto)",
+     "fecha": "2026-10-08"
     },
     {
      "dato": "Sustrato",
@@ -427,7 +441,9 @@
       "Interflora": "aireado y suelto; tierra universal con arena de río o perlita; ligeramente alcalino"
      },
      "decision": "Aireado y con buen drenaje (arena, perlita o grava); ligeramente alcalino",
-     "estado": "propuesta"
+     "estado": "confirmado",
+     "confirmado_por": "Noza (sin revisor experto)",
+     "fecha": "2026-10-08"
     },
     {
      "dato": "Ubicación en el jardín",
@@ -435,7 +451,9 @@
       "Verdecora": "no plantarlo en medio de un césped (exceso de humedad: hongos y raíces podridas)"
      },
      "decision": "Evitar el césped; mejor junto a plantas de clima mediterráneo (una sola fuente)",
-     "estado": "propuesta"
+     "estado": "confirmado",
+     "confirmado_por": "Noza (sin revisor experto)",
+     "fecha": "2026-10-08"
     },
     {
      "dato": "Toxicidad",
@@ -2238,6 +2256,11 @@
    "version": "0.3",
    "fecha": "2026-10-08",
    "cambios": "Entra en el repositorio. Olivo: contrastado además con Verdecora e Interflora (blogs de tienda, tipo B); se añade «contraste» con las discrepancias y la decisión propuesta."
+  },
+  {
+   "version": "0.4",
+   "fecha": "2026-10-08",
+   "cambios": "Olivo: las decisiones del contraste (frío, abono, poda, riego en maceta, maceta, luz, trasplante, sustrato, ubicación) pasan de «propuesta» a «confirmado» por Noza (sin revisor experto). Empieza a usarse como contexto para la IA al generar la ficha de estas especies."
   }
  ]
 }
