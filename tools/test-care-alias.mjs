@@ -9,7 +9,9 @@ import assert from "node:assert/strict";
 register("data:text/javascript," + encodeURIComponent(`
   export async function resolve(s, c, next) { return s === "cloudflare:email" ? { url: "data:text/javascript," + encodeURIComponent("export class EmailMessage { constructor(from, to, raw) { this.from = from; this.to = to; this.raw = raw; } }"), shortCircuit: true } : next(s, c); }
 `));
-const { default: worker } = await import(new URL("../worker/src/worker.js", import.meta.url));
+const { default: worker, infoFor } = await import(new URL("../worker/src/worker.js", import.meta.url));
+// Una ficha guardada «al día» (escrita con la información de hoy), para que estas pruebas no la vuelvan a escribir: eso se prueba en test-knowledge-retire.
+const fresh = (sk, name = "") => { const fp = infoFor(sk, name).fp; return { fp, fpc: fp }; };
 
 const sqlite = new DatabaseSync(":memory:");
 sqlite.exec(readFileSync(new URL("../worker/schema.sql", import.meta.url), "utf8"));
@@ -134,7 +136,7 @@ await test("especies distintas no se mezclan, y otra zona climática tiene su pr
   assert.equal(parents().length, 2, "un padre por especie, no por zona");
 });
 await test("fichas antiguas por nombre escrito: la primera en pedirse se queda como la de la especie y las demás se unen a ella", async () => {
-  const sheet = (notes) => JSON.stringify({ ...RAW, notes, seasons: { spring: { water: 10, feed: 30 }, summer: { water: 6, feed: 30 }, autumn: { water: 12, feed: 0 }, winter: { water: 20, feed: 0 } } });
+  const sheet = (notes) => JSON.stringify({ ...RAW, ...fresh("aspidistra elatior"), notes, seasons: { spring: { water: 10, feed: 30 }, summer: { water: 6, feed: 30 }, autumn: { water: 12, feed: 0 }, winter: { water: 20, feed: 0 } } });
   kv.set("care:v16:aspidistra:40:-4", sheet("vieja 1"));
   kv.set("care:v16:aspidistra elatior:40:-4", sheet("vieja 2"));
   setAI({ notes: "nueva" });
@@ -180,7 +182,7 @@ await test("misma especie en otra zona: se queda el padre (lo universal) y se gu
   assert.deepEqual([mad.body.notes, mad.body.seasons.spring.water, mad.body.tips.spring], ["nota A", 10, "consejo Madrid"], "Madrid no cambia");
 });
 await test("fichas enteras de antes (por especie y zona) se parten solas al pedirse, sin llamar a la IA", async () => {
-  const whole = JSON.stringify({ ...RAW, notes: "entera", seasons: { spring: { water: 9, feed: 30 }, summer: { water: 6, feed: 30 }, autumn: { water: 12, feed: 0 }, winter: { water: 20, feed: 0 } }, tips: { spring: "t", summer: "t", autumn: "t", winter: "t" }, feedTypes: { spring: "", summer: "", autumn: "", winter: "" }, provider: "gemini:antiguo" });
+  const whole = JSON.stringify({ ...RAW, ...fresh("aspidistra elatior"), notes: "entera", seasons: { spring: { water: 9, feed: 30 }, summer: { water: 6, feed: 30 }, autumn: { water: 12, feed: 0 }, winter: { water: 20, feed: 0 } }, tips: { spring: "t", summer: "t", autumn: "t", winter: "t" }, feedTypes: { spring: "", summer: "", autumn: "", winter: "" }, provider: "gemini:antiguo" });
   kv.set("species:v16:aspidistra elatior:40:-4", whole);
   kv.set("alias:v16:aspidistra:40:-4", "aspidistra elatior");
   setAI({ notes: "nueva" });
@@ -202,8 +204,8 @@ await test("sinónimos científicos: «Rosmarinus officinalis» y «Salvia rosma
 await test("una ficha guardada con un nombre antiguo se mueve al nombre aceptado al pedirla, sin llamar a la IA", async () => {
   const whole = { ...RAW, species: "Rosmarinus officinalis", commonName: "Romero", notes: "vieja" };
   const { notes, species, commonName, ...rest } = whole;
-  kv.set("parent:v16:rosmarinus officinalis", JSON.stringify({ commonName, species, notes, confidence: "alta", sunNeed: "sun", provider: "gemini:antiguo" }));
-  kv.set("child:v16:rosmarinus officinalis:40:-4", JSON.stringify({ seasons: { spring: { water: 7, feed: 30 }, summer: { water: 4, feed: 30 }, autumn: { water: 9, feed: 0 }, winter: { water: 18, feed: 0 } }, provider: "gemini:antiguo" }));
+  kv.set("parent:v16:rosmarinus officinalis", JSON.stringify({ commonName, species, notes, confidence: "alta", sunNeed: "sun", provider: "gemini:antiguo", ...fresh("salvia rosmarinus") }));
+  kv.set("child:v16:rosmarinus officinalis:40:-4", JSON.stringify({ seasons: { spring: { water: 7, feed: 30 }, summer: { water: 4, feed: 30 }, autumn: { water: 9, feed: 0 }, winter: { water: 18, feed: 0 } }, provider: "gemini:antiguo", ...fresh("salvia rosmarinus") }));
   setAI({ species: "Salvia rosmarinus", notes: "nueva" });
   const n = calls();
   const r = await ask("romero"); // «romero» es un nombre sembrado: apunta a «salvia rosmarinus»
@@ -302,7 +304,7 @@ await test("D1: un padre generado con la referencia guarda su procedencia (fuent
   assert.ok(prov.confirmadas.length >= 8 && prov.confirmadas.every((c) => c.por.includes("Noza")), "decisiones confirmadas y por quién");
 });
 await test("D1: un padre BLOQUEADO no se sustituye ni caduca, aunque una ficha nueva venga con referencia", async () => {
-  seedSheet("olea europaea", { commonName: "Olivo", species: "Olea europaea", notes: "bloqueada", minTemp: -7, confidence: "alta", grounded: REFERENCE_VERSION, provider: "x" }, { seasons: { spring: { water: 5, feed: 365 }, summer: { water: 3, feed: 0 }, autumn: { water: 7, feed: 0 }, winter: { water: 12, feed: 0 } }, provider: "x" }, "40:-4", { locked: 1, ageDays: 900, childAgeDays: 10 });
+  seedSheet("olea europaea", { commonName: "Olivo", species: "Olea europaea", notes: "bloqueada", minTemp: -7, confidence: "alta", grounded: REFERENCE_VERSION, provider: "x" }, { seasons: { spring: { water: 5, feed: 365 }, summer: { water: 3, feed: 0 }, autumn: { water: 7, feed: 0 }, winter: { water: 12, feed: 0 } }, provider: "x", ...fresh("olea europaea") }, "40:-4", { locked: 1, ageDays: 900, childAgeDays: 10 });
   setAI({ species: "Olea europaea", notes: "intento de sustituirla", minTemp: -2, water_spring: 9 });
   const madrid = await ask("olivo");
   assert.deepEqual([madrid.body.notes, madrid.body.seasons.spring.water], ["bloqueada", 5], "con 900 días sigue sirviéndose");
@@ -325,7 +327,7 @@ await test("D1: padres sin bloquear caducan al año y las hijas a los 180 días,
 });
 
 await test("un nombre científico escrito tal cual encuentra la ficha de su especie sin consultar a la IA", async () => {
-  seedSheet("aspidistra elatior", { commonName: "Aspidistra", species: "Aspidistra elatior", notes: "guardada", confidence: "alta", provider: "x" }, { seasons: { spring: { water: 10, feed: 30 }, summer: { water: 6, feed: 30 }, autumn: { water: 12, feed: 0 }, winter: { water: 20, feed: 0 } }, provider: "x" });
+  seedSheet("aspidistra elatior", { commonName: "Aspidistra", species: "Aspidistra elatior", notes: "guardada", confidence: "alta", provider: "x", ...fresh("aspidistra elatior") }, { seasons: { spring: { water: 10, feed: 30 }, summer: { water: 6, feed: 30 }, autumn: { water: 12, feed: 0 }, winter: { water: 20, feed: 0 } }, provider: "x", ...fresh("aspidistra elatior") });
   setAI({ notes: "nueva" });
   const n = calls();
   assert.equal((await ask("Aspidistra elatior")).body.notes, "guardada");

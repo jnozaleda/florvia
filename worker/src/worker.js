@@ -124,12 +124,23 @@ const referenceFor = (name) => REFERENCE[seedAlias(name) || speciesKey(name)] ??
 // The group of plants a name (or a known species) belongs to (content/conocimiento/*.md), or "" when we can't tell: then the AI gets no group
 // guidance rather than the wrong one. A common name we list wins; then the species, then its genus. A typed name of three words or more
 // («rosa del desierto») is not matched by its first word, so it does not pass for a genus it only looks like.
+const groupOfKey = (k) => (k ? GROUP_BY_SPECIES[k] ?? GROUP_BY_SPECIES[k.split(" ")[0]] ?? "" : "");
 function groupFor(name, sk = "") {
   const n = normName(name);
   if (GROUP_BY_NAME[n]) return GROUP_BY_NAME[n];
-  const byKey = (k) => (k ? GROUP_BY_SPECIES[k] ?? GROUP_BY_SPECIES[k.split(" ")[0]] ?? "" : "");
-  return byKey(sk) || byKey(seedAlias(name)) || (n.split(" ").length <= 2 ? byKey(speciesKey(name)) : "");
+  return groupOfKey(sk) || groupOfKey(seedAlias(name)) || (n.split(" ").length <= 2 ? groupOfKey(speciesKey(name)) : "");
 }
+// What a sheet was written with: a short fingerprint of the species' reference text and its group's guidance ("" when it had neither). A sheet
+// whose fingerprint no longer matches what we know now (a new source for that plant, a changed group note) is written again when asked for.
+function infoPrint(reference, group) {
+  const text = `${reference}\n${group}\n${GROUPS[group]?.text ?? ""}`;
+  if (!reference && !GROUPS[group]) return "";
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+// What a species' sheet should be written with today: its reference, and its group (by species first, else by the name asked for).
+const infoFor = (sk, name) => { const reference = REFERENCE[sk] ?? ""; const group = groupOfKey(sk) || groupFor(name); return { reference, group, fp: infoPrint(reference, group) }; };
 // The general guidance of that group for the prompt (about 1,000 characters), or "".
 const groupBlock = (group) => (GROUPS[group]
   ? "\n\nCONOCIMIENTO GENERAL DEL GRUPO al que pertenece esta planta: pautas orientativas por estación (son las estaciones del lugar: en el hemisferio sur van cambiadas; " +
@@ -399,8 +410,8 @@ async function takeQuota(request, env, ctx = null) {
 // A care sheet in two pieces: the PARENT is what is true of the species wherever it grows (name, light, hardiness, toxicity, size, how to water,
 // notes…) and the CHILD what depends on the climate of the cell (watering and feeding by season, seasonal tips, planting and flowering months, fit).
 // The Worker joins them when it serves a sheet, so the app still gets the same flat sheet. A species has one parent; each cell has its own child.
-const PARENT_FIELDS = ["commonName", "species", "confidence", "grounded", "knowledge", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives", "isPlant"];
-const CHILD_FIELDS = ["seasons", "feedTypes", "tips", "climateFit", "climateNote", "plantMonths", "plantWhen", "bloomMonths", "bloomWhat"];
+const PARENT_FIELDS = ["commonName", "species", "confidence", "grounded", "knowledge", "fp", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives", "isPlant"];
+const CHILD_FIELDS = ["fpc", "seasons", "feedTypes", "tips", "climateFit", "climateNote", "plantMonths", "plantWhen", "bloomMonths", "bloomWhat"];
 const PARENT_TTL = 365 * 86400;
 const pick = (o, keys) => Object.fromEntries(keys.filter((key) => o[key] !== undefined).map((key) => [key, o[key]]));
 const splitSheet = (sheet) => ({ parent: { ...pick(sheet, PARENT_FIELDS), provider: sheet.provider }, child: { ...pick(sheet, CHILD_FIELDS), provider: sheet.provider } });
@@ -527,8 +538,9 @@ async function handleCare(request, env, headers, ctx) {
   const store = async (sk, sheet) => {
     const { parent, child } = splitSheet(sheet);
     const found = await db.parent(sk);
-    // The species' parent stays, except that one written from the reference data replaces one that was not (never a locked one).
-    const keep = found && (found.locked || found.data.grounded || !parent.grounded);
+    // The species' parent stays, except that one written from the reference data replaces one that was not, and one written with what we know
+    // now replaces one written with older information (never a locked one).
+    const keep = found && (found.locked || ((found.data.fp ?? "") === (parent.fp ?? "") && (found.data.grounded || !parent.grounded)));
     if (!keep) await db.putParent(sk, parent, { provenance: parent.grounded ? referenceProvenance(sk) : {} });
     await db.putChild(sk, child);
     return keep ? mergeSheet(found.data, child) : sheet;
@@ -572,7 +584,48 @@ async function handleCare(request, env, headers, ctx) {
     await remember(sk);
     return (await loadSheet(sk)) ?? (await store(sk, old));
   };
-  const cached = await findCached();
+  // Is a stored sheet behind what we know now? The parent (unless locked) and this zone's child each carry the fingerprint they were written with.
+  const staleness = async (sk, sheet) => {
+    const now = infoFor(sk, name);
+    const found = await db.parent(sk);
+    const parentOld = (found?.data.fp ?? sheet.fp ?? "") !== now.fp;
+    return { ...now, locked: Boolean(found?.locked), parentOld, stale: (parentOld && !found?.locked) || (sheet.fpc ?? "") !== now.fp };
+  };
+  // A stored sheet written with older information is written again now, with the reference and group guidance we have today: once a day per
+  // species and zone at most, inside the daily AI cap but not the person's monthly share (they asked for a sheet we already had). If anything
+  // fails, the stored sheet is served as before. A locked parent is kept (only the zone's part is renewed) and Noza is told once.
+  const refresh = async (sheet) => {
+    const sk = canonicalKey(speciesKey(sheet.species ?? ""));
+    if (!sk || !chain(env).length) return sheet;
+    const info = await staleness(sk, sheet);
+    if (info.locked && info.parentOld) {
+      const key = `alert:stale-locked:${sk}:${info.fp}`;
+      if (!(await env.CACHE.get(key))) {
+        await env.CACHE.put(key, "1", { expirationTtl: 60 * 86400 });
+        ctx.waitUntil(sendAdminEmail(env, `Florvia · Hay información nueva de una ficha bloqueada: ${sheet.commonName ?? sk}`, [`La ficha de ${sheet.commonName ?? sk} (${sk}) está bloqueada y desde que se escribió han cambiado sus datos de referencia o la nota de su grupo.`, "No se ha tocado. Si quieres que se escriba de nuevo con lo nuevo: node tools/ficha-admin.mjs desbloquear " + sk + " y después invalidar " + sk + "."].join("\n")).catch(() => {}));
+      }
+    }
+    if (!info.stale) return sheet;
+    const dayKey = `refresh:${sk}:${cell}:${new Date().toISOString().slice(0, 10)}`;
+    if (await env.CACHE.get(dayKey)) return sheet;
+    await env.CACHE.put(dayKey, "1", { expirationTtl: 2 * 86400 });
+    if (!(await takeQuota(request, env, ctx))) return sheet;
+    const t0 = Date.now();
+    try {
+      const { from, out, usage, quotaHit } = await askAI(env, careMessages({ name, place, lat, lon, reference: info.reference, group: info.group }));
+      noteQuota(env, ctx, quotaHit);
+      const fresh = { ...sanitize(out), provider: from, ...(info.reference ? { grounded: REFERENCE_VERSION } : {}), ...(info.group ? { knowledge: `${info.group}@${KNOWLEDGE_VERSION}` } : {}), fp: info.fp, fpc: info.fp };
+      recordAi(env, ctx, "call", Date.now() - t0, request, "care_refresh", usage);
+      // The new answer must be the same plant; otherwise the stored sheet stays.
+      if (!fresh.isPlant || fresh.confidence === "baja" || canonicalKey(speciesKey(fresh.species ?? "")) !== sk) return sheet;
+      return await store(sk, fresh);
+    } catch (err) {
+      console.error("care refresh failed", sk, err?.message);
+      return sheet;
+    }
+  };
+  const found0 = await findCached();
+  const cached = found0 ? await refresh(found0) : null;
   const careCase = (output) => saveCase(env, ctx, request, { kind: kind === "care_explore" ? "explore" : "care", name, input: { name, place, lat: Math.round(lat * 10) / 10, lon: Math.round(lon * 10) / 10 }, output });
   if (cached) { recordAi(env, ctx, "cached", 0, request, kind); recordTopics(env, ctx, request, kind === "care_explore" ? "explore" : kind === "care" ? "care" : "", name); return json({ ...withLegacy(cached, body.month, lat), cached: true, caseId: careCase(cached) }, 200, headers); }
 
@@ -589,7 +642,8 @@ async function handleCare(request, env, headers, ctx) {
     const { from, out, usage, quotaHit } = await askAI(env, careMessages({ name, place, lat, lon, reference, group }));
     noteQuota(env, ctx, quotaHit);
     aiUsage = usage;
-    care = { ...sanitize(out), provider: from, ...(reference ? { grounded: REFERENCE_VERSION } : {}), ...(group ? { knowledge: `${group}@${KNOWLEDGE_VERSION}` } : {}) };
+    const fp = infoPrint(reference, group);
+    care = { ...sanitize(out), provider: from, ...(reference ? { grounded: REFERENCE_VERSION } : {}), ...(group ? { knowledge: `${group}@${KNOWLEDGE_VERSION}` } : {}), fp, fpc: fp };
   } catch (err) {
     console.error("care failed", env.PROVIDER, err?.message);
     return aiFail(env, ctx, request, kind, err, headers);
@@ -603,7 +657,7 @@ async function handleCare(request, env, headers, ctx) {
       // Another spelling of this species got here first: everybody gets that sheet. Otherwise the new sheet is kept (its parent only if the species has none).
       const known = await loadSheet(sk);
       await remember(sk);
-      care = known ?? (await store(sk, care));
+      care = known && !(await staleness(sk, known)).stale ? known : await store(sk, care);
     }
   }
   recordTopics(env, ctx, request, kind === "care_explore" ? "explore" : kind === "care" ? "care" : "", name);
@@ -2586,3 +2640,6 @@ export default {
     return json({ error: "not_found" }, 404, headers);
   },
 };
+
+// For the tests: what a species sheet should be written with today (see infoFor).
+export { infoFor };

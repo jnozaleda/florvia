@@ -175,5 +175,63 @@ await test("un 👎 a otra cosa que no es una ficha (identificación) no retira 
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM species_retired").get().n, before);
 });
 
+// ---------- 3. Fichas escritas con información antigua ----------
+const setFp = (sk, fp) => {
+  for (const t of ["species_parent", "species_child"]) {
+    for (const r of sqlite.prepare(`SELECT rowid, data FROM ${t} WHERE species = ?`).all(sk)) {
+      const d = JSON.parse(r.data); d[t === "species_parent" ? "fp" : "fpc"] = fp;
+      sqlite.prepare(`UPDATE ${t} SET data = ? WHERE rowid = ?`).run(JSON.stringify(d), r.rowid);
+    }
+  }
+};
+const refreshes = () => sqlite.prepare("SELECT COUNT(*) AS n FROM events WHERE kind = 'ai' AND name = 'care_refresh'").get().n;
+await test("una ficha escrita con información antigua se escribe de nuevo al pedirla, y no cuenta en el cupo de la persona", async () => {
+  await ask("Calamondín", "Citrofortunella microcarpa", "persona-10");
+  setFp("citrofortunella microcarpa", "viejo");
+  const before = refreshes();
+  answer = { ...sheetOf("Calamondín", "Citrofortunella microcarpa"), notes: "nota nueva" }; prompts = [];
+  const r = await post("/care", { name: "Calamondín", lat: 40.4, lon: -3.7, place: "Madrid" }, { device: "persona-11" });
+  assert.equal(r.body.notes, "nota nueva");
+  assert.equal(prompts.length, 1);
+  assert.ok(prompts[0].includes("Cítricos y frutales"));
+  assert.equal(refreshes(), before + 1);
+  assert.notEqual(JSON.parse(parent("citrofortunella microcarpa").data).fp, "viejo");
+});
+await test("como mucho una puesta al día por especie, zona y día", async () => {
+  setFp("citrofortunella microcarpa", "viejo");
+  answer = { ...sheetOf("Calamondín", "Citrofortunella microcarpa"), notes: "otra más" }; prompts = [];
+  const r = await post("/care", { name: "Calamondín", lat: 40.4, lon: -3.7, place: "Madrid" }, { device: "persona-12" });
+  assert.equal(prompts.length, 0);
+  assert.equal(r.body.cached, true);
+});
+await test("una ficha sin referencia ni grupo no se rehace aunque no tenga huella", async () => {
+  await ask("Zelkova", "Zelkova serrata", "persona-13");
+  setFp("zelkova serrata", undefined);
+  prompts = [];
+  await post("/care", { name: "Zelkova", lat: 40.4, lon: -3.7, place: "Madrid" }, { device: "persona-14" });
+  assert.equal(prompts.length, 0);
+});
+await test("si la IA responde otra especie, se sigue sirviendo la ficha guardada", async () => {
+  await ask("Naranjo", "Citrus sinensis", "persona-15");
+  setFp("citrus sinensis", "viejo");
+  answer = sheetOf("Mandarino", "Citrus reticulata"); prompts = [];
+  const r = await post("/care", { name: "Naranjo", lat: 40.4, lon: -3.7, place: "Madrid" }, { device: "persona-16" });
+  assert.equal(prompts.length, 1);
+  assert.equal(r.body.species, "Citrus sinensis");
+});
+await test("una ficha bloqueada con información nueva no se toca: correo a Noza y solo se renueva la parte de la zona", async () => {
+  await ask("Tomillo", "Thymus vulgaris", "persona-17");
+  sqlite.prepare("UPDATE species_parent SET locked = 1, status = 'bloqueada' WHERE species = 'thymus vulgaris'").run();
+  setFp("thymus vulgaris", "viejo");
+  const lockedData = parent("thymus vulgaris").data;
+  subjects();
+  answer = { ...sheetOf("Tomillo", "Thymus vulgaris"), notes: "intento", water_spring: 3 }; prompts = [];
+  const r = await post("/care", { name: "Tomillo", lat: 40.4, lon: -3.7, place: "Madrid" }, { device: "persona-18" });
+  assert.equal(parent("thymus vulgaris").data, lockedData, "el padre bloqueado no cambia");
+  assert.equal(r.body.notes, "nota");
+  assert.equal(r.body.seasons.spring.water, 3, "la parte de la zona sí se renueva");
+  assert.ok(subjects().some((x) => x.includes("información nueva de una ficha bloqueada")));
+});
+
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
 console.log("\nTodas las pruebas de conocimiento y retirada pasan");

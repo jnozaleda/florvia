@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261009a";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261009b";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261009a";
-import { buildICS } from "./calendar.js?v=20261009a";
-import { scrubPlant } from "./clean.js?v=20261009a";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261009a";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261009b";
+import { buildICS } from "./calendar.js?v=20261009b";
+import { scrubPlant } from "./clean.js?v=20261009b";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261009b";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261009a";
+      sc.src = "vendor/qrcode.min.js?v=20261009b";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1263,7 +1263,7 @@ function feedbackAdminCards() {
     <section class="card"><div class="sec">Errores de la app <span class="meta">14 días</span></div>${errs || `<p class="muted small">Ninguno registrado.</p>`}</section>`;
 }
 
-const KIND_LABEL = { care: "Ficha (alta)", care_explore: "Explorar", care_edit: "Editar con IA", care_upgrade: "Actualizar fichas", calendar: "Calendario del año", place: "¿Dónde está mejor?", suggest: "Qué planto aquí", identify: "Identificar por foto", diagnose: "¿Qué le pasa?" };
+const KIND_LABEL = { care: "Ficha (alta)", care_explore: "Explorar", care_edit: "Editar con IA", care_upgrade: "Actualizar fichas", care_refresh: "Fichas puestas al día", calendar: "Calendario del año", place: "¿Dónde está mejor?", suggest: "Qué planto aquí", identify: "Identificar por foto", diagnose: "¿Qué le pasa?" };
 // Real tokens per kind of AI call (from the provider's own count), to know what costs what.
 // «Qué se pide»: the plants, symptoms and preferences people asked for in the last 30 days (anonymous counts from /stats2).
 let topicsMine = false;
