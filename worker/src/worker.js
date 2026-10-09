@@ -1768,25 +1768,38 @@ async function handleCalendar(request, env, headers, ctx) {
 
   const subject = species || name; // the cache is keyed by it, so the prompt must use nothing else (a free-text name could poison the shared entry)
   const cacheKey = `cal:v4:${normName(subject)}:${Math.round(lat)}:${Math.round(lon)}`;
+  // Like the care sheets, a calendar keeps the fingerprint of the reference and group guidance it was written with: one written with older
+  // information is written again (once a day per plant and zone, inside the daily cap but not the person's share), else served as it is.
+  const reference = referenceFor(subject);
+  const group = groupFor(subject);
+  const fp = infoPrint(reference, group);
   const cached = await env.CACHE.get(cacheKey, "json");
-  if (cached) { recordAi(env, ctx, "cached", 0, request, "calendar"); return json({ ...cached, cached: true }, 200, headers); }
+  let refreshing = false;
+  if (cached) {
+    const dayKey = `refresh:${cacheKey}:${new Date().toISOString().slice(0, 10)}`;
+    if ((cached.fp ?? "") === fp || !chain(env).length || (await env.CACHE.get(dayKey))) { recordAi(env, ctx, "cached", 0, request, "calendar"); return json({ ...cached, cached: true }, 200, headers); }
+    await env.CACHE.put(dayKey, "1", { expirationTtl: 2 * 86400 });
+    refreshing = true;
+  }
+  const served = (status = 200) => { recordAi(env, ctx, "cached", 0, request, "calendar"); return json({ ...cached, cached: true }, status, headers); };
 
-  if (!(await takeQuota(request, env, ctx))) { recordAi(env, ctx, "limit", 0, request, "calendar"); return json({ error: "limit" }, 429, headers); }
+  if (!(await takeQuota(request, env, ctx))) { if (refreshing) return served(); recordAi(env, ctx, "limit", 0, request, "calendar"); return json({ error: "limit" }, 429, headers); }
 
   if (!chain(env).length) return json({ error: "provider" }, 500, headers);
   let cal, aiUsage;
   const t0 = Date.now();
   try {
-    const reference = referenceFor(subject);
-    const { from, out, usage, quotaHit } = await askAI(env, calendarMessages({ name: subject, species: "", place, lat, reference, group: groupFor(subject) }), CALENDAR_SCHEMA, "calendario");
+    const { from, out, usage, quotaHit } = await askAI(env, calendarMessages({ name: subject, species: "", place, lat, reference, group }), CALENDAR_SCHEMA, "calendario");
     noteQuota(env, ctx, quotaHit);
     aiUsage = usage;
-    cal = { ...sanitizeCalendar(out), provider: from };
+    cal = { ...sanitizeCalendar(out), provider: from, fp };
   } catch (err) {
     console.error("calendar failed", env.PROVIDER, err?.message);
+    if (refreshing) return served();
     return aiFail(env, ctx, request, "calendar", err, headers);
   }
-  recordAi(env, ctx, "call", Date.now() - t0, request, "calendar", aiUsage);
+  recordAi(env, ctx, "call", Date.now() - t0, request, refreshing ? "calendar_refresh" : "calendar", aiUsage);
+  if (refreshing && !cal.tasks.length) return served();
   if (cal.tasks.length) await env.CACHE.put(cacheKey, JSON.stringify(cal), { expirationTtl: CACHE_TTL });
   return json(cal, 200, headers);
 }

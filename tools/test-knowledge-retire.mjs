@@ -233,5 +233,36 @@ await test("una ficha bloqueada con información nueva no se toca: correo a Noza
   assert.ok(subjects().some((x) => x.includes("información nueva de una ficha bloqueada")));
 });
 
+// ---------- 4. Calendarios escritos con información antigua ----------
+const calKey = (n) => `cal:v4:${n}:40:-4`;
+const askCal = (name) => { prompts = []; return post("/calendar", { name, lat: 40.4, lon: -3.7, place: "Madrid" }, { device: "persona-20" }); };
+await test("un calendario sin huella o con huella vieja se escribe de nuevo una vez, y luego sale de la caché", async () => {
+  kv.set(calKey("lavanda"), JSON.stringify({ tasks: [{ title: "Tarea vieja", months: [1] }], risks: [] }));
+  answer = { tasks: [{ title: "Podar tras la floración", months: [8] }], risks: [] };
+  const r = await askCal("Lavanda");
+  assert.equal(prompts.length, 1);
+  assert.ok(prompts[0].includes("Mediterráneas de sol y poco riego"));
+  assert.equal(r.body.tasks[0].title, "Podar tras la floración");
+  assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM events WHERE name = 'calendar_refresh'").get().n, 1);
+  const again = await askCal("Lavanda");
+  assert.equal(prompts.length, 0);
+  assert.equal(again.body.cached, true);
+});
+await test("un calendario viejo de una planta sin referencia ni grupo no se rehace", async () => {
+  kv.set(calKey("zelkova"), JSON.stringify({ tasks: [{ title: "Tarea vieja", months: [1] }], risks: [] }));
+  const r = await askCal("Zelkova");
+  assert.equal(prompts.length, 0);
+  assert.equal(r.body.tasks[0].title, "Tarea vieja");
+});
+await test("si la IA falla al rehacer un calendario, se sirve el viejo", async () => {
+  kv.set(calKey("hortensia"), JSON.stringify({ tasks: [{ title: "Tarea vieja", months: [1] }], risks: [] }));
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("boom", { status: 500 });
+  const r = await askCal("Hortensia");
+  globalThis.fetch = realFetch;
+  assert.equal(r.status, 200);
+  assert.equal(r.body.tasks[0].title, "Tarea vieja");
+});
+
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
 console.log("\nTodas las pruebas de conocimiento y retirada pasan");
