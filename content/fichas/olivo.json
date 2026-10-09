@@ -1,0 +1,73 @@
+{
+  "planta": "olivo",
+  "autor": "Claude (Opus 5.5)",
+  "fecha": "2026-10-09",
+  "revisado_por": "",
+  "nota": "Escrita a partir de content/referencia/plantas.json (olivo, v0.6: RHS, Verdecora, Interflora y las decisiones confirmadas por Noza) y de la nota de grupo de las mediterráneas. El riego en días es orientativo para maceta mediana (no sale de ninguna fuente); el abono anual es opcional y solo en maceta.",
+  "ficha": {
+    "isPlant": true,
+    "commonName": "Olivo",
+    "species": "Olea europaea",
+    "confidence": "alta",
+    "alternatives": [],
+    "frostSensitive": false,
+    "sunNeed": "sol",
+    "sunSensitive": false,
+    "minTemp": -7,
+    "plantIn": "ambos",
+    "potAdvice": "Maceta de 30–50 cm, con muchos agujeros y sobre patas; sustrato aireado con un 20 % de grava.",
+    "waterHow": "Riega a fondo hasta que drene y deja secar la capa superior antes de volver a regar. En suelo, ya asentado, casi no necesita riego.",
+    "windSensitive": false,
+    "matureSize": "grande",
+    "matureNote": "Crece despacio; en suelo llega a árbol de varios metros, en maceta mucho menos.",
+    "difficulty": "facil",
+    "buyTips": [
+      "Tronco sano, sin heridas ni zonas blandas.",
+      "Hojas verde grisáceo sin manchas oscuras.",
+      "Sin bultitos de cochinilla en ramas ni en el envés.",
+      "Que el sustrato no esté encharcado."
+    ],
+    "toxic": "no",
+    "toxicNote": "Sin dato fiable para mascotas: evita que lo mastiquen. Su polen puede dar alergia en primavera.",
+    "invasive": false,
+    "notes": "Árbol de secano: pide pleno sol y un drenaje excelente, y su peor enemigo es el exceso de agua. Poda poco y nunca de forma drástica, porque saca brotes verticales muy vigorosos. Vigila la cochinilla y las manchas en las hojas (repilo). Si se secan ramas sin causa clara, avisa a la Oficina Comarcal Agraria: puede ser Xylella."
+  },
+  "zonas": {
+    "40:-4": {
+      "lugar": "Madrid",
+      "water_spring": 5,
+      "water_summer": 3,
+      "water_autumn": 7,
+      "water_winter": 15,
+      "feed_spring": 365,
+      "feed_summer": 0,
+      "feed_autumn": 0,
+      "feed_winter": 0,
+      "feedtype_spring": "Opcional, solo en maceta: un abono orgánico al año. En suelo, nada.",
+      "feedtype_summer": "",
+      "feedtype_autumn": "",
+      "feedtype_winter": "",
+      "tip_spring": "Renueva los 5 cm de arriba del sustrato y trasplanta cada 2–3 años. Buen momento para plantarlo.",
+      "tip_summer": "Riega con regularidad en maceta. No lo podes después de agosto.",
+      "tip_autumn": "Reduce el riego poco a poco, quita el plato y prepara la protección de la maceta.",
+      "tip_winter": "Riego mínimo. Poda en febrero–marzo y protege la maceta si bajan de -5 °C.",
+      "climateFit": "bien",
+      "climateNote": "Le va bien en Madrid. En suelo aguanta hasta unos -7 °C; en maceta, protégela desde -5 °C.",
+      "plantMonths": [3, 4, 5],
+      "plantWhen": "En primavera, pasadas las heladas, para que arraigue antes del calor.",
+      "bloomMonths": [5, 6, 10, 11],
+      "bloomWhat": "Flores blanco-crema en mayo-junio y aceitunas en otoño.",
+      "calendario": {
+        "tasks": [
+          { "type": "prune", "title": "Podar ramas secas y aclarar", "how": "Quita ramas muertas o dañadas y aclara el centro para que entre luz, sin podas fuertes.", "months": [2, 3], "matureOnly": false },
+          { "type": "prune", "title": "Pinzar las puntas", "how": "En maceta, pinza las puntas al llegar a 1,5 m para que ramifique.", "months": [6, 7], "matureOnly": false },
+          { "type": "repot", "title": "Renovar la capa de sustrato", "how": "En maceta, cambia los 5 cm de arriba por sustrato nuevo; trasplanta a una mayor cada 2–3 años.", "months": [3, 4], "matureOnly": false },
+          { "type": "treat", "title": "Revisar y quitar cochinillas", "how": "Mira ramas y envés de las hojas y retira a mano las colonias pequeñas.", "months": [5, 6, 7, 8, 9], "matureOnly": false },
+          { "type": "clean", "title": "Retirar hojas caídas con manchas", "how": "Recoge las hojas con manchas (repilo) y aclara la copa para que se ventile.", "months": [10, 11], "matureOnly": false },
+          { "type": "protect", "title": "Proteger la maceta de heladas", "how": "Con -5 °C o menos, envuelve maceta y copa con tela antiheladas o resguárdala.", "months": [12, 1, 2], "matureOnly": false }
+        ],
+        "risks": ["fungus"]
+      }
+    }
+  }
+}

@@ -287,5 +287,29 @@ await test("un nombre antiguo de una ficha parcial lleva a ella («Sedum spectab
   assert.ok(prompts[0].includes("cabezas de flor rosa"));
 });
 
+// ---------- 6. Fichas escritas a mano (content/fichas) ----------
+await test("una zona escrita a mano no se rehace, no caduca y no la pisa la IA; con información nueva llega un correo", async () => {
+  await ask("Durillo", "Viburnum tinus", "persona-30");
+  const child = JSON.parse(sqlite.prepare("SELECT data FROM species_child WHERE species = 'viburnum tinus'").get().data);
+  sqlite.prepare("UPDATE species_child SET data = ?, created_at = ? WHERE species = 'viburnum tinus'").run(JSON.stringify({ ...child, fpc: "viejo", curatedZone: "Claude · hoy", tips: { ...child.tips, spring: "escrita a mano" } }), Date.now() - 400 * 86400000);
+  sqlite.prepare("UPDATE species_parent SET locked = 1 WHERE species = 'viburnum tinus'").run();
+  subjects();
+  prompts = [];
+  const r = await post("/care", { name: "Durillo", lat: 40.4, lon: -3.7, place: "Madrid" }, { device: "persona-31" });
+  assert.equal(prompts.length, 0, "no se pregunta a la IA");
+  assert.equal(r.body.tips.spring, "escrita a mano", "con 400 días sigue sirviéndose");
+  assert.ok(subjects().some((x) => x.includes("información nueva")));
+});
+await test("un calendario escrito a mano se sirve siempre tal cual", async () => {
+  kv.set("cal:v4:romero:40:-4", JSON.stringify({ tasks: [{ title: "A mano", months: [3] }], risks: [], curated: "Claude", fp: "viejo" }));
+  const r = await askCal("Romero");
+  assert.equal(prompts.length, 0);
+  assert.equal(r.body.tasks[0].title, "A mano");
+});
+await test("content/fichas: las fichas escritas a mano pasan la comprobación", async () => {
+  const { execFileSync } = await import("node:child_process");
+  execFileSync(process.execPath, [new URL("./fichas-curadas.mjs", import.meta.url).pathname], { stdio: "pipe" });
+});
+
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
 console.log("\nTodas las pruebas de conocimiento y retirada pasan");

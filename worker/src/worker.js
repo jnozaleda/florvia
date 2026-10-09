@@ -413,8 +413,8 @@ async function takeQuota(request, env, ctx = null) {
 // A care sheet in two pieces: the PARENT is what is true of the species wherever it grows (name, light, hardiness, toxicity, size, how to water,
 // notes…) and the CHILD what depends on the climate of the cell (watering and feeding by season, seasonal tips, planting and flowering months, fit).
 // The Worker joins them when it serves a sheet, so the app still gets the same flat sheet. A species has one parent; each cell has its own child.
-const PARENT_FIELDS = ["commonName", "species", "confidence", "grounded", "knowledge", "fp", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives", "isPlant"];
-const CHILD_FIELDS = ["fpc", "seasons", "feedTypes", "tips", "climateFit", "climateNote", "plantMonths", "plantWhen", "bloomMonths", "bloomWhat"];
+const PARENT_FIELDS = ["commonName", "species", "confidence", "grounded", "knowledge", "fp", "curated", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives", "isPlant"];
+const CHILD_FIELDS = ["fpc", "curatedZone", "seasons", "feedTypes", "tips", "climateFit", "climateNote", "plantMonths", "plantWhen", "bloomMonths", "bloomWhat"];
 const PARENT_TTL = 365 * 86400;
 const pick = (o, keys) => Object.fromEntries(keys.filter((key) => o[key] !== undefined).map((key) => [key, o[key]]));
 const splitSheet = (sheet) => ({ parent: { ...pick(sheet, PARENT_FIELDS), provider: sheet.provider }, child: { ...pick(sheet, CHILD_FIELDS), provider: sheet.provider } });
@@ -448,9 +448,11 @@ function sheetStore(env, cell) {
       const data = parse(row.data);
       return data ? { data, locked: Boolean(row.locked), grounded: row.grounded } : null;
     },
+    // A zone written by hand (curatedZone, see tools/fichas-curadas.mjs) never expires; the others last 180 days.
     async child(sk) {
       const row = await env.DB.prepare("SELECT data, created_at FROM species_child WHERE species = ? AND cell = ?").bind(sk, cell).first();
-      return row && Date.now() - row.created_at <= CACHE_TTL * 1000 ? parse(row.data) : null;
+      const data = row ? parse(row.data) : null;
+      return data && (data.curatedZone || Date.now() - row.created_at <= CACHE_TTL * 1000) ? data : null;
     },
     async putParent(sk, parent, { locked = false, provenance = {} } = {}) {
       const now = Date.now();
@@ -545,8 +547,10 @@ async function handleCare(request, env, headers, ctx) {
     // now replaces one written with older information (never a locked one).
     const keep = found && (found.locked || ((found.data.fp ?? "") === (parent.fp ?? "") && (found.data.grounded || !parent.grounded)));
     if (!keep) await db.putParent(sk, parent, { provenance: parent.grounded ? referenceProvenance(sk) : {} });
-    await db.putChild(sk, child);
-    return keep ? mergeSheet(found.data, child) : sheet;
+    // A zone written by hand stays too.
+    const prev = await db.child(sk);
+    if (!prev?.curatedZone) await db.putChild(sk, child);
+    return keep || prev?.curatedZone ? mergeSheet(keep ? found.data : parent, prev?.curatedZone ? prev : child) : sheet;
   };
   const loadSheetAt = async (key, into = key) => {
     const [parent, child] = await Promise.all([db.parent(key), db.child(key)]);
@@ -592,7 +596,8 @@ async function handleCare(request, env, headers, ctx) {
     const now = infoFor(sk, name);
     const found = await db.parent(sk);
     const parentOld = (found?.data.fp ?? sheet.fp ?? "") !== now.fp;
-    return { ...now, locked: Boolean(found?.locked), parentOld, stale: (parentOld && !found?.locked) || (sheet.fpc ?? "") !== now.fp };
+    const childOld = (sheet.fpc ?? "") !== now.fp;
+    return { ...now, locked: Boolean(found?.locked), parentOld, childOld, curatedZone: Boolean(sheet.curatedZone), stale: (parentOld && !found?.locked) || (childOld && !sheet.curatedZone) };
   };
   // A stored sheet written with older information is written again now, with the reference and group guidance we have today: once a day per
   // species and zone at most, inside the daily AI cap but not the person's monthly share (they asked for a sheet we already had). If anything
@@ -601,11 +606,11 @@ async function handleCare(request, env, headers, ctx) {
     const sk = canonicalKey(speciesKey(sheet.species ?? ""));
     if (!sk || !chain(env).length) return sheet;
     const info = await staleness(sk, sheet);
-    if (info.locked && info.parentOld) {
+    if ((info.locked && info.parentOld) || (info.curatedZone && info.childOld)) {
       const key = `alert:stale-locked:${sk}:${info.fp}`;
       if (!(await env.CACHE.get(key))) {
         await env.CACHE.put(key, "1", { expirationTtl: 60 * 86400 });
-        ctx.waitUntil(sendAdminEmail(env, `Florvia · Hay información nueva de una ficha bloqueada: ${sheet.commonName ?? sk}`, [`La ficha de ${sheet.commonName ?? sk} (${sk}) está bloqueada y desde que se escribió han cambiado sus datos de referencia o la nota de su grupo.`, "No se ha tocado. Si quieres que se escriba de nuevo con lo nuevo: node tools/ficha-admin.mjs desbloquear " + sk + " y después invalidar " + sk + "."].join("\n")).catch(() => {}));
+        ctx.waitUntil(sendAdminEmail(env, `Florvia · Hay información nueva de una ficha bloqueada: ${sheet.commonName ?? sk}`, [`La ficha de ${sheet.commonName ?? sk} (${sk}) está bloqueada${info.curatedZone ? " (escrita a mano en content/fichas)" : ""} y desde que se escribió han cambiado sus datos de referencia o la nota de su grupo.`, "No se ha tocado. Pídele a Claude que la reescriba con lo nuevo (o: node tools/ficha-admin.mjs desbloquear " + sk + " y después invalidar " + sk + ")."].join("\n")).catch(() => {}));
       }
     }
     if (!info.stale) return sheet;
@@ -1780,7 +1785,8 @@ async function handleCalendar(request, env, headers, ctx) {
   let refreshing = false;
   if (cached) {
     const dayKey = `refresh:${cacheKey}:${new Date().toISOString().slice(0, 10)}`;
-    if ((cached.fp ?? "") === fp || !chain(env).length || (await env.CACHE.get(dayKey))) { recordAi(env, ctx, "cached", 0, request, "calendar"); return json({ ...cached, cached: true }, 200, headers); }
+    // A calendar written by hand (tools/fichas-curadas.mjs) is always served as it is.
+    if (cached.curated || (cached.fp ?? "") === fp || !chain(env).length || (await env.CACHE.get(dayKey))) { recordAi(env, ctx, "cached", 0, request, "calendar"); return json({ ...cached, cached: true }, 200, headers); }
     await env.CACHE.put(dayKey, "1", { expirationTtl: 2 * 86400 });
     refreshing = true;
   }
@@ -2592,7 +2598,7 @@ export default {
     if (madridNow().hour !== 8) return;
     if (env.DB) ctx.waitUntil(env.DB.batch([env.DB.prepare("DELETE FROM events WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM errors WHERE day < date('now', '-90 days')"), env.DB.prepare("DELETE FROM pv_seen WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_seen_day WHERE day < date('now', '-2 days')"), env.DB.prepare("DELETE FROM pv_page WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM pv_site WHERE day < date('now', '-400 days')"), env.DB.prepare("DELETE FROM topics WHERE day < date('now', '-400 days')")]).catch(() => {}));
     if (env.DB) ctx.waitUntil(ensureCases(env).then(() => env.DB.prepare("DELETE FROM ai_cases WHERE day < date('now', CASE WHEN rating >= 0 THEN '-180 days' ELSE '-60 days' END)").run()).catch(() => {}));
-    if (env.DB) ctx.waitUntil(ensureSpecies(env).then(() => env.DB.batch([env.DB.prepare("DELETE FROM species_child WHERE created_at < ?").bind(Date.now() - CACHE_TTL * 1000), env.DB.prepare("DELETE FROM species_parent WHERE locked = 0 AND created_at < ?").bind(Date.now() - PARENT_TTL * 1000), env.DB.prepare("DELETE FROM species_alias WHERE ts < ?").bind(Date.now() - CACHE_TTL * 1000)])).catch(() => {}));
+    if (env.DB) ctx.waitUntil(ensureSpecies(env).then(() => env.DB.batch([env.DB.prepare("DELETE FROM species_child WHERE created_at < ? AND json_extract(data, '$.curatedZone') IS NULL").bind(Date.now() - CACHE_TTL * 1000), env.DB.prepare("DELETE FROM species_parent WHERE locked = 0 AND created_at < ?").bind(Date.now() - PARENT_TTL * 1000), env.DB.prepare("DELETE FROM species_alias WHERE ts < ?").bind(Date.now() - CACHE_TTL * 1000)])).catch(() => {}));
     ctx.waitUntil(sendRatingSummary(env).catch((err) => console.error("rating summary", err?.message)));
     console.log("daily push sent:", await sendDaily(env));
   },
@@ -2657,5 +2663,5 @@ export default {
   },
 };
 
-// For the tests: what a species sheet should be written with today (see infoFor).
-export { infoFor };
+// For the tests and tools/fichas-curadas.mjs: what a species sheet should be written with today, and how an AI answer becomes a stored sheet.
+export { infoFor, sanitize, sanitizeCalendar, splitSheet, referenceProvenance, CARE_SCHEMA, CALENDAR_SCHEMA };
