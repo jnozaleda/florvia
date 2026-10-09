@@ -48,3 +48,6 @@ Una ficha de especie **no bloqueada** se retira sola (se guarda en `species_reti
 
 ### Cuando añadimos información nueva
 Cada ficha guarda una «huella» de los datos de referencia de su especie y de la nota de su grupo con que se escribió. Si cambian (una fuente nueva en `plantas.json`, una nota de grupo corregida), la próxima vez que alguien pida esa planta se escribe de nuevo con lo nuevo: solo esa planta, como mucho una vez al día por zona, y sin gastar el cupo de quien la pide. Si la IA falla, se sirve la ficha anterior. Una ficha bloqueada no cambia: llega un correo para decidir si desbloquearla e invalidarla.
+
+### Fichas parciales
+En `plantas.json`, la lista `parciales` guarda plantas de las que solo tenemos unos datos de una fuente de confianza (por ejemplo, lo que cuenta Chico Plantas en un vídeo). Cada una lleva `nombre_comun`, `otros_nombres`, `nombre_cientifico`, `datos` (frases cortas, con nuestras palabras) y `fuentes` (con enlace). La IA recibe esos datos como obligatorios y completa el resto, sabiendo que la ficha es parcial. Un `nombre_cientifico` de solo el género («Agapanthus») vale para todas sus especies. En `otros_nombres` van solo nombres comunes que identifican una sola planta («laurel común», no «laurel»). Cuando una parcial reúna todos los datos de una ficha completa, se pasa a `plantas`.

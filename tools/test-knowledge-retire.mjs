@@ -264,5 +264,28 @@ await test("si la IA falla al rehacer un calendario, se sirve el viejo", async (
   assert.equal(r.body.tasks[0].title, "Tarea vieja");
 });
 
+// ---------- 5. Fichas parciales (solo unos datos de una fuente de confianza) ----------
+await test("una ficha parcial llega a la IA como tal, y una ficha de género vale para la especie que devuelva", async () => {
+  await ask("Agapanto", "Agapanthus africanus", "persona-21");
+  assert.ok(prompts[0].includes("FICHA PARCIAL"));
+  assert.ok(prompts[0].includes("hijuelos"));
+  const prov = JSON.parse(sqlite.prepare("SELECT provenance FROM species_parent WHERE species = 'agapanthus africanus'").get().provenance);
+  assert.equal(prov.parcial, true);
+  prompts = [];
+  const again = await post("/care", { name: "Agapanto", lat: 40.4, lon: -3.7, place: "Madrid" }, { device: "persona-22" });
+  assert.equal(prompts.length, 0, "la huella coincide: no se rehace");
+  assert.equal(again.body.cached, true);
+});
+await test("un nombre ambiguo («laurel») no recibe la ficha parcial del laurel común", async () => {
+  await ask("Laurel", "Prunus laurocerasus", "persona-23");
+  assert.ok(!prompts[0].includes("Laurus nobilis"));
+  await ask("Laurel común", "Laurus nobilis", "persona-24");
+  assert.ok(prompts[0].includes("FICHA PARCIAL"));
+});
+await test("un nombre antiguo de una ficha parcial lleva a ella («Sedum spectabile» → Hylotelephium)", async () => {
+  await ask("Sedum spectabile", "Hylotelephium spectabile", "persona-25");
+  assert.ok(prompts[0].includes("cabezas de flor rosa"));
+});
+
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
 console.log("\nTodas las pruebas de conocimiento y retirada pasan");

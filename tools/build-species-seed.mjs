@@ -38,7 +38,9 @@ const speciesOf = (text, genus) => {
   return rawSpeciesKey(t);
 };
 
-for (const p of doc.plantas) {
+// Las fichas completas («plantas») y las parciales («parciales»: solo unos datos de una fuente de confianza) se tratan igual para nombres y sinónimos.
+const all = [...doc.plantas, ...(doc.parciales ?? [])];
+for (const p of all) {
   // Parte «(antes X)», «(Aloe barbadensis)», «(y otras Mentha)» aparte del nombre principal.
   const sci = p.nombre_cientifico;
   const paren = [...sci.matchAll(/\(([^)]*)\)/g)].map((m) => m[1]);
@@ -47,6 +49,7 @@ for (const p of doc.plantas) {
   const genus = parts[0].split(/\s+/)[0];
   const canonical = rawSpeciesKey(parts[0]);
   if (!canonical) throw new Error(`${p.id}: sin especie en «${sci}»`);
+  if (Object.values(canonicalOf).includes(canonical)) throw new Error(`${p.id}: «${canonical}» ya tiene otra ficha`);
   canonicalOf[p.id] = canonical;
   // Varias especies en la misma ficha: todas apuntan a la primera.
   for (const extra of parts.slice(1)) { const k = speciesOf(extra, genus); if (k && k !== canonical) { synonyms[k] = canonical; notes.push(`${k} → ${canonical} (agrupada en la ficha «${p.id}»)`); } }
@@ -70,7 +73,7 @@ const addAlias = (name, key, from) => {
   seen.set(n, key);
   if (aliases[n] !== null) aliases[n] = key;
 };
-for (const p of doc.plantas) {
+for (const p of all) {
   const key = canonicalOf[p.id];
   addAlias(p.nombre_comun, key, p.id);
   for (const o of p.otros_nombres ?? []) addAlias(o, key, p.id);
@@ -104,10 +107,14 @@ const referenceText = (p) => {
   if (unknown.length) lines.push(`Sin dato fiable: ${unknown.map((c) => `${c.dato} (${clip(c.decision, 120)})`).join("; ")}.`);
   return lines.join("\n");
 };
+// Ficha parcial: solo los datos que da la fuente; el resto lo completa la IA (y se le dice).
+const partialText = (p) => [`Planta de referencia: ${p.nombre_comun} (${p.nombre_cientifico}). FICHA PARCIAL: solo estos datos vienen de una fuente de confianza; respétalos y completa el resto con criterio prudente, sin falsa precisión.`, ...p.datos.map((x) => `- ${clip(x, 400)}`)].join("\n");
 const context = {};
 for (const p of doc.plantas) context[canonicalOf[p.id]] = referenceText(p);
+for (const p of doc.parciales ?? []) context[canonicalOf[p.id]] = partialText(p);
 // Procedencia de cada especie de referencia (se guarda junto a su ficha en D1): planta, fuentes y decisiones confirmadas.
 const meta = {};
+for (const p of doc.parciales ?? []) meta[canonicalOf[p.id]] = { planta: p.id, parcial: true, fuentes: p.fuentes.map((f) => ({ titulo: f.titulo, url: f.url, tipo: f.tipo })), confirmadas: [] };
 for (const p of doc.plantas) meta[canonicalOf[p.id]] = { planta: p.id, fuentes: p.fuentes.map((f) => ({ titulo: f.titulo, url: f.url, tipo: f.tipo })), confirmadas: (p.contraste ?? []).filter((c) => c.estado === "confirmado").map((c) => ({ dato: c.dato, por: c.confirmado_por ?? "", fecha: c.fecha ?? "" })) };
 
 const sort = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)));

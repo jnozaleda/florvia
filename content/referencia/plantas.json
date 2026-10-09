@@ -1,5 +1,5 @@
 {
- "version": "0.5",
+ "version": "0.6",
  "idioma": "es-ES",
  "fecha": "2026-10-09",
  "ambito": "España. Las fuentes principales (RHS) hablan del clima británico: ajustar fechas y temperaturas a la zona (interior, costa, norte).",
@@ -2278,6 +2278,613 @@
    "version": "0.5",
    "fecha": "2026-10-09",
    "cambios": "Chico Plantas pasa a «canal de confianza» (peso B, decisión de Noza). Romero: trasplante en maceta más delicado. Jazmín estrellado: crecimiento medio, más rápido con espacio. Ambos de una sola fuente."
+  },
+  {
+   "version": "0.6",
+   "fecha": "2026-10-09",
+   "cambios": "Nueva lista «parciales»: 33 plantas con solo los datos de los vídeos de Chico Plantas (y un artículo científico para el Pennisetum). La IA recibe esos datos y completa el resto."
+  }
+ ],
+ "parciales": [
+  {
+   "id": "camelia-de-otono",
+   "nombre_comun": "Camelia de otoño",
+   "otros_nombres": [],
+   "nombre_cientifico": "Camellia sasanqua",
+   "datos": [
+    "Crece más vertical que la camelia común: da altura; en el norte de España se ve como arbusto grande o arbolito en jardines.",
+    "Florece en otoño e invierno."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "nerine",
+   "nombre_comun": "Nerine",
+   "otros_nombres": [],
+   "nombre_cientifico": "Nerine bowdenii",
+   "datos": [
+    "Bulbo de flor de otoño.",
+    "No es de temporada: vuelve a brotar y florecer cada año."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "aster",
+   "nombre_comun": "Áster",
+   "otros_nombres": [],
+   "nombre_cientifico": "Aster",
+   "datos": [
+    "Herbácea perenne con flor a finales de verano y en otoño.",
+    "Con el frío fuerte pierde la parte aérea y vuelve a brotar desde la base cada año; en climas muy fríos conviene resguardarla."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "arbol-de-las-pelucas",
+   "nombre_comun": "Árbol de las pelucas",
+   "otros_nombres": [
+    "cotinus"
+   ],
+   "nombre_cientifico": "Cotinus coggygria",
+   "datos": [
+    "Floración de primavera en forma de nube o «peluca»; en otoño destaca por el color de sus hojas.",
+    "Hoja caduca; puede llevarse como árbol o como arbusto y vive muchos años.",
+    "Muy resistente al calor, a la sequía y al frío, pero necesita riego: no es para dejarla abandonada."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "callicarpa",
+   "nombre_comun": "Callicarpa",
+   "otros_nombres": [
+    "calicarpa"
+   ],
+   "nombre_cientifico": "Callicarpa bodinieri",
+   "datos": [
+    "Florece en julio o agosto; después, en otoño, da racimos de bayas moradas muy llamativas."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "salvia-greggii",
+   "nombre_comun": "Salvia arbustiva",
+   "otros_nombres": [
+    "salvia greggii"
+   ],
+   "nombre_cientifico": "Salvia greggii",
+   "datos": [
+    "Salvia arbustiva (no la aromática de cocina) con flores de muchos colores.",
+    "Aguanta sol y semisombra con un buen riego; forma macizos abundantes en terraza o jardín."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    },
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "anemona-japonesa",
+   "nombre_comun": "Anémona japonesa",
+   "otros_nombres": [],
+   "nombre_cientifico": "Anemone x hybrida",
+   "datos": [
+    "Espigas largas con flores en otoño.",
+    "En invierno pierde la parte aérea y rebrota al año siguiente."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "sedum-spectabile",
+   "nombre_comun": "Sedum espectable",
+   "otros_nombres": [
+    "sedum spectabile"
+   ],
+   "nombre_cientifico": "Hylotelephium spectabile (antes Sedum spectabile)",
+   "datos": [
+    "Forma macizos de unos 50–60 cm con cabezas de flor rosa.",
+    "Floración larga, desde el verano hasta bien entrado el otoño o incluso el invierno.",
+    "En invierno pierde la parte aérea."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "nandina",
+   "nombre_comun": "Nandina",
+   "otros_nombres": [
+    "bambu sagrado"
+   ],
+   "nombre_cientifico": "Nandina domestica",
+   "datos": [
+    "Hojas que cambian de color según brota y madura; tamaño manejable.",
+    "Una vez asentada es más resistente de lo que parece.",
+    "Aguanta semisombra e incluso sombra; de joven lleva peor el sol directo."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    },
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "piracanta",
+   "nombre_comun": "Piracanta",
+   "otros_nombres": [
+    "espino de fuego"
+   ],
+   "nombre_cientifico": "Pyracantha",
+   "datos": [
+    "Arbusto de hoja perenne con bayas naranjas muy vistosas en otoño.",
+    "Muy resistente a la sequía, al frío y al calor.",
+    "Tiene espinas: tenlo en cuenta si hay niños o mascotas."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "pennisetum-rojo",
+   "nombre_comun": "Pennisetum rojo",
+   "otros_nombres": [
+    "pennisetum rubrum"
+   ],
+   "nombre_cientifico": "Pennisetum setaceum (Pennisetum advena)",
+   "datos": [
+    "Gramínea con espigas plumosas de color burdeos que dan movimiento a terraza o jardín.",
+    "Pennisetum setaceum está en la lista de especies exóticas invasoras de la Unión Europea; las plantas rojas de vivero («Rubrum») se consideran a menudo otra especie (Pennisetum advena). Antes de plantarla, pregunta en el vivero qué especie es."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    },
+    {
+     "titulo": "Artículo científico sobre Pennisetum setaceum y las plantas de vivero en Europa (PMC8366894)",
+     "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8366894",
+     "tipo": "Artículo científico (A)"
+    }
+   ]
+  },
+  {
+   "id": "liquidambar",
+   "nombre_comun": "Liquidámbar",
+   "otros_nombres": [],
+   "nombre_cientifico": "Liquidambar styraciflua",
+   "datos": [
+    "Árbol con hojas de muchos colores en otoño; también se puede tener en un jardín particular."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): Más de 10 plantas protagonistas en otoño",
+     "url": "https://www.youtube.com/watch?v=5p_A6SEdeo4",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "tomillo",
+   "nombre_comun": "Tomillo",
+   "otros_nombres": [],
+   "nombre_cientifico": "Thymus vulgaris",
+   "datos": [
+    "Aromática muy resistente al calor, a la sequía y al frío; vale para suelo o maceta."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "laurel-comun",
+   "nombre_comun": "Laurel común",
+   "otros_nombres": [
+    "laurel de cocina"
+   ],
+   "nombre_cientifico": "Laurus nobilis",
+   "datos": [
+    "Arbusto voluminoso, muy resistente; fácil de dar forma con la poda, sin necesidad de técnica."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "eleagno",
+   "nombre_comun": "Eleagno",
+   "otros_nombres": [
+    "eleagnus"
+   ],
+   "nombre_cientifico": "Elaeagnus",
+   "datos": [
+    "Arbusto voluminoso, muy resistente; fácil de dar forma con la poda."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "durillo",
+   "nombre_comun": "Durillo",
+   "otros_nombres": [],
+   "nombre_cientifico": "Viburnum tinus",
+   "datos": [
+    "Arbusto voluminoso, muy resistente; fácil de dar forma con la poda.",
+    "Flores blancas en ramilletes muy abundantes."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "abelia",
+   "nombre_comun": "Abelia",
+   "otros_nombres": [],
+   "nombre_cientifico": "Abelia x grandiflora",
+   "datos": [
+    "Arbusto de flor que puede llegar a 1,5–2 m, aunque se suele mantener más compacto."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "escalonia",
+   "nombre_comun": "Escalonia",
+   "otros_nombres": [],
+   "nombre_cientifico": "Escallonia rubra",
+   "datos": [
+    "Arbusto de flor rojiza; también se da bien en zonas algo sombrías."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "santolina",
+   "nombre_comun": "Santolina",
+   "otros_nombres": [],
+   "nombre_cientifico": "Santolina chamaecyparissus",
+   "datos": [
+    "Aromática de hoja gris plateada y flores amarillas; ilumina rincones oscuros."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "falso-curry",
+   "nombre_comun": "Falso curry",
+   "otros_nombres": [
+    "planta del curry"
+   ],
+   "nombre_cientifico": "Helichrysum italicum",
+   "datos": [
+    "Aromática de hoja plateada; en un rincón da luminosidad."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "cineraria-maritima",
+   "nombre_comun": "Cineraria marítima",
+   "otros_nombres": [
+    "senecio cineraria"
+   ],
+   "nombre_cientifico": "Jacobaea maritima (antes Senecio cineraria)",
+   "datos": [
+    "Hoja plateada y aterciopelada; admite bien la poda de forma y da flores."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "fotinia",
+   "nombre_comun": "Fotinia",
+   "otros_nombres": [
+    "photinia red robin",
+    "fotinia red robin"
+   ],
+   "nombre_cientifico": "Photinia x fraseri",
+   "datos": [
+    "Muy resistente. Los brotes nuevos salen rojos y luego se vuelven verdes.",
+    "Floración blanca abundante y perfumada."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "berberis",
+   "nombre_comun": "Berberis",
+   "otros_nombres": [],
+   "nombre_cientifico": "Berberis thunbergii",
+   "datos": [
+    "Hoja de color rojo vino todo el año.",
+    "Se da bien a pleno sol, en semisombra e incluso en sombra."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "hiedra",
+   "nombre_comun": "Hiedra",
+   "otros_nombres": [],
+   "nombre_cientifico": "Hedera helix",
+   "datos": [
+    "Trepadora de hoja perenne y crecimiento rápido que tolera casi todo, también calor y frío fuertes."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "madreselva",
+   "nombre_comun": "Madreselva",
+   "otros_nombres": [],
+   "nombre_cientifico": "Lonicera",
+   "datos": [
+    "Trepadora de crecimiento muy rápido y con flor.",
+    "Se puede podar y vuelve a brotar; mejor en jardín que en terraza, donde hay que controlarla."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "aligustre",
+   "nombre_comun": "Aligustre",
+   "otros_nombres": [],
+   "nombre_cientifico": "Ligustrum",
+   "datos": [
+    "Muy versátil: como arbusto, como árbol o incluso como bonsái; da flor.",
+    "De adulto da frutos pequeños que manchan al caer."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "tuya",
+   "nombre_comun": "Tuya",
+   "otros_nombres": [
+    "tuya occidental"
+   ],
+   "nombre_cientifico": "Thuja occidentalis",
+   "datos": [
+    "Conífera de crecimiento lento que con los años puede hacerse grande; buena para terraza (hay otra parecida, la tuya oriental, Platycladus orientalis)."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "evonimo",
+   "nombre_comun": "Evónimo",
+   "otros_nombres": [
+    "bonetero del japon"
+   ],
+   "nombre_cientifico": "Euonymus japonicus",
+   "datos": [
+    "Muchas variedades de hoja (verde, verde y amarilla, verde y blanca); se da bien en semisombra.",
+    "Crecimiento lento; se suele formar en bola; vale para jardines y terrazas pequeños."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "olivilla",
+   "nombre_comun": "Olivilla",
+   "otros_nombres": [],
+   "nombre_cientifico": "Teucrium fruticans",
+   "datos": [
+    "Hoja plateada y flores lilas; muy resistente."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "pitosporo",
+   "nombre_comun": "Pitosporo",
+   "otros_nombres": [
+    "pitosporum"
+   ],
+   "nombre_cientifico": "Pittosporum tobira",
+   "datos": [
+    "Tolera la brisa marina; aguanta frío, calor y sequía.",
+    "Puede llegar a unos 2 m; se suele formar en bola."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "agapanto",
+   "nombre_comun": "Agapanto",
+   "otros_nombres": [],
+   "nombre_cientifico": "Agapanthus",
+   "datos": [
+    "Tras la floración se corta la vara floral y quedan las hojas verdes.",
+    "Echa hijuelos: en una maceta grande, en uno a tres años llena el espacio.",
+    "En el interior de España se ha visto aguantar frío, heladas y nieve."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "dimorfoteca",
+   "nombre_comun": "Dimorfoteca",
+   "otros_nombres": [],
+   "nombre_cientifico": "Dimorphotheca",
+   "datos": [
+    "Para que resista año tras año, elige ejemplares crecidos con tallos leñosos, no plantas pequeñas."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
+  },
+  {
+   "id": "verbena-bonariensis",
+   "nombre_comun": "Verbena de Buenos Aires",
+   "otros_nombres": [
+    "verbena bonariensis"
+   ],
+   "nombre_cientifico": "Verbena bonariensis",
+   "datos": [
+    "Espigas florales largas en primavera y verano que dan movimiento con el viento.",
+    "Tras la floración queda una planta poco frondosa; aguanta situaciones muy duras."
+   ],
+   "fuentes": [
+    {
+     "titulo": "Chico Plantas (YouTube): +10 plantas que puedes dejar fuera todo el año",
+     "url": "https://www.youtube.com/watch?v=77wbMbBBpXE",
+     "tipo": "Canal de confianza (B)"
+    }
+   ]
   }
  ]
 }

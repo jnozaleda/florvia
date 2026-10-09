@@ -121,6 +121,9 @@ function calendarMessages({ name, species, place, lat, reference = "", group = "
 
 // The reference text of the species a name stands for (content/referencia/plantas.json), or "" when we have none.
 const referenceFor = (name) => REFERENCE[seedAlias(name) || speciesKey(name)] ?? "";
+// For a species the AI named (reliable, unlike a typed name): its own reference, else that of its genus when we only have the genus
+// («Agapanthus africanus» → «agapanthus»). Returns the key the reference is filed under.
+const referenceKey = (sk) => (REFERENCE[sk] ? sk : sk.includes(" ") && REFERENCE[sk.split(" ")[0]] ? sk.split(" ")[0] : "");
 // The group of plants a name (or a known species) belongs to (content/conocimiento/*.md), or "" when we can't tell: then the AI gets no group
 // guidance rather than the wrong one. A common name we list wins; then the species, then its genus. A typed name of three words or more
 // («rosa del desierto») is not matched by its first word, so it does not pass for a genus it only looks like.
@@ -140,7 +143,7 @@ function infoPrint(reference, group) {
   return (h >>> 0).toString(16).padStart(8, "0");
 }
 // What a species' sheet should be written with today: its reference, and its group (by species first, else by the name asked for).
-const infoFor = (sk, name) => { const reference = REFERENCE[sk] ?? ""; const group = groupOfKey(sk) || groupFor(name); return { reference, group, fp: infoPrint(reference, group) }; };
+const infoFor = (sk, name) => { const reference = REFERENCE[referenceKey(sk)] ?? ""; const group = groupOfKey(sk) || groupFor(name); return { reference, group, fp: infoPrint(reference, group) }; };
 // The general guidance of that group for the prompt (about 1,000 characters), or "".
 const groupBlock = (group) => (GROUPS[group]
   ? "\n\nCONOCIMIENTO GENERAL DEL GRUPO al que pertenece esta planta: pautas orientativas por estación (son las estaciones del lugar: en el hemisferio sur van cambiadas; " +
@@ -432,7 +435,7 @@ async function ensureSpecies(env) {
   ]);
   speciesReady = true;
 }
-const referenceProvenance = (sk) => (REFERENCE_META[sk] ? { referencia: REFERENCE_VERSION, ...REFERENCE_META[sk] } : {});
+const referenceProvenance = (sk) => { const k = referenceKey(sk); return REFERENCE_META[k] ? { referencia: REFERENCE_VERSION, ...REFERENCE_META[k] } : {}; };
 function sheetStore(env, cell) {
   const parse = (text) => { try { return JSON.parse(text); } catch { return null; } };
   return {
