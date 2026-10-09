@@ -31,7 +31,8 @@ App web (PWA) para cuidar plantas. Todo en `jnozaleda/florvia`.
 
 ## Cómo funciona la IA
 - Cadena de proveedores: Gemini `gemini-flash-latest` → `gemini-flash-lite-latest` → Workers AI (`@cf/qwen/qwen3.8-27b`).
-- Fichas de cuidados: caché de 180 días en KV; ficha «padre» por especie y «hijas» por zona; alias de nombre a especie.
+- Fichas de cuidados: en D1 (`species_parent`, `species_child`, `species_alias`): «padre» por especie (365 días), «hijas» por zona y alias (180 días). Un padre puede estar `bloqueada` (no se sustituye ni caduca; hoy solo el olivo). Gestión: `node tools/ficha-admin.mjs listar|ver|bloquear|desbloquear|invalidar`.
+- Referencia: `content/referencia/plantas.json` (20 especies con fuentes) → `tools/build-species-seed.mjs` genera alias, sinónimos y el texto de referencia que se pasa a la IA. Reglas en `content/referencia/README.md`.
 - Límites: `DAILY_LIMIT=200` consultas al día, `IP_DAILY_LIMIT=50`; límites por plan (gratis/prueba/premium) y totales mensuales 40/150/300.
 - Errores: `quota` (503, sin cuota), `ai` (502, otro fallo), `limit` (429, tope). `alertOnce` manda correo y push a Noza al 80 % y 100 % del tope y cuando se agota la cuota (una vez por tipo y día).
 - Diagnóstico («¿Qué le pasa?»): la IA comprueba antes si la foto es de esa planta (`coincide`, `otra_planta`, `no_es_planta`, `dudosa`, `sin_foto`). Una foto equivocada no se diagnostica y no gasta cuota mensual (se registra como `not_plant`). Nota libre de hasta 300 caracteres.
