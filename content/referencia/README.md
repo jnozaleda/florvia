@@ -18,6 +18,7 @@
 |---|---|---|
 | **A** Institucional o botánica | RHS, Kew, universidades, Real Jardín Botánico, administraciones | Alto |
 | **B** Blog de vivero, tienda o floristería | Verdecora, Interflora | Medio |
+| **B** Canal de confianza | Chico Plantas (decisión de Noza, 2026-10-09: experiencia en clima español) | Medio, como un vivero |
 | **C** Canal o blog individual | YouTube (con el minuto) | Solo desempata |
 
 ## Reglas de decisión
