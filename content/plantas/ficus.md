@@ -5,6 +5,7 @@ description: Cómo cuidar un ficus (benjamina y elástica): luz, riego, abono, p
 updated: 2026-10-05
 published: 2026-10-05
 plant: Ficus
+grupo: interior
 ctaTitle: ¿Tienes un ficus?
 ctaText: Añádelo a Florvia y te diremos cuándo regarlo y abonarlo según la época del año.
 ctaButton: Añadir mi ficus

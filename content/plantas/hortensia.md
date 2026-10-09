@@ -5,6 +5,7 @@ description: Cómo cuidar una hortensia: semisombra, riego, abono, cuándo podar
 updated: 2026-10-05
 published: 2026-10-05
 plant: Hortensia
+grupo: arbustos-de-flor
 ctaTitle: ¿Tienes una hortensia?
 ctaText: Añádela a Florvia y te diremos cuándo regarla, abonarla y podarla según la época del año y el tiempo donde vives.
 ctaButton: Añadir mi hortensia

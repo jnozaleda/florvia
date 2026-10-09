@@ -5,6 +5,7 @@ description: Cómo cuidar la lavanda: sol, poco riego, poda tras la floración, 
 updated: 2026-10-05
 published: 2026-10-05
 plant: Lavanda
+grupo: mediterraneas
 popular: 4
 ctaTitle: ¿Tienes lavanda?
 ctaText: Añádela a Florvia y te avisaremos de cuándo regarla y cuándo podarla tras la floración, según el tiempo donde vives.

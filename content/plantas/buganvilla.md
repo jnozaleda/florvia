@@ -5,6 +5,7 @@ description: Aprende cuándo regar, abonar y podar una buganvilla, dónde coloca
 updated: 2026-10-05
 published: 2026-10-05
 plant: Buganvilla
+grupo: arbustos-de-flor
 popular: 1
 ctaTitle: ¿Tienes una buganvilla?
 ctaText: Añádela a Florvia y te diremos cuándo regarla, abonarla, podarla o protegerla según la época del año y el tiempo donde vives.

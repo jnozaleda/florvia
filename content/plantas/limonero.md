@@ -5,6 +5,7 @@ description: Cómo cuidar un limonero en maceta o en suelo: sol, riego, abono, p
 updated: 2026-10-05
 published: 2026-10-05
 plant: Limonero
+grupo: citricos
 popular: 2
 ctaTitle: ¿Tienes un limonero?
 ctaText: Añádelo a Florvia y te diremos cuándo regarlo, abonarlo o protegerlo del frío según la época del año y el tiempo donde vives.

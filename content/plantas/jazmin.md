@@ -5,6 +5,7 @@ description: Cómo cuidar un jazmín: sol, riego, abono, poda tras la floración
 updated: 2026-10-05
 published: 2026-10-05
 plant: Jazmín
+grupo: arbustos-de-flor
 ctaTitle: ¿Tienes un jazmín?
 ctaText: Añádelo a Florvia y te diremos cuándo regarlo, abonarlo y podarlo tras la floración según el tiempo donde vives.
 ctaButton: Añadir mi jazmín

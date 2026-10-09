@@ -5,6 +5,7 @@ description: Cómo cuidar una monstera: luz, riego, humedad, abono, soporte y po
 updated: 2026-10-05
 published: 2026-10-05
 plant: Monstera
+grupo: interior
 ctaTitle: ¿Tienes una monstera?
 ctaText: Añádela a Florvia y te diremos cuándo regarla y abonarla según la época del año.
 ctaButton: Añadir mi monstera

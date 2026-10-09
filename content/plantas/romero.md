@@ -5,6 +5,7 @@ description: Cómo cuidar el romero: sol, poco riego, poda, frío y qué hacer s
 updated: 2026-10-05
 published: 2026-10-05
 plant: Romero
+grupo: mediterraneas
 ctaTitle: ¿Tienes romero?
 ctaText: Añádelo a Florvia y te diremos cuándo regarlo y cuándo podarlo según la época del año y el tiempo donde vives.
 ctaButton: Añadir mi romero

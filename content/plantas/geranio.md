@@ -5,6 +5,7 @@ description: Cómo cuidar un geranio (pelargonio): sol, riego, abono, poda, frí
 updated: 2026-10-05
 published: 2026-10-05
 plant: Geranio
+grupo: arbustos-de-flor
 popular: 5
 ctaTitle: ¿Tienes geranios?
 ctaText: Añádelos a Florvia y te diremos cuándo regarlos, abonarlos y protegerlos del frío según la época del año.

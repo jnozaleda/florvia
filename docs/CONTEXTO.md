@@ -17,6 +17,10 @@ App web (PWA) para cuidar plantas. Todo en `jnozaleda/florvia`.
 - `privacidad/index.html`: política de privacidad.
 - Publicación: GitHub Pages desde `main`. El Worker se publica a mano: `cd worker && npx wrangler deploy`.
 
+## Fichas de conocimiento por grupo
+- `content/conocimiento/*.md` (no públicas): reglas por grupo de plantas y estación (interior, citricos, mediterraneas, arbustos-de-flor, suculentas, huerto). Cada ficha de planta lleva `grupo:`; el comprobador valida que exista. Leerlas antes de escribir fichas.
+- Pendiente: pasar la ficha del grupo y la estación como contexto a la IA del Worker (ver ticket en el backlog).
+
 ## Cómo se trabaja
 - Rama de trabajo de Claude: `claude/help-and-changes-6wfexr`.
 - «Abre el pull request y mergealo» → crear PR hacia `main` y fusionarlo (método «merge»).
