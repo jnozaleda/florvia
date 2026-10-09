@@ -5,6 +5,7 @@ description: Cómo cuidar una monstera: luz, riego, humedad, abono, soporte y po
 updated: 2026-10-05
 published: 2026-10-05
 plant: Monstera
+grupo: interior
 ctaTitle: ¿Tienes una monstera?
 ctaText: Añádela a Florvia y te diremos cuándo regarla y abonarla según la época del año.
 ctaButton: Añadir mi monstera
@@ -81,7 +82,7 @@ Luz difusa, riego regular y abono.
 
 ### Otoño
 
-Reduce el riego y el abono.
+Reduce el riego y el abono. Riega como mucho una vez por semana y con poca cantidad, lo justo para humedecer el sustrato sin empaparlo; no dejes agua en el plato. Si la tenías fuera, entra la monstera antes de que las noches bajen de unos 15 °C. Si va a trasplantarse, hazlo a principios de otoño y no con la planta débil.
 
 ### Invierno
 

@@ -5,6 +5,7 @@ description: Cómo cuidar un olivo en maceta o en suelo: sol, riego, abono, poda
 updated: 2026-10-05
 published: 2026-10-05
 plant: Olivo
+grupo: mediterraneas
 popular: 3
 ctaTitle: ¿Tienes un olivo?
 ctaText: Añádelo a Florvia y te diremos cuándo regarlo, abonarlo o podarlo según la época del año y el tiempo donde vives.
@@ -89,7 +90,7 @@ Sol y riego espaciado. En maceta, vigila el calor.
 
 ### Otoño
 
-Riego mínimo; es buena época para plantarlo en suelo en climas suaves.
+Riego mínimo; es buena época para plantarlo o trasplantarlo en suelo en climas suaves. En maceta, quita el plato para que no se pudran las raíces. Si ha echado brotes largos tras el verano, puedes despuntarlos suavemente; deja la poda de formación para el final del invierno.
 
 ### Invierno
 

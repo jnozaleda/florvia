@@ -1,12 +1,14 @@
 // Checks the blog posts against the rules in content/GUIA.md. Used by build-blog.mjs (`node tools/build-blog.mjs --check` only checks).
 // Errors stop the build; warnings are advice (length, number of links...).
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REQUIRED = ["title", "h1", "description", "updated", "published", "ctaTitle", "ctaText", "ctaButton"];
 const PLANT_SECTIONS = [[/^cuidados rápidos$/i, "Cuidados rápidos"], [/^dónde colocar /i, "Dónde colocar…"], [/^cada cuánto regar /i, "Cada cuánto regar…"], [/^cuándo abonar /i, "Cuándo abonar…"], [/temperatura/i, "Temperatura…"], [/^problemas frecuentes$/i, "Problemas frecuentes"], [/^cuidados por estación$/i, "Cuidados por estación"], [/^preguntas frecuentes$/i, "Preguntas frecuentes"]];
 const SEASONS = ["primavera", "verano", "otoño", "invierno"];
+const CONOCIMIENTO = join(ROOT, "content", "conocimiento");
+const GROUPS = new Set(existsSync(CONOCIMIENTO) ? readdirSync(CONOCIMIENTO).filter((f) => f.endsWith(".md") && f !== "README.md").map((f) => f.slice(0, -3)) : []);
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const headings = (body) => body.split("\n").map((l) => l.match(/^(#{1,6})\s+(.*)$/)).filter(Boolean).map((m) => ({ level: m[1].length, text: m[2].trim() }));
@@ -42,6 +44,8 @@ export function checkPages(pages) {
     if (m.featured && pages.some((q) => q !== p && q.meta.featured === m.featured)) err(`«featured: ${m.featured}» ya lo usa otro post`);
     if (m.popular && (p.type !== "plantas" || !/^[1-9]\d?$/.test(m.popular))) err("«popular» solo va en fichas de planta y debe ser un número entero (1, 2, 3…): el orden en «Plantas populares» de la landing");
     if (m.popular && pages.some((q) => q !== p && q.meta.popular === m.popular)) err(`«popular: ${m.popular}» ya lo usa otra ficha`);
+    if (m.grupo && !(p.type === "plantas" && GROUPS.has(m.grupo))) err(`«grupo: ${m.grupo}» no existe en content/conocimiento/ o no es una ficha de planta`);
+    if (p.type === "plantas" && !m.grupo) warn("una ficha de planta debería llevar «grupo» (ver content/conocimiento/)");
     if (m.ctaHash && !/^(explorar|none)$/.test(m.ctaHash)) err("«ctaHash» solo admite «explorar» o «none»");
     if (p.type === "plantas" && !m.plant) warn("una ficha de planta debería llevar «plant» para que el botón abra la app con esa planta");
     if (!m.ctaFinalTitle || !m.ctaFinalText) warn("faltan «ctaFinalTitle» / «ctaFinalText»: el cierre repetirá el texto del CTA del medio");

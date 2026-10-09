@@ -5,6 +5,7 @@ description: Cómo cuidar el romero: sol, poco riego, poda, frío y qué hacer s
 updated: 2026-10-05
 published: 2026-10-05
 plant: Romero
+grupo: mediterraneas
 ctaTitle: ¿Tienes romero?
 ctaText: Añádelo a Florvia y te diremos cuándo regarlo y cuándo podarlo según la época del año y el tiempo donde vives.
 ctaButton: Añadir mi romero
@@ -81,7 +82,7 @@ Sol y riego escaso.
 
 ### Otoño
 
-Riego mínimo.
+Riego mínimo: con la humedad del otoño, en maceta quita el plato para que las raíces no se pudran. No lo abones y no lo podes a fondo; si acaso, un recorte ligero de puntas. Es buen momento para plantarlo en suelo en climas suaves.
 
 ### Invierno
 

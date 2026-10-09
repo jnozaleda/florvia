@@ -5,6 +5,7 @@ description: Cómo cuidar un geranio (pelargonio): sol, riego, abono, poda, frí
 updated: 2026-10-05
 published: 2026-10-05
 plant: Geranio
+grupo: arbustos-de-flor
 popular: 5
 ctaTitle: ¿Tienes geranios?
 ctaText: Añádelos a Florvia y te diremos cuándo regarlos, abonarlos y protegerlos del frío según la época del año.
@@ -84,7 +85,7 @@ Sol, riego regular y retirada de flores secas.
 
 ### Otoño
 
-Reduce el riego y el abono; prepara la entrada en un sitio protegido.
+Reduce el riego y el abono; prepara la entrada en un sitio protegido. Con la humedad del otoño, retira a menudo flores marchitas y hojas secas, porque si se quedan pegadas a la planta favorecen hongos como el moho gris. Quita el plato de la maceta si se acumula agua y, si abonas, usa uno bajo en nitrógeno y rico en potasio.
 
 ### Invierno
 

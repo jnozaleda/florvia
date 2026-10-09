@@ -5,6 +5,7 @@ description: Cómo cuidar un ficus (benjamina y elástica): luz, riego, abono, p
 updated: 2026-10-05
 published: 2026-10-05
 plant: Ficus
+grupo: interior
 ctaTitle: ¿Tienes un ficus?
 ctaText: Añádelo a Florvia y te diremos cuándo regarlo y abonarlo según la época del año.
 ctaButton: Añadir mi ficus
@@ -81,7 +82,7 @@ Luz, riego regular y abono.
 
 ### Otoño
 
-Reduce el riego y el abono.
+Reduce el riego y el abono. En interior, el error de otoño es mantener el sustrato empapado: riega como mucho una vez por semana y con poca agua, lo justo para que quede húmedo pero no encharcado; hojas amarillas y verdes a la vez suelen indicar exceso. No dejes agua en el plato y, si lo tenías fuera, entra el ficus antes de que las noches bajen de unos 10 °C. Si tiene que trasplantarse, principios de otoño es buen momento.
 
 ### Invierno
 
