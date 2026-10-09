@@ -3,6 +3,8 @@ grupo: huerto
 nombre: Huerto urbano
 clima: Mediterráneo y templado, hemisferio norte
 plantas: Albahaca, caléndula, tomate, lechuga
+especies: Solanum lycopersicum, Capsicum, Lactuca, Ocimum, Calendula, Fragaria, Petroselinum, Mentha, Allium, Cucurbita, Cucumis, Phaseolus, Spinacia
+nombres: tomate, tomatera, tomatero, pimiento, guindilla, lechuga, albahaca, calendula, fresa, fresal, perejil, menta, hierbabuena, cebolla, ajo, puerro, calabacin, pepino, judia, espinaca
 updated: 2026-10-09
 ---
 ## Primavera

@@ -126,3 +126,6 @@ CREATE TABLE IF NOT EXISTS species_parent (species TEXT PRIMARY KEY, data TEXT N
 CREATE TABLE IF NOT EXISTS species_child (species TEXT NOT NULL, cell TEXT NOT NULL, data TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (species, cell));
 CREATE TABLE IF NOT EXISTS species_alias (name TEXT NOT NULL, cell TEXT NOT NULL, species TEXT NOT NULL, ts INTEGER NOT NULL, PRIMARY KEY (name, cell));
 CREATE INDEX IF NOT EXISTS idx_species_alias_species ON species_alias(species);
+-- Fichas retiradas por quejas (👎 o «Malo»): el padre y sus zonas tal como estaban, para revisarlas o recuperarlas (tools/ficha-admin.mjs).
+CREATE TABLE IF NOT EXISTS species_retired (id INTEGER PRIMARY KEY AUTOINCREMENT, species TEXT NOT NULL, ts INTEGER NOT NULL, why TEXT NOT NULL, by TEXT NOT NULL, case_id TEXT NOT NULL DEFAULT '', name TEXT NOT NULL DEFAULT '', parent TEXT NOT NULL, children TEXT NOT NULL DEFAULT '[]');
+CREATE INDEX IF NOT EXISTS idx_species_retired_species ON species_retired(species, ts);

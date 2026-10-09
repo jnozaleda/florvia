@@ -3,6 +3,8 @@ grupo: suculentas
 nombre: Suculentas y cactus
 clima: Mediterráneo y templado, hemisferio norte
 plantas: Crasulas (jade), aloe, echeverias, cactus, sansevierias
+especies: Crassula, Aloe, Echeveria, Sedum, Haworthia, Haworthiopsis, Kalanchoe, Opuntia, Mammillaria, Echinocactus, Echinopsis, Graptopetalum, Sempervivum, Aeonium, Agave, Dracaena trifasciata, Sansevieria
+nombres: cactus, suculenta, crasa, aloe, aloe vera, jade, arbol de jade, echeveria, sansevieria, lengua de suegra, kalanchoe, agave, chumbera, nopal, siempreviva
 updated: 2026-10-09
 ---
 ## Primavera

@@ -41,3 +41,6 @@ Las fichas de la IA se guardan en la base de datos D1 (`florvia-usage`), en tres
 Un padre **bloqueado** no se sustituye ni caduca (los demás se renuevan al año; las hijas, a los 180 días). Para ver, bloquear o invalidar fichas: `node tools/ficha-admin.mjs listar | ver <especie> | bloquear <especie> | desbloquear <especie> | invalidar <especie>`.
 
 Qué significa «bloqueada» sin revisor: la ficha se generó con los datos de este documento, las decisiones confirmadas se cumplen, y Noza la ha aceptado. **No** es «revisada por un experto».
+
+### Retirada de fichas con quejas
+Una ficha de especie **no bloqueada** se retira sola (se guarda en `species_retired` y deja de servirse) y se escribe de nuevo, con la referencia y la ficha del grupo, la próxima vez que alguien la pida, si: recibe un 👎 con «Planta equivocada» o «Consejo dudoso»; recibe 👎 de dos personas distintas; o Noza marca uno de sus casos «Malo». Solo cuentan las quejas posteriores a la ficha actual, como mucho una retirada por especie y día, y los 👎 de los dispositivos de Noza solo cuentan a través de «Malo». Una ficha bloqueada nunca se retira: llega un correo para revisarla. `node tools/ficha-admin.mjs retiradas` las lista y `recuperar <especie>` devuelve la última retirada.

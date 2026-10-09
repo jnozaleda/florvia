@@ -19,7 +19,7 @@ App web (PWA) para cuidar plantas. Todo en `jnozaleda/florvia`.
 
 ## Fichas de conocimiento por grupo
 - `content/conocimiento/*.md` (no públicas): reglas por grupo de plantas y estación (interior, citricos, mediterraneas, arbustos-de-flor, suculentas, huerto). Cada ficha de planta lleva `grupo:`; el comprobador valida que exista. Leerlas antes de escribir fichas.
-- Pendiente: pasar la ficha del grupo y la estación como contexto a la IA del Worker (ver ticket en el backlog).
+- La IA las recibe: `node tools/build-knowledge.mjs` genera `worker/src/knowledge.js` (texto por grupo + qué especies, géneros y nombres son de cada grupo, en la cabecera `especies:`/`nombres:`). Se añaden al prompt de `/care` y `/calendar` si se sabe el grupo; si no, nada. La ficha guarda `knowledge: grupo@fecha`. Al cambiar un `.md`, regenerar y publicar el Worker.
 
 ## Cómo se trabaja
 - Rama de trabajo de Claude: `claude/help-and-changes-6wfexr`.
@@ -31,7 +31,8 @@ App web (PWA) para cuidar plantas. Todo en `jnozaleda/florvia`.
 
 ## Cómo funciona la IA
 - Cadena de proveedores: Gemini `gemini-flash-latest` → `gemini-flash-lite-latest` → Workers AI (`@cf/qwen/qwen3.8-27b`).
-- Fichas de cuidados: en D1 (`species_parent`, `species_child`, `species_alias`): «padre» por especie (365 días), «hijas» por zona y alias (180 días). Un padre puede estar `bloqueada` (no se sustituye ni caduca; hoy solo el olivo). Gestión: `node tools/ficha-admin.mjs listar|ver|bloquear|desbloquear|invalidar`.
+- Fichas de cuidados: en D1 (`species_parent`, `species_child`, `species_alias`): «padre» por especie (365 días), «hijas» por zona y alias (180 días). Un padre puede estar `bloqueada` (no se sustituye ni caduca; hoy solo el olivo). Gestión: `node tools/ficha-admin.mjs listar|ver|bloquear|desbloquear|invalidar|retiradas|recuperar`.
+- Retirada: una ficha de especie se aparta (tabla `species_retired`) y se escribe de nuevo en la siguiente petición si recibe un 👎 «Planta equivocada» o «Consejo dudoso», 👎 de dos personas distintas, o Noza marca un caso «Malo». Nunca las bloqueadas (correo a Noza); como mucho una vez por especie y día; los 👎 de los dispositivos de Noza no cuentan solos.
 - Referencia: `content/referencia/plantas.json` (20 especies con fuentes) → `tools/build-species-seed.mjs` genera alias, sinónimos y el texto de referencia que se pasa a la IA. Reglas en `content/referencia/README.md`.
 - Límites: `DAILY_LIMIT=200` consultas al día, `IP_DAILY_LIMIT=50`; límites por plan (gratis/prueba/premium) y totales mensuales 40/150/300.
 - Errores: `quota` (503, sin cuota), `ai` (502, otro fallo), `limit` (429, tope). `alertOnce` manda correo y push a Noza al 80 % y 100 % del tope y cuando se agota la cuota (una vez por tipo y día).

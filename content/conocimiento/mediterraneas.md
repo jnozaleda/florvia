@@ -3,6 +3,8 @@ grupo: mediterraneas
 nombre: Mediterráneas de sol y poco riego
 clima: Mediterráneo y templado, hemisferio norte
 plantas: Olivo, romero, lavanda
+especies: Olea europaea, Salvia rosmarinus, Rosmarinus officinalis, Lavandula, Thymus, Santolina, Helichrysum
+nombres: olivo, romero, lavanda, espliego, cantueso, tomillo, santolina
 updated: 2026-10-09
 ---
 ## Primavera

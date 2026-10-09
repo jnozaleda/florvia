@@ -3,6 +3,8 @@ grupo: citricos
 nombre: Cítricos y frutales en maceta
 clima: Mediterráneo y templado, hemisferio norte
 plantas: Limonero, naranjo, calamondín
+especies: Citrus, Fortunella, Citrofortunella
+nombres: limonero, limon, naranjo, mandarino, lima, limero, pomelo, kumquat, calamondin, citrico
 updated: 2026-10-09
 ---
 ## Primavera

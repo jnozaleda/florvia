@@ -3,6 +3,8 @@ grupo: interior
 nombre: Plantas de interior
 clima: Cualquiera; dentro de casa la temperatura es estable
 plantas: Ficus, monstera, pothos, calathea
+especies: Monstera, Epipremnum, Philodendron, Calathea, Goeppertia, Maranta, Spathiphyllum, Zamioculcas, Ficus elastica, Ficus lyrata, Ficus benjamina, Dracaena marginata, Dracaena fragrans, Aspidistra, Chlorophytum, Pilea, Peperomia, Phalaenopsis, Anthurium, Dieffenbachia, Aglaonema, Strelitzia nicolai
+nombres: ficus, monstera, costilla de adan, potos, pothos, calathea, maranta, espatifilo, zamioculca, cinta, aspidistra, pilea, peperomia, orquidea, anturio, difenbachia, aglaonema
 updated: 2026-10-09
 ---
 ## Primavera

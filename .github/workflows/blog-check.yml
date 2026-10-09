@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           fail=0
-          for t in test-rain test-sun test-coords test-retention test-notify test-ratings test-care-alias; do node tools/$t.mjs 2>&1 | tee -a blog-check.log; [ "${PIPESTATUS[0]}" = 0 ] || fail=1; done
+          for t in test-rain test-sun test-coords test-retention test-notify test-ratings test-care-alias test-knowledge-retire; do node tools/$t.mjs 2>&1 | tee -a blog-check.log; [ "${PIPESTATUS[0]}" = 0 ] || fail=1; done
           exit $fail
       - name: Comprobar las fichas de referencia (fuentes y procedencia)
         if: always()
@@ -78,6 +78,10 @@ jobs:
         if: always()
         shell: bash
         run: node tools/build-species-seed.mjs --check 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
+      - name: Comprobar que las fichas de conocimiento por grupo están al día
+        if: always()
+        shell: bash
+        run: node tools/build-knowledge.mjs --check 2>&1 | tee -a blog-check.log; exit "${PIPESTATUS[0]}"
       - name: Avisar por correo
         if: failure() && env.CI_ALERT_TOKEN != ''
         shell: bash

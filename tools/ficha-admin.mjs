@@ -4,6 +4,8 @@
 //   node tools/ficha-admin.mjs bloquear <especie|nombre>  el padre no se sustituye ni caduca
 //   node tools/ficha-admin.mjs desbloquear <especie|nombre>
 //   node tools/ficha-admin.mjs invalidar <especie|nombre> [--forzar]   borra el padre (si no está bloqueado), las zonas y el calendario: se genera de nuevo al pedirla
+//   node tools/ficha-admin.mjs retiradas                  las fichas que el Worker ha retirado por quejas (👎 o «Malo»), con el motivo y el caso
+//   node tools/ficha-admin.mjs recuperar <especie|nombre> [--forzar]   vuelve a poner la última ficha retirada (con --forzar, aunque ya se haya escrito otra)
 // Con --local actúa sobre la base de datos local en vez de la de producción.
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -58,7 +60,23 @@ if (command === "listar") {
     for (const k of list) { wrangler(["kv", "key", "delete", k.name, "--binding", "CACHE", ...remote]); deleted++; }
   } catch { /* sin calendario */ }
   console.log(`${key}: ficha y zonas borradas${deleted ? `, ${deleted} calendario(s)` : ""}. Se genera de nuevo la próxima vez que alguien la pida.`);
+} else if (command === "retiradas") {
+  const rows = query("SELECT species, ts, why, by, case_id, name, json_extract(parent, '$.commonName') AS nombre, json_array_length(children) AS zonas FROM species_retired ORDER BY ts DESC LIMIT 50");
+  if (!rows.length) console.log("No se ha retirado ninguna ficha.");
+  for (const r of rows) console.log(`${new Date(r.ts).toISOString().slice(0, 16).replace("T", " ")}  ${r.species.padEnd(26)} ${r.why.padEnd(18)} ${r.by.padEnd(5)} zonas=${r.zonas}  «${r.name}» → caso ${r.case_id}  ${r.nombre ?? ""}`);
+} else if (command === "recuperar") {
+  const key = need();
+  const last = query(`SELECT id, parent, children FROM species_retired WHERE species = '${key}' ORDER BY ts DESC LIMIT 1`)[0];
+  if (!last) { console.log(`No hay ninguna ficha retirada de «${key}».`); process.exit(1); }
+  if (row(key) && !flags.has("--forzar")) { console.log(`«${key}» ya tiene una ficha nueva: usa --forzar para sustituirla por la retirada.`); process.exit(1); }
+  const q = (v) => `'${String(v).replace(/'/g, "''")}'`;
+  const parent = JSON.parse(last.parent);
+  const now = Date.now();
+  query(`INSERT OR REPLACE INTO species_parent (species, data, grounded, locked, status, provenance, created_at, updated_at) VALUES (${q(key)}, ${q(last.parent)}, ${q(parent.grounded ?? "")}, 0, ${q(parent.grounded ? "con_referencia" : "generada")}, '{}', ${now}, ${now})`);
+  const children = JSON.parse(last.children);
+  for (const c of children) query(`INSERT OR REPLACE INTO species_child (species, cell, data, created_at) VALUES (${q(key)}, ${q(c.cell)}, ${q(c.data)}, ${now})`);
+  console.log(`${key}: ficha recuperada con ${children.length} zona(s).`);
 } else {
-  console.log("Uso: node tools/ficha-admin.mjs listar | ver <especie> | bloquear <especie> | desbloquear <especie> | invalidar <especie> [--forzar]");
+  console.log("Uso: node tools/ficha-admin.mjs listar | ver <especie> | bloquear <especie> | desbloquear <especie> | invalidar <especie> [--forzar] | retiradas | recuperar <especie> [--forzar]");
   process.exit(command ? 1 : 0);
 }

@@ -3,6 +3,8 @@ grupo: arbustos-de-flor
 nombre: Arbustos y plantas de flor en jardín o maceta
 clima: Mediterráneo y templado, hemisferio norte
 plantas: Buganvilla, geranio, hortensia, jazmín
+especies: Bougainvillea, Pelargonium, Hydrangea, Jasminum, Trachelospermum, Rosa, Hibiscus, Nerium oleander, Camellia, Gardenia, Plumbago, Lantana, Abelia, Polygala, Rhododendron
+nombres: buganvilla, geranio, gitanilla, hortensia, jazmin, falso jazmin, rosal, hibisco, adelfa, camelia, gardenia, plumbago, lantana, azalea
 updated: 2026-10-09
 ---
 ## Primavera

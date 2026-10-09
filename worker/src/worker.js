@@ -4,6 +4,7 @@ import { EmailMessage } from "cloudflare:email";
 import { fetchWeather } from "../../app/weather.js";
 import { normName, speciesKey, canonicalKey, synonymSources, seedAlias } from "./species.js";
 import { REFERENCE, REFERENCE_VERSION, REFERENCE_META } from "./reference-context.js";
+import { GROUPS, GROUP_BY_SPECIES, GROUP_BY_NAME, KNOWLEDGE_VERSION } from "./knowledge.js";
 // my-garden-api (Florvia's backend) — the app's small backend. For now one job: fill in a plant's care sheet from
 // its name ("✨ Rellenar con IA"). The AI provider is a setting (PROVIDER) so moving from the free
 // Cloudflare model to a paid one later only touches this file, never the app.
@@ -97,7 +98,7 @@ const CALENDAR_SCHEMA = {
   additionalProperties: false,
 };
 
-function calendarMessages({ name, species, place, lat, reference = "" }) {
+function calendarMessages({ name, species, place, lat, reference = "", group = "" }) {
   return [
     {
       role: "system",
@@ -113,14 +114,29 @@ function calendarMessages({ name, species, place, lat, reference = "" }) {
     {
       role: "user",
       content: `Planta: «${name}»${species ? ` (${species})` : ""}.\nLugar: ${place || "sin nombre"} (hemisferio ${lat < 0 ? "sur" : "norte"}).\nDa su calendario de tareas del año y sus riesgos.` +
-        (reference ? `\n\nDATOS DE REFERENCIA contrastados con fuentes: úsalos para las tareas y sus meses. Lo que figura como DECISIONES CONFIRMADAS es definitivo (por ejemplo, la fecha de poda para España). Varias fechas vienen de fuentes del Reino Unido: ajústalas al lugar indicado.\n${reference}` : ""),
+        (reference ? `\n\nDATOS DE REFERENCIA contrastados con fuentes: úsalos para las tareas y sus meses. Lo que figura como DECISIONES CONFIRMADAS es definitivo (por ejemplo, la fecha de poda para España). Varias fechas vienen de fuentes del Reino Unido: ajústalas al lugar indicado.\n${reference}` : "") + groupBlock(group),
     },
   ];
 }
 
 // The reference text of the species a name stands for (content/referencia/plantas.json), or "" when we have none.
 const referenceFor = (name) => REFERENCE[seedAlias(name) || speciesKey(name)] ?? "";
-function careMessages({ name, place, lat, lon, reference = "" }) {
+// The group of plants a name (or a known species) belongs to (content/conocimiento/*.md), or "" when we can't tell: then the AI gets no group
+// guidance rather than the wrong one. A common name we list wins; then the species, then its genus. A typed name of three words or more
+// («rosa del desierto») is not matched by its first word, so it does not pass for a genus it only looks like.
+function groupFor(name, sk = "") {
+  const n = normName(name);
+  if (GROUP_BY_NAME[n]) return GROUP_BY_NAME[n];
+  const byKey = (k) => (k ? GROUP_BY_SPECIES[k] ?? GROUP_BY_SPECIES[k.split(" ")[0]] ?? "" : "");
+  return byKey(sk) || byKey(seedAlias(name)) || (n.split(" ").length <= 2 ? byKey(speciesKey(name)) : "");
+}
+// The general guidance of that group for the prompt (about 1,000 characters), or "".
+const groupBlock = (group) => (GROUPS[group]
+  ? "\n\nCONOCIMIENTO GENERAL DEL GRUPO al que pertenece esta planta: pautas orientativas por estación (son las estaciones del lugar: en el hemisferio sur van cambiadas; " +
+    "adáptalas al clima indicado). Úsalas para que el riego, el abono, las tareas y los consejos sean coherentes con plantas parecidas, sin copiarlas literalmente. " +
+    "Si la especie concreta las contradice, manda lo que sepas de la especie y, si hay DATOS DE REFERENCIA, mandan esos.\n" + GROUPS[group].text
+  : "");
+function careMessages({ name, place, lat, lon, reference = "", group = "" }) {
   const south = lat < 0;
   return [
     {
@@ -160,7 +176,7 @@ function careMessages({ name, place, lat, lon, reference = "" }) {
             "luz, meses…) con criterio prudente; si no dicen nada de un dato, no lo inventes con falsa precisión. Varias fechas y temperaturas vienen de fuentes del Reino Unido: " +
             "ajústalas al lugar indicado y, cuando haya una decisión confirmada para España, usa esa. Lo que figure como «Sin dato fiable» (por ejemplo la toxicidad) no lo des por seguro: " +
             "dilo así en la nota correspondiente (toxicNote) y recomienda cautela en vez de afirmar que no es tóxica.\n" + reference
-          : ""),
+          : "") + groupBlock(group),
     },
   ];
 }
@@ -383,7 +399,7 @@ async function takeQuota(request, env, ctx = null) {
 // A care sheet in two pieces: the PARENT is what is true of the species wherever it grows (name, light, hardiness, toxicity, size, how to water,
 // notes…) and the CHILD what depends on the climate of the cell (watering and feeding by season, seasonal tips, planting and flowering months, fit).
 // The Worker joins them when it serves a sheet, so the app still gets the same flat sheet. A species has one parent; each cell has its own child.
-const PARENT_FIELDS = ["commonName", "species", "confidence", "grounded", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives", "isPlant"];
+const PARENT_FIELDS = ["commonName", "species", "confidence", "grounded", "knowledge", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives", "isPlant"];
 const CHILD_FIELDS = ["seasons", "feedTypes", "tips", "climateFit", "climateNote", "plantMonths", "plantWhen", "bloomMonths", "bloomWhat"];
 const PARENT_TTL = 365 * 86400;
 const pick = (o, keys) => Object.fromEntries(keys.filter((key) => o[key] !== undefined).map((key) => [key, o[key]]));
@@ -400,6 +416,8 @@ async function ensureSpecies(env) {
     env.DB.prepare("CREATE TABLE IF NOT EXISTS species_child (species TEXT NOT NULL, cell TEXT NOT NULL, data TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (species, cell))"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS species_alias (name TEXT NOT NULL, cell TEXT NOT NULL, species TEXT NOT NULL, ts INTEGER NOT NULL, PRIMARY KEY (name, cell))"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_species_alias_species ON species_alias(species)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS species_retired (id INTEGER PRIMARY KEY AUTOINCREMENT, species TEXT NOT NULL, ts INTEGER NOT NULL, why TEXT NOT NULL, by TEXT NOT NULL, case_id TEXT NOT NULL DEFAULT '', name TEXT NOT NULL DEFAULT '', parent TEXT NOT NULL, children TEXT NOT NULL DEFAULT '[]')"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_species_retired_species ON species_retired(species, ts)"),
   ]);
   speciesReady = true;
 }
@@ -428,6 +446,51 @@ function sheetStore(env, cell) {
     },
     async putChild(sk, child) { await env.DB.prepare("INSERT OR REPLACE INTO species_child (species, cell, data, created_at) VALUES (?, ?, ?, ?)").bind(sk, cell, JSON.stringify(child), Date.now()).run(); },
   };
+}
+// ---------- Retiring bad sheets ----------
+// A species sheet that people say is wrong is set aside (kept in species_retired for review, no longer served) and written again, with the
+// reference data and the group guidance, the next time someone asks for it (that call counts in the AI cap as usual). It is retired when:
+// one 👎 says «planta equivocada» or «consejo dudoso», or two different people give it a 👎, or Noza marks one of its cases «Malo».
+// Only 👎 given after the current sheet was written count, and Noza's own devices only through «Malo». A locked sheet is never retired
+// (Noza gets an email to review it), and a species is retired at most once a day, so a bad streak can't make it regenerate over and over.
+const RETIRE_REASONS = ["planta_equivocada", "consejo_dudoso"];
+const RETIRE_WHY = { planta_equivocada: "👎 «Planta equivocada»", consejo_dudoso: "👎 «Consejo dudoso o peligroso»", dos_negativas: "👎 de dos personas distintas", malo: "marcada «Malo» por Noza" };
+async function maybeRetire(env, id, by = "auto") {
+  if (!env.DB) return { done: false, why: "db" };
+  await Promise.all([ensureCases(env), ensureSpecies(env)]);
+  const c = await env.DB.prepare("SELECT id, ts, kind, rating, reasons, internal, name, output FROM ai_cases WHERE id = ?").bind(id).first();
+  if (!c || !["care", "explore"].includes(c.kind)) return { done: false, why: "no_es_ficha" };
+  let out = {};
+  try { out = JSON.parse(c.output); } catch {}
+  const sk = speciesKey(out.species ?? "");
+  if (!sk) return { done: false, why: "sin_especie" };
+  if (by === "auto" && (c.rating !== 0 || c.internal)) return { done: false, why: "no_cuenta" };
+  const parent = await env.DB.prepare("SELECT data, locked, created_at FROM species_parent WHERE species = ?").bind(sk).first();
+  if (!parent) return { done: false, why: "sin_ficha", species: sk };
+  if (c.ts < parent.created_at) return { done: false, why: "ya_regenerada", species: sk };
+  let why = by === "noza" ? "malo" : (c.reasons ? c.reasons.split(",") : []).find((r) => RETIRE_REASONS.includes(r)) ?? "";
+  if (!why) {
+    const rows = (await env.DB.prepare("SELECT COALESCE(NULLIF(garden, ''), device) AS who, json_extract(output, '$.species') AS species FROM ai_cases WHERE kind IN ('care', 'explore') AND rating = 0 AND internal = 0 AND ts >= ?").bind(parent.created_at).all()).results ?? [];
+    if (new Set(rows.filter((r) => speciesKey(r.species ?? "") === sk).map((r) => r.who)).size >= 2) why = "dos_negativas";
+  }
+  if (!why) return { done: false, why: "aun_no", species: sk };
+  const label = `${JSON.parse(parent.data)?.commonName ?? sk} (${sk})`;
+  if (parent.locked) {
+    await sendAdminEmail(env, `Florvia · Ficha bloqueada con quejas: ${label}`, [`La ficha de ${label} está bloqueada y tiene una queja: ${RETIRE_WHY[why]}.`, "No se ha retirado (las bloqueadas no se retiran solas). Revisa el caso:", `${APP_URL}#caso=${c.id}`].join("\n")).catch(() => {});
+    return { done: false, why: "bloqueada", species: sk };
+  }
+  if (await env.DB.prepare("SELECT 1 AS x FROM species_retired WHERE species = ? AND ts > ?").bind(sk, Date.now() - 86400000).first()) return { done: false, why: "hoy_ya", species: sk };
+  const children = (await env.DB.prepare("SELECT cell, data, created_at FROM species_child WHERE species = ?").bind(sk).all()).results ?? [];
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO species_retired (species, ts, why, by, case_id, name, parent, children) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(sk, Date.now(), why, by, c.id, c.name, parent.data, JSON.stringify(children)),
+    env.DB.prepare("DELETE FROM species_parent WHERE species = ?").bind(sk),
+    env.DB.prepare("DELETE FROM species_child WHERE species = ?").bind(sk),
+    // «Planta equivocada»: the name may not stand for this species at all, so it is looked up again.
+    ...(why === "planta_equivocada" ? [env.DB.prepare("DELETE FROM species_alias WHERE name = ?").bind(normName(c.name))] : []),
+  ]);
+  await sendAdminEmail(env, `Florvia · Ficha retirada: ${label}`, [`Se ha retirado la ficha de ${label}: ${RETIRE_WHY[why]}.`, `Tenía ${children.length} ${children.length === 1 ? "zona" : "zonas"}. Se escribirá de nuevo la próxima vez que alguien la pida (cuenta en el tope de la IA).`,
+    "", "El caso que lo ha provocado:", `${APP_URL}#caso=${c.id}`, "", "Para verla o recuperarla: node tools/ficha-admin.mjs retiradas · recuperar <especie>"].join("\n")).catch(() => {});
+  return { done: true, why, species: sk };
 }
 async function handleCare(request, env, headers, ctx) {
   if (!authorized(request, env)) {
@@ -522,10 +585,11 @@ async function handleCare(request, env, headers, ctx) {
   const t0 = Date.now();
   try {
     const reference = referenceFor(name);
-    const { from, out, usage, quotaHit } = await askAI(env, careMessages({ name, place, lat, lon, reference }));
+    const group = groupFor(name);
+    const { from, out, usage, quotaHit } = await askAI(env, careMessages({ name, place, lat, lon, reference, group }));
     noteQuota(env, ctx, quotaHit);
     aiUsage = usage;
-    care = { ...sanitize(out), provider: from, ...(reference ? { grounded: REFERENCE_VERSION } : {}) };
+    care = { ...sanitize(out), provider: from, ...(reference ? { grounded: REFERENCE_VERSION } : {}), ...(group ? { knowledge: `${group}@${KNOWLEDGE_VERSION}` } : {}) };
   } catch (err) {
     console.error("care failed", env.PROVIDER, err?.message);
     return aiFail(env, ctx, request, kind, err, headers);
@@ -801,6 +865,7 @@ async function handleRating(request, env, headers, ctx) {
     await env.DB.prepare("UPDATE ai_cases SET rating = ?, reasons = ?, note = ?, version = ?, day = ? WHERE id = ?").bind(rating, reasons.join(","), note, version, day, existing.id).run();
     if (existing.has_photo && env.CACHE) { const ph = await env.CACHE.get(`case-photo:${existing.id}`); if (ph) await env.CACHE.put(`case-photo:${existing.id}`, ph, { expirationTtl: CASE_TTL }).catch(() => {}); }
     ctx.waitUntil(notifyRating(env, { id: existing.id, kind, rating, reasons, note, name, provider, version, internal, device: who.device, garden, hasPhoto: Boolean(existing.has_photo) }).catch((err) => console.error("rating notify", err?.message)));
+    if (rating === 0) ctx.waitUntil(maybeRetire(env, existing.id).catch((err) => console.error("retire", err?.message)));
     return json({ ok: true, id: existing.id }, 200, headers);
   }
   const id = caseId();
@@ -808,6 +873,7 @@ async function handleRating(request, env, headers, ctx) {
     .bind(id, Date.now(), day, src, kind, rating, reasons.join(","), note, name, provider, version, who.device, garden, internal, input, output, photo ? 1 : 0).run();
   if (photo && env.CACHE) await env.CACHE.put(`case-photo:${id}`, photo, { expirationTtl: CASE_TTL }).catch(() => {});
   ctx.waitUntil(notifyRating(env, { id, kind, rating, reasons, note, name, provider, version, internal, device: who.device, garden, hasPhoto: Boolean(photo) }).catch((err) => console.error("rating notify", err?.message)));
+  if (rating === 0) ctx.waitUntil(maybeRetire(env, id).catch((err) => console.error("retire", err?.message)));
   return json({ ok: true, id }, 200, headers);
 }
 async function notifyRating(env, c) {
@@ -863,7 +929,9 @@ async function handleCaseStatus(request, env, headers) {
   if (!body || !/^[A-Za-z0-9]{6,20}$/.test(String(body.id ?? "")) || !CASE_STATUSES.includes(body.status)) return json({ error: "input" }, 400, headers);
   await ensureCases(env);
   await env.DB.prepare("UPDATE ai_cases SET status = ?, admin_note = ? WHERE id = ?").bind(body.status, clean(body.adminNote, 400), body.id).run();
-  return json({ ok: true }, 200, headers);
+  // «Malo» on a care sheet sets that sheet aside (see maybeRetire); the app tells Noza what happened.
+  const retired = body.status === "malo" ? await maybeRetire(env, body.id, "noza").catch(() => null) : null;
+  return json({ ok: true, ...(retired ? { retired } : {}) }, 200, headers);
 }
 // For «Uso de la app»: satisfaction per function (real people only) and the latest cases, 👎 still to review first.
 async function qualityReport(env) {
@@ -1656,7 +1724,7 @@ async function handleCalendar(request, env, headers, ctx) {
   const t0 = Date.now();
   try {
     const reference = referenceFor(subject);
-    const { from, out, usage, quotaHit } = await askAI(env, calendarMessages({ name: subject, species: "", place, lat, reference }), CALENDAR_SCHEMA, "calendario");
+    const { from, out, usage, quotaHit } = await askAI(env, calendarMessages({ name: subject, species: "", place, lat, reference, group: groupFor(subject) }), CALENDAR_SCHEMA, "calendario");
     noteQuota(env, ctx, quotaHit);
     aiUsage = usage;
     cal = { ...sanitizeCalendar(out), provider: from };

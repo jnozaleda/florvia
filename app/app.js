@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261007e";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261009a";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261007e";
-import { buildICS } from "./calendar.js?v=20261007e";
-import { scrubPlant } from "./clean.js?v=20261007e";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261007e";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261009a";
+import { buildICS } from "./calendar.js?v=20261009a";
+import { scrubPlant } from "./clean.js?v=20261009a";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261009a";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261007e";
+      sc.src = "vendor/qrcode.min.js?v=20261009a";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1962,6 +1962,8 @@ async function openCase(id) {
   caseSheet();
 }
 const CASE_KIND = { place: "¿Dónde está mejor?", care: "Ficha de cuidados", identify: "Identificar por foto", diagnose: "Diagnóstico", suggest: "Qué planto aquí", explore: "Explorar", calendar: "Calendario del año" };
+// What «Malo» did to the sheet of that species (POST /case/status → retired.why).
+const RETIRED_MSG = { malo: "Ficha retirada: se escribirá de nuevo la próxima vez que alguien la pida.", bloqueada: "La ficha está bloqueada: no se retira. Te llega un correo para revisarla.", hoy_ya: "Esta ficha ya se retiró hoy: no se vuelve a retirar hasta mañana.", ya_regenerada: "La ficha ya se escribió de nuevo después de este caso: no se toca.", sin_ficha: "No hay ficha guardada de esta especie (quizá ya se retiró).", sin_especie: "Este caso no dice la especie: no se puede retirar su ficha." };
 const CASE_STATUS = [["new", "Sin revisar"], ["revisado", "Revisado"], ["bueno", "Bueno"], ["malo", "Malo"], ["caso_de_prueba", "Caso de prueba"]];
 function careCaseHtml(c) {
   const rows = SEASONS.filter((s) => c.seasons?.[s]).map((s) => `<div class="u-row"><span>${SEASON_LABEL[s]}</span><b>Riego cada ${c.seasons[s].water} d<small>${c.seasons[s].feed ? `abono cada ${c.seasons[s].feed} d` : "sin abono"}</small></b></div>`).join("");
@@ -2006,7 +2008,8 @@ function caseSheet() {
       <p class="muted small">${esc(c.person)} · ${esc(new Date(c.ts).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" }))}${c.version ? ` · versión ${esc(c.version)}` : ""}${c.provider ? ` · ${esc(c.provider)}` : ""}</p></section>
     ${body}
     <section class="card"><div class="sec">Revisión</div>
-      <div class="chips">${CASE_STATUS.map(([k, t]) => `<button type="button" class="chip ${c.status === k ? "on" : ""}" data-action="case-status" data-id="${esc(c.id)}" data-status="${k}" aria-pressed="${c.status === k}">${t}</button>`).join("")}</div></section>`, "case");
+      <div class="chips">${CASE_STATUS.map(([k, t]) => `<button type="button" class="chip ${c.status === k ? "on" : ""}" data-action="case-status" data-id="${esc(c.id)}" data-status="${k}" aria-pressed="${c.status === k}">${t}</button>`).join("")}</div>
+      ${c.kind === "care" || c.kind === "explore" ? `<p class="muted small">${c.retired ? esc(RETIRED_MSG[c.retired.why] ?? "") : "Si la marcas «Malo», la ficha de esta especie se retira y se escribe de nuevo la próxima vez que alguien la pida (salvo que esté bloqueada)."}</p>` : ""}</section>`, "case");
 }
 
 let diag = null; // { id, symptoms: [], note, photo, state: "idle" | "loading" | "done" | "error", res, error, saved }
@@ -3742,8 +3745,10 @@ const actions = {
   "analyses-bad": () => { analyses.bad = !analyses.bad; loadAnalyses(true); },
   "analyses-mine": () => { analyses.mine = !analyses.mine; loadAnalyses(true); },
   "case-status": async (d) => {
-    if (caseView?.id === d.id) { caseView.status = d.status; caseSheet(); }
-    await fetch(`${API}/case/status`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ id: d.id, status: d.status }) }).catch(() => {});
+    if (caseView?.id === d.id) { caseView.status = d.status; caseView.retired = null; caseSheet(); }
+    const res = await fetch(`${API}/case/status`, { method: "POST", headers: aiHeaders(), body: JSON.stringify({ id: d.id, status: d.status }) }).catch(() => null);
+    const retired = res?.ok ? (await res.json().catch(() => ({}))).retired : null;
+    if (retired && caseView?.id === d.id) { caseView.retired = retired; caseSheet(); }
     loadUsage();
   },
   "chart-range": (d) => { chartRange = d.range === "24h" ? "24h" : "30d"; usageSheet(); },
