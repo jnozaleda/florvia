@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261009d";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261009e";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261009d";
-import { buildICS } from "./calendar.js?v=20261009d";
-import { scrubPlant } from "./clean.js?v=20261009d";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261009d";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261009e";
+import { buildICS } from "./calendar.js?v=20261009e";
+import { scrubPlant } from "./clean.js?v=20261009e";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261009e";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -691,7 +691,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261009d";
+      sc.src = "vendor/qrcode.min.js?v=20261009e";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -3056,7 +3056,7 @@ function exploreSheet() {
     <p class="muted small">Es una estimación de la IA, no una garantía. «Añadir» abre el alta ya rellena.</p>
     <div class="sheet-actions two-btns"><button class="btn secondary" data-action="wish-toggle" id="wishBtn">${wishLabel(care.species)}</button><button class="btn" data-action="explore-add">Añadir a mi jardín</button></div>`);
 }
-const seasonReadCells = (seasons, now) => SEASONS.map((k) => `<span class="st-name ${k === now ? "now" : ""}">${ICONS[SEASON_ICON[k]]}${SEASON_LABEL[k]}</span><span class="sr-cell">${Number(seasons[k].water) || 0} d</span><span class="sr-cell">${Number(seasons[k].feed) ? `${Number(seasons[k].feed)} d` : "No"}</span>`).join("");
+const seasonReadCells = (seasons, now) => SEASONS.map((k) => `<span class="st-name ${k === now ? "now" : ""}">${ICONS[SEASON_ICON[k]]}${SEASON_LABEL[k]}</span><span class="sr-cell">${Number(seasons[k].water) || 0} d</span><span class="sr-cell">${Number(seasons[k].feed) >= 300 ? "1 al año" : Number(seasons[k].feed) ? `${Number(seasons[k].feed)} d` : "No"}</span>`).join("");
 // The year calendar of the explored plant (same grid as the plant sheet); it arrives after the rest.
 function exploreCalendar(e) {
   if (e.calendar === undefined) return `<section class="card"><div class="sec">Calendario del año</div><div class="ai-step"><span class="spinner" aria-hidden="true"></span>Preparando el calendario…</div></section>`;
