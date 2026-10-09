@@ -81,7 +81,7 @@ Luz difusa, riego regular y abono.
 
 ### Otoño
 
-Reduce el riego y el abono.
+Reduce el riego y el abono. Riega como mucho una vez por semana y con poca cantidad, lo justo para humedecer el sustrato sin empaparlo; no dejes agua en el plato. Si la tenías fuera, entra la monstera antes de que las noches bajen de unos 15 °C. Si va a trasplantarse, hazlo a principios de otoño y no con la planta débil.
 
 ### Invierno
 

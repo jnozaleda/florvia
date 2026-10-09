@@ -90,7 +90,7 @@ Semisombra, riegos frecuentes y abono.
 
 ### Otoño
 
-Reduce el riego y deja de abonar.
+Reduce el riego y deja de abonar. No la podes ahora: ya lleva las yemas de la flor del año que viene, así que solo quita lo seco o roto. Retira las hojas caídas del pie para evitar hongos y, si está en maceta, quita el plato.
 
 ### Invierno
 

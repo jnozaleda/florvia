@@ -98,7 +98,7 @@ Sol, riegos regulares y abono rico en potasio. Poda ligera tras cada floración.
 
 ### Otoño
 
-Reduce el riego, deja de abonar y evita podas fuertes.
+Espacia el riego, deja de abonar y evita podas fuertes: el abono con mucho nitrógeno y la poda drástica provocan brotes tiernos que el frío estropea. Quita el plato de la maceta y retira hojas y flores secas.
 
 ### Invierno
 

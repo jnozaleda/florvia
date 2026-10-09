@@ -89,7 +89,7 @@ Sol y riego espaciado. En maceta, vigila el calor.
 
 ### Otoño
 
-Riego mínimo; es buena época para plantarlo en suelo en climas suaves.
+Riego mínimo; es buena época para plantarlo o trasplantarlo en suelo en climas suaves. En maceta, quita el plato para que no se pudran las raíces. Si ha echado brotes largos tras el verano, puedes despuntarlos suavemente; deja la poda de formación para el final del invierno.
 
 ### Invierno
 

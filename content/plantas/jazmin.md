@@ -85,7 +85,7 @@ Sol, riego regular y abono. Floración del jazmín común.
 
 ### Otoño
 
-Reduce el riego y deja de abonar.
+Reduce el riego y deja de abonar. No lo podes con fuerza ahora: el frío estropearía los brotes tiernos y podrías quitar yemas de flor. Limpia solo lo seco y retira hojas caídas del pie para evitar hongos.
 
 ### Invierno
 

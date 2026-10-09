@@ -88,7 +88,7 @@ Sol, riegos frecuentes en maceta y abono. Vigila el calor extremo.
 
 ### Otoño
 
-Reduce el riego poco a poco, termina el abonado y prepara la protección.
+Reduce el riego poco a poco, termina el abonado y prepara la protección. Si abonas todavía, elige uno bajo en nitrógeno y rico en fósforo y potasio, que fortalece raíces; el nitrógeno provoca brotes tiernos que el frío quema. No lo podes con fuerza: en esta época suele tener flores y frutos en formación y le quitarías la cosecha del año que viene. Quita el plato de la maceta.
 
 ### Invierno
 

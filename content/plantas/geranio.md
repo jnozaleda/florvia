@@ -84,7 +84,7 @@ Sol, riego regular y retirada de flores secas.
 
 ### Otoño
 
-Reduce el riego y el abono; prepara la entrada en un sitio protegido.
+Reduce el riego y el abono; prepara la entrada en un sitio protegido. Con la humedad del otoño, retira a menudo flores marchitas y hojas secas, porque si se quedan pegadas a la planta favorecen hongos como el moho gris. Quita el plato de la maceta si se acumula agua y, si abonas, usa uno bajo en nitrógeno y rico en potasio.
 
 ### Invierno
 
