@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261009e";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261010b";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261009e";
-import { buildICS } from "./calendar.js?v=20261009e";
-import { scrubPlant } from "./clean.js?v=20261009e";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261009e";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261010b";
+import { buildICS } from "./calendar.js?v=20261010b";
+import { scrubPlant } from "./clean.js?v=20261010b";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261010b";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -113,9 +113,20 @@ function forecastCard(alerts = []) {
 }
 
 // ---------- Views ----------
+// The generated picture of a plant (img/estilo/plantas.js, the same as on the web): the texture of its group and a line drawing of its
+// shape, for plants without a photo. Without that script (offline on first load), the sprout icon.
+function genArt(p) {
+  const A = window.FlorviaArte;
+  if (!A) return ICONS.sprout;
+  const lk = A.look(p.name, p.species, p.group);
+  return `<span class="gen-art" style="background-image:url(/explorar/img/grupo-${lk.texture}.webp);background-position:${lk.seed % 100}% ${(lk.seed >>> 8) % 100}%">${A.art(lk.kind, lk.seed)}</span>`;
+}
+// The season pictures (img/estilo, tools/creatividades.py): texture + white line drawing.
+const SEASON_ART = { spring: "primavera", summer: "verano", autumn: "otono", winter: "invierno" };
+const seasonArt = (season, cls = "crea") => `<span class="${cls}" style="background-image:url(/img/estilo/${SEASON_ART[season]}.webp)"><img src="/img/estilo/${SEASON_ART[season]}.svg" alt="" /></span>`;
 function thumb(plant, cls = "thumb") {
   const src = plant.photo || plant.refPhoto?.url;
-  return src ? `<img class="${cls}" src="${esc(src)}" alt="" />` : `<span class="${cls} placeholder">${ICONS.sprout}</span>`;
+  return src ? `<img class="${cls}" src="${esc(src)}" alt="" />` : `<span class="${cls} placeholder gen">${genArt(plant)}</span>`;
 }
 
 // Discreet traits on the plant list: water need this season as 1–3 drops (≤3 days much, ≤7 medium,
@@ -178,11 +189,16 @@ function trialNudge() {
     <p class="muted small">Después pasas al plan gratuito: ${F.plants ?? 8} plantas y ${F.suggest ?? 5} consultas al mes de cada función de IA. Si quieres seguir con todo, elige un plan o pide un código de uso gratuito.</p>
     <button type="button" class="btn small" data-action="open-premium">Ver opciones</button></section>`;
 }
+// «Hoy» opens with the picture of the season, where the person is and the date.
+function seasonHero(today) {
+  const season = seasonOf(today, here().lat);
+  return `<section class="season-hero">${seasonArt(season)}<div class="sh-t"><b>${SEASON_LABEL[season]}</b><span>Hasta el ${esc(fmtDate(new Date(Date.parse(`${nextSeasonStart(today, here().lat)}T12:00:00Z`) - 86400000).toISOString().slice(0, 10), { day: "numeric", month: "long" }))}</span></div></section>`;
+}
 function todayView() {
   const today = localToday();
   const { plants, log } = state.data;
   const alerts = state.weather ? weatherAlerts(plants, state.weather, today).map((a) => ({ ...a, kind: ALERT_ICON[a.icon] })) : [];
-  let html = trialNudge() + upgradeBanner() + forecastCard(alerts) + irrigationRainCard(today) + irrigationCard();
+  let html = seasonHero(today) + trialNudge() + upgradeBanner() + forecastCard(alerts) + irrigationRainCard(today) + irrigationCard();
   if (!plants.length) return html + (welcomeCard() || emptyGarden());
 
   // Para hoy: overdue and due today (tomorrow onwards lives in «Próximos días»).
@@ -437,8 +453,8 @@ function photoTile(p, log, today) {
   const n = due ? daysBetween(today, due) : null;
   const dot = n === null || n > 0 ? "" : `<span class="tile-dot ${n < 0 ? "late" : "today"}" aria-label="${n < 0 ? "Riego atrasado" : "Regar hoy"}"></span>`;
   return `<div class="tile-wrap">
-    <button type="button" class="tile ${p.photo || p.refPhoto ? "" : "empty"}" data-action="open-plant" data-id="${p.id}">
-      ${p.photo || p.refPhoto ? `<img src="${esc(p.photo || p.refPhoto.url)}" alt="" />` : `<span class="tile-ico">${ICONS.sprout}</span>`}${dot}${p.autoWater ? `<span class="tile-drip ${irrigated(p) ? "" : "off"}" aria-label="${irrigated(p) ? "Riego automático" : "Riego pausado"}">${ICONS.drip}</span>` : ""}<span class="tile-name">${esc(plantLabel(p))}</span>
+    <button type="button" class="tile ${p.photo || p.refPhoto?.url || window.FlorviaArte ? "" : "empty"}" data-action="open-plant" data-id="${p.id}">
+      ${p.photo || p.refPhoto?.url ? `<img src="${esc(p.photo || p.refPhoto.url)}" alt="" />` : `<span class="tile-ico gen">${genArt(p)}</span>`}${dot}${p.autoWater ? `<span class="tile-drip ${irrigated(p) ? "" : "off"}" aria-label="${irrigated(p) ? "Riego automático" : "Riego pausado"}">${ICONS.drip}</span>` : ""}<span class="tile-name">${esc(plantLabel(p))}</span>
     </button>
     ${p.photo ? "" : `<label class="tile-add">${ICONS.camera}Foto<input type="file" class="tile-photo" data-id="${p.id}" accept="image/*" hidden /></label>`}
   </div>`;
@@ -691,7 +707,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261009e";
+      sc.src = "vendor/qrcode.min.js?v=20261010b";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1693,6 +1709,7 @@ async function upgradePlants() {
         const care = await requestCare(plant.name, "upgrade");
         for (const u of careUps) u.apply(plant, care);
         if (!plant.species) plant.species = care.species;
+        if (care.knowledge) plant.group = String(care.knowledge).split("@")[0];
         if (!plant.notes) plant.notes = care.notes;
         // Not past a calendar upgrade still to come in this run: if that one fails, it is asked again next time.
         const calPending = missing.filter((u) => u.source === "calendar").map((u) => u.version);
@@ -1873,14 +1890,14 @@ function plantSheet(id) {
   openSheet(`
     <div class="sheet-head"><h2>${esc(plantLabel(p))}</h2><div class="row"><button class="btn small secondary icon-btn" data-action="plant-share" data-id="${p.id}" aria-label="Compartir esta planta" title="Compartir">${ICONS.share}</button><button class="btn small secondary icon-btn" data-action="dup-plant" data-id="${p.id}" aria-label="Duplicar planta" title="Duplicar">${ICONS.copy}</button><button class="btn small secondary" data-action="edit-plant" data-id="${p.id}">Editar</button><button class="btn small secondary" data-action="close">Cerrar</button></div></div>
     <div class="p-top">
-      <button type="button" class="p-thumb" data-action="pf-photo" aria-label="${plantUi.big ? "Reducir la foto" : "Ver la foto grande"}">${photoSrc ? `<img src="${esc(photoSrc)}" alt="" />` : ICONS.sprout}</button>
+      <button type="button" class="p-thumb" data-action="pf-photo" aria-label="${plantUi.big ? "Reducir la foto" : "Ver la foto grande"}">${photoSrc ? `<img src="${esc(photoSrc)}" alt="" />` : genArt(p)}</button>
       <div class="p-meta">${p.species || p.zone || p.nick ? `<p class="muted">${p.nick ? `${esc(p.name)} · ` : ""}${p.species ? `<em>${esc(p.species)}</em>${aiMark(isAiValue(p, "species"))}` : ""}${p.species && p.zone ? " · " : ""}${esc(p.zone)}</p>` : `<p class="muted">&nbsp;</p>`}
         <div class="traits">${traits.map(([icon, label]) => `<span class="trait">${ICONS[icon]}${label}</span>`).join("")}</div></div>
     </div>
     ${plantUi.big && photoSrc ? (p.photo ? `<img class="hero-photo" src="${esc(p.photo)}" alt="" />` : `<figure class="ref-photo"><img class="hero-photo" src="${esc(p.refPhoto.url)}" alt="" /><figcaption>Foto de referencia · ${esc(p.refPhoto.credit)}</figcaption></figure>`) : ""}
     ${sunWarn ? `<p class="sun-warn ${sunWarn.level}">${ICONS.sun}${esc(sunWarn.text)}</p>` : ""}
     ${aiStrip(p)}
-    ${nexts.length ? `<section class="card next-care"><div class="sec">${p.seasons ? `Ahora · ${SEASON_LABEL[season].toLowerCase()}` : "Ahora"}</div>${nexts.join("")}${p.tips?.[season] ? `<div class="n-tip">${ICONS[SEASON_ICON[season]]}<span>${esc(p.tips[season])} <span class="ai-mark">✦</span></span></div>` : ""}${nextLine}</section>` : ""}
+    ${nexts.length ? `<section class="card next-care">${p.seasons ? seasonArt(season, "crea nc-art") : ""}<div class="sec">${p.seasons ? `Ahora · ${SEASON_LABEL[season].toLowerCase()}` : "Ahora"}</div>${nexts.join("")}${p.tips?.[season] ? `<div class="n-tip">${ICONS[SEASON_ICON[season]]}<span>${esc(p.tips[season])} <span class="ai-mark">✦</span></span></div>` : ""}${nextLine}</section>` : ""}
     <section class="card reg"><div class="acts">
       ${Object.entries(CARE).filter(([type]) => type !== "task").map(([type, c]) => {
         const doneToday = log.some((e) => e.type === type && e.date === today);
@@ -2726,6 +2743,7 @@ async function aiFill(query) {
     form.dataset.aiSnapshot = JSON.stringify(aiSnapshot(care));
     form.dataset.sunFields = JSON.stringify({ minTemp: care.minTemp ?? null });
     form.dataset.info = JSON.stringify(infoFields(care));
+    form.dataset.group = String(care.knowledge ?? "").split("@")[0];
     form.dataset.tips = JSON.stringify(care.tips ?? null);
     form.dataset.feedTypes = JSON.stringify(care.feedTypes ?? null);
     $("tipsBox").innerHTML = tipsList(care.tips);
@@ -3950,6 +3968,7 @@ document.addEventListener("submit", (e) => {
   if (e.target.dataset.aiSnapshot) fields.ai = JSON.parse(e.target.dataset.aiSnapshot);
   if (e.target.dataset.sunFields) Object.assign(fields, JSON.parse(e.target.dataset.sunFields));
   if (e.target.dataset.info) fields.info = JSON.parse(e.target.dataset.info);
+  if (e.target.dataset.group) fields.group = e.target.dataset.group;
   if (e.target.dataset.tips && e.target.dataset.tips !== "null") fields.tips = JSON.parse(e.target.dataset.tips);
   if (e.target.dataset.feedTypes && e.target.dataset.feedTypes !== "null") fields.feedTypes = JSON.parse(e.target.dataset.feedTypes);
   if (id) Object.assign(plantById(id), fields);
