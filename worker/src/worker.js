@@ -518,6 +518,8 @@ const EXPLORE_DAILY_PER_IP = 300;
 const EXPLORE_GENERAL = ["commonName", "species", "difficulty", "sunNeed", "sunSensitive", "frostSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "buyTips", "toxic", "toxicNote", "invasive", "notes"];
 const EXPLORE_ZONE = ["seasons", "feedTypes", "tips", "climateFit", "climateNote", "plantMonths", "plantWhen", "bloomMonths", "bloomWhat"];
 const exploreLevel = (parent) => (parent.curated ? "revisada" : parent.grounded ? "fuentes" : "ia");
+// The group of plants (content/conocimiento) a stored sheet belongs to: the web explorer picks its picture from it.
+const exploreGroup = (sk, parent) => String(parent.knowledge ?? "").split("@")[0] || groupOfKey(sk) || groupFor(parent.commonName ?? "");
 async function exploreLimited(request, env) {
   const today = new Date().toISOString().slice(0, 10);
   const ip = request.headers.get("CF-Connecting-IP") ?? "local";
@@ -548,7 +550,7 @@ async function handleExplore(request, env, headers, ctx) {
   const row = await env.DB.prepare("SELECT created_at FROM species_parent WHERE species = ?").bind(found.at).first();
   const d = found.parent.data;
   return json({
-    found: true, key: found.at, level: exploreLevel(d), updated: new Date(row?.created_at ?? Date.now()).toISOString().slice(0, 10),
+    found: true, key: found.at, level: exploreLevel(d), group: exploreGroup(found.at, d), updated: new Date(row?.created_at ?? Date.now()).toISOString().slice(0, 10),
     general: pick(d, EXPLORE_GENERAL),
     zone: found.child ? { place: EXPLORE_PLACE, curated: Boolean(found.child.curatedZone), ...pick(found.child, EXPLORE_ZONE) } : null,
   }, 200, out.headers);
@@ -562,7 +564,7 @@ async function handleExplorePlants(request, env, headers) {
   for (const r of rows) {
     let d; try { d = JSON.parse(r.data); } catch { continue; }
     if (d.isPlant === false || !d.commonName) continue;
-    plants.push({ key: r.species, name: d.commonName, species: d.species, level: exploreLevel(d) });
+    plants.push({ key: r.species, name: d.commonName, species: d.species, level: exploreLevel(d), group: exploreGroup(r.species, d) });
   }
   return json({ plants, place: EXPLORE_PLACE }, 200, { "Cache-Control": "public, max-age=300", ...headers });
 }

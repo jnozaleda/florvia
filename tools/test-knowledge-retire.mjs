@@ -327,6 +327,7 @@ await test("el explorador sirve una ficha guardada con su zona, sin llamar a la 
   assert.equal(r.body.found, true);
   assert.equal(r.body.general.species, "Lavandula angustifolia");
   assert.equal(r.body.zone?.place, "Madrid");
+  assert.equal(r.body.group, "mediterraneas", "grupo para elegir la imagen");
   assert.ok(r.body.zone.seasons.summer.water > 0);
   assert.equal(r.body.general.provider, undefined, "no se expone el modelo");
   assert.equal(prompts.length, 0, "sin IA");
