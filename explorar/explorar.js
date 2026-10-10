@@ -1,5 +1,5 @@
 // Explorador web: busca una planta en las fichas que ya tenemos (GET /explore, GET /explore/plants) y, si no está, la prepara con la IA
-// (POST /care, como al añadirla en la app). Cada planta lleva una imagen propia: la textura de su grupo (explorar/img, tools/texturas.py)
+// (POST /care, como al añadirla en la app). Al cambiar este archivo, sube el ?v= de su <script> en explorar/index.html (si no, el navegador mezcla versiones). Cada planta lleva una imagen propia: la textura de su grupo (explorar/img, tools/texturas.py)
 // y encima una ilustración dibujada aquí según su forma, con la semilla sacada del nombre (siempre la misma para la misma planta).
 (() => {
   const API = "https://api.florvia.app";
