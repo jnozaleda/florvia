@@ -98,6 +98,25 @@ section[id]{scroll-margin-top:84px}.site-nav{position:sticky;top:0;z-index:50;ma
 @media(min-width:900px){.js .bgplant{right:1vw;width:min(36vw,520px);opacity:.16}}
 @media(prefers-reduced-motion:reduce){.js .reveal{opacity:1;transform:none;transition:none}.js .bgplant{display:none}}
 .hero-sub{margin:14px 0 0;font-size:15px;color:#cfe0cc}.hero-sub a{color:#fff}
+
+/* Estilo nuevo (como el explorador): cabecera con la textura «luz entre hojas», buscador, pasos con sus creatividades y plantas con su imagen */
+.hero{background:#0b3320 url(/explorar/img/luz-entre-hojas.webp) center/cover}
+.ask{display:flex;align-items:center;gap:10px;max-width:480px;margin:18px 0 0;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:6px 6px 6px 18px;color:#e6efe3;text-decoration:none;backdrop-filter:blur(8px)}
+.ask svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;flex:none}.ask span{flex:1;font-size:15.5px}.ask b{background:var(--leaf);color:#fff;border-radius:999px;padding:9px 16px;font-size:14.5px}
+.trust a{color:#e6efe3}
+.steps{display:grid;gap:16px;margin-top:30px}@media(min-width:800px){.steps{grid-template-columns:repeat(3,1fr)}}
+.step{padding:0;border:0;border-radius:22px;overflow:hidden}.step .in{padding:18px 20px 22px}.step:last-child{padding-bottom:0}
+.step:before,.step:after{display:none}
+.step .n,.js .step .n,.js .step.on .n,.js .step:not(.on) .n{position:static;width:auto;height:auto;display:block;border:0;border-radius:0;background:none;color:inherit;font-family:var(--serif);font-size:34px;font-weight:600;line-height:1;margin:0 0 6px}
+.step b{line-height:1.3;margin:0 0 6px;font-size:19px}.step p{margin:0;color:inherit;opacity:.9}
+.crea{position:relative;height:130px;background-size:cover;background-position:center}.crea img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.s1{background:#e3f0dd;color:#23502f}.s2{background:#fbf0cf;color:#5e4a0c}.s3{background:#f6e2d4;color:#6b3618}.s4{background:#e6ecf1;color:#2c4052}
+.pop .pcard{padding:0;overflow:hidden;gap:0}.pop .pcard>span{padding:12px 18px 0}.pop .pcard .pl{padding:12px 18px 18px}
+.pcard .ban{position:relative;height:120px;background-size:170% auto;background-repeat:no-repeat;background-color:var(--deep);display:flex;align-items:flex-end;padding:14px 18px;color:#fff}
+.pcard .ban:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,33,15,0) 30%,rgba(6,33,15,.55))}
+.pcard .ban b{position:relative;font-family:var(--serif);font-size:26px;line-height:1;text-shadow:0 2px 14px rgba(6,33,15,.55)}
+.art{position:absolute;inset:0;width:100%;height:100%;opacity:.5}.art .st{fill:none;stroke:rgba(255,255,255,.75);stroke-width:2.2;stroke-linecap:round}.art .lf{fill:rgba(255,255,255,.22);stroke:rgba(255,255,255,.85);stroke-width:1.4}.art .nv{stroke:rgba(255,255,255,.55);stroke-width:.9}
+.art .fr{fill:rgba(255,255,255,.35);stroke:#fff;stroke-width:1.2}.art .lemon{fill:rgba(243,227,166,.85)}.art .berry{fill:rgba(231,120,100,.75)}.art .fl{fill:rgba(255,255,255,.55);stroke:rgba(255,255,255,.9);stroke-width:.8}.art .br{fill:rgba(255,220,230,.35);stroke:rgba(255,255,255,.9);stroke-width:1.2}
 </style></head><body><div class="bgplant" aria-hidden="true"><svg viewBox="0 0 260 400" preserveAspectRatio="xMaxYMax meet"><path class="soil" d="M165 394h80"/><path class="stem" pathLength="1" d="M205 394C216 300 150 190 80 40"/><g transform="translate(206 365) rotate(-25) scale(0.7)"><path class="lf" style="--t:0.06" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(203 335) rotate(200) scale(1.0)"><path class="lf" style="--t:0.13" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(193 295) rotate(-20) scale(0.8)"><path class="lf" style="--t:0.24" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(178 252) rotate(195) scale(1.1)"><path class="lf" style="--t:0.36" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(157 202) rotate(-15) scale(0.8)"><path class="lf" style="--t:0.51" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(136 157) rotate(200) scale(1.0)"><path class="lf" style="--t:0.64" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(113 109) rotate(185) scale(0.8)"><path class="lf" style="--t:0.78" d="M0 0C16-24 56-26 74-6 54 12 18 16 0 0Z"/></g><g transform="translate(80 40) rotate(-20)"><path class="bud" d="M0 0C-16-6-18-30 0-44 18-30 16-6 0 0Z"/></g></svg></div>
 
 <header class="site-nav"><div class="wrap">
@@ -113,8 +132,8 @@ section[id]{scroll-margin-top:84px}.site-nav{position:sticky;top:0;z-index:50;ma
    <h1 class="serif">Tu jardín, sin tener que <em>acordarte de todo.</em></h1>
    <p class="lead">Dime qué plantas tienes y te digo qué toca esta semana: regar, abonar, podar o proteger del frío, según tu clima.</p>
    <div class="cta"><a class="btn cream" href="app/">Abrir Florvia</a><a class="btn ghost" href="/explorar/">Explorar plantas</a></div>
-   <p class="hero-sub">Busca cualquier planta y mira cómo cuidarla, sin instalar nada. <a href="#instalar">Cómo instalar la app</a></p>
-   <div class="trust"><span>Primer mes de Premium gratis</span><span>Sin cuenta obligatoria</span><span>Móvil y ordenador</span></div>
+   <a class="ask" href="/explorar/"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>¿Qué planta tienes? Búscala sin instalar nada</span><b>Buscar</b></a>
+   <div class="trust"><span>Primer mes de Premium gratis</span><a href="#instalar">Cómo instalar la app</a><span>Sin cuenta obligatoria</span><span>Móvil y ordenador</span></div>
   </div>
   <div class="phones" aria-label="Capturas de la app"><div class="ph b"><img src="img/ficha.jpg" width="540" height="1169" alt="Ficha de una lavanda con su riego, abono y floración" loading="eager"></div><div class="ph a"><img src="img/hoy.jpg" width="540" height="1169" alt="Pantalla Hoy: el tiempo y las tareas de riego de hoy" loading="eager"></div></div>
  </div>
@@ -123,9 +142,9 @@ section[id]{scroll-margin-top:84px}.site-nav{position:sticky;top:0;z-index:50;ma
 <main>
 <section class="wrap how" id="como"><h2 class="serif">Tres pasos, y te olvidas.</h2><p style="color:var(--mut);max-width:34em;margin:0">No hace falta saber de jardinería: Florvia lo propone y tú lo ajustas.</p>
 <div class="steps">
-<div class="step"><div class="n">1</div><b>Dime qué plantas tienes</b><p>Escribe su nombre o hazle una foto. También puedes explorar una antes de comprarla.</p></div>
-<div class="step"><div class="n">2</div><b>Florvia prepara su ficha</b><p>Riego y abono por estación, el sol que pide, el frío que aguanta y su calendario del año.</p></div>
-<div class="step"><div class="n">3</div><b>Cada día, lo que toca</b><p>Con el tiempo de tu zona: si llueve, no te hace regar; si hiela, te avisa.</p></div>
+<div class="step s1"><div class="crea" style="background-image:url(/img/estilo/paso1.webp)"><img src="/img/estilo/paso1.svg" alt="" loading="lazy"></div><div class="in"><div class="n">1</div><b>Dime qué plantas tienes</b><p>Escribe su nombre o hazle una foto. También puedes explorar una antes de comprarla.</p></div></div>
+<div class="step s2"><div class="crea" style="background-image:url(/img/estilo/paso2.webp)"><img src="/img/estilo/paso2.svg" alt="" loading="lazy"></div><div class="in"><div class="n">2</div><b>Florvia prepara su ficha</b><p>Riego y abono por estación, el sol que pide, el frío que aguanta y su calendario del año.</p></div></div>
+<div class="step s3"><div class="crea" style="background-image:url(/img/estilo/paso3.webp)"><img src="/img/estilo/paso3.svg" alt="" loading="lazy"></div><div class="in"><div class="n">3</div><b>Cada día, lo que toca</b><p>Con el tiempo de tu zona: si llueve, no te hace regar; si hiela, te avisa.</p></div></div>
 </div></section>
 
 <div class="wrap" id="que-hace">
@@ -159,11 +178,11 @@ section[id]{scroll-margin-top:84px}.site-nav{position:sticky;top:0;z-index:50;ma
 <p style="color:var(--mut);max-width:38em;margin:0">Cinco plantas muy comunes en terrazas y jardines. Ábrelas en la app para ver cómo es la ficha de cada una —riego por estación, sol, frío y calendario del año—, o lee la ficha completa.</p>
 <div class="pop">
 <!-- populares:start (generado por tools/build-blog.mjs desde las fichas con «popular»; no editar a mano) -->
-<div class="pcard"><b>Buganvilla</b><span>Aprende cuándo regar, abonar y podar una buganvilla, dónde colocarla y cómo protegerla del frío.</span><div class="pl"><a href="/app/#ejemplo=buganvilla">Verla en la app →</a><a class="alt" href="/es/plantas/buganvilla/">Leer la ficha</a></div></div>
-<div class="pcard"><b>Limonero</b><span>Cómo cuidar un limonero en maceta o en suelo: sol, riego, abono, poda, frío y qué hacer si se le caen las hojas.</span><div class="pl"><a href="/app/#ejemplo=limonero">Verla en la app →</a><a class="alt" href="/es/plantas/limonero/">Leer la ficha</a></div></div>
-<div class="pcard"><b>Olivo</b><span>Cómo cuidar un olivo en maceta o en suelo: sol, riego, abono, poda, frío y por qué no da aceitunas.</span><div class="pl"><a href="/app/#ejemplo=olivo">Verla en la app →</a><a class="alt" href="/es/plantas/olivo/">Leer la ficha</a></div></div>
-<div class="pcard"><b>Lavanda</b><span>Cómo cuidar la lavanda: sol, poco riego, poda tras la floración, frío y por qué se pone leñosa o se muere.</span><div class="pl"><a href="/app/#ejemplo=lavanda">Verla en la app →</a><a class="alt" href="/es/plantas/lavanda/">Leer la ficha</a></div></div>
-<div class="pcard"><b>Geranio</b><span>Cómo cuidar un geranio (pelargonio): sol, riego, abono, poda, frío y qué hacer si no florece o tiene la oruga.</span><div class="pl"><a href="/app/#ejemplo=geranio">Verla en la app →</a><a class="alt" href="/es/plantas/geranio/">Leer la ficha</a></div></div>
+<div class="pcard"><div class="ban" data-planta="Buganvilla" data-especie="bougainvillea glabra" data-grupo="arbustos-de-flor"><b>Buganvilla</b></div><span>Aprende cuándo regar, abonar y podar una buganvilla, dónde colocarla y cómo protegerla del frío.</span><div class="pl"><a href="/app/#ejemplo=buganvilla">Verla en la app →</a><a class="alt" href="/es/plantas/buganvilla/">Leer la ficha</a></div></div>
+<div class="pcard"><div class="ban" data-planta="Limonero" data-especie="citrus limon" data-grupo="citricos"><b>Limonero</b></div><span>Cómo cuidar un limonero en maceta o en suelo: sol, riego, abono, poda, frío y qué hacer si se le caen las hojas.</span><div class="pl"><a href="/app/#ejemplo=limonero">Verla en la app →</a><a class="alt" href="/es/plantas/limonero/">Leer la ficha</a></div></div>
+<div class="pcard"><div class="ban" data-planta="Olivo" data-especie="olea europaea" data-grupo="mediterraneas"><b>Olivo</b></div><span>Cómo cuidar un olivo en maceta o en suelo: sol, riego, abono, poda, frío y por qué no da aceitunas.</span><div class="pl"><a href="/app/#ejemplo=olivo">Verla en la app →</a><a class="alt" href="/es/plantas/olivo/">Leer la ficha</a></div></div>
+<div class="pcard"><div class="ban" data-planta="Lavanda" data-especie="lavandula angustifolia" data-grupo="mediterraneas"><b>Lavanda</b></div><span>Cómo cuidar la lavanda: sol, poco riego, poda tras la floración, frío y por qué se pone leñosa o se muere.</span><div class="pl"><a href="/app/#ejemplo=lavanda">Verla en la app →</a><a class="alt" href="/es/plantas/lavanda/">Leer la ficha</a></div></div>
+<div class="pcard"><div class="ban" data-planta="Geranio" data-especie="pelargonium hortorum" data-grupo="arbustos-de-flor"><b>Geranio</b></div><span>Cómo cuidar un geranio (pelargonio): sol, riego, abono, poda, frío y qué hacer si no florece o tiene la oruga.</span><div class="pl"><a href="/app/#ejemplo=geranio">Verla en la app →</a><a class="alt" href="/es/plantas/geranio/">Leer la ficha</a></div></div>
 <!-- populares:end -->
 </div></section>
 
@@ -222,6 +241,6 @@ section[id]{scroll-margin-top:84px}.site-nav{position:sticky;top:0;z-index:50;ma
 </div>
 </main>
 <footer><div class="wrap"><span>© Florvia</span><span><a href="/es/guias/">Guías</a> · <a href="/es/plantas/">Plantas</a> · <a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer>
-<script src="landing.js?v=20261007a"></script>
+<script src="/img/estilo/plantas.js?v=20261010d" defer></script><script src="landing.js?v=20261007a"></script>
 <script src="track.js" defer></script>
 </body></html>

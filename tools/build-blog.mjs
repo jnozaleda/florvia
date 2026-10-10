@@ -4,10 +4,19 @@ import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from 
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkPages, report } from "./check-blog.mjs";
+import { ALIASES } from "../worker/src/species-seed.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SITE = "https://florvia.app";
 const TYPES = { plantas: { label: "Plantas", hub: "Fichas de plantas", hubIntro: "Cuidados, riego, poda y ubicación de las plantas más habituales." }, guias: { label: "Guías", hub: "Guías de jardinería", hubIntro: "Respuestas concretas: cuándo podar, cada cuánto regar, qué plantas elegir." } };
+const normName = (s) => String(s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+// The accepted species of a plant name (worker/src/species-seed.js), for its picture: the same seed as in the web explorer.
+const speciesOf = (plant) => ALIASES[normName(plant)] ?? "";
+const capital = (s) => (s ? s[0].toUpperCase() + s.slice(1) : "");
+// The season and step pictures (img/estilo, tools/creatividades.py): a texture and white line drawing on top.
+const SEASON_KEY = { primavera: "primavera", verano: "verano", "otoño": "otono", invierno: "invierno" };
+const SEASON_CLS = { primavera: "s1", verano: "s2", otono: "s3", invierno: "s4" };
+const crea = (key) => `<div class="crea" style="background-image:url(/img/estilo/${key}.webp)"><img src="/img/estilo/${key}.svg" alt="" loading="lazy"></div>`;
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 // Simple line icons (same style as the app), decorative only: aria-hidden, no text of their own.
 const ICON_PATHS = {
@@ -57,6 +66,16 @@ function markdown(src, { cta }) {
   let inFaq = false;
   let inSeasons = false;
   const faq = [];
+  // «Cuidados por estación» and «Problemas frecuentes»: each ### with its text becomes a card; the cards of a section are laid out together.
+  let cardKind = null;
+  let cards = [];
+  const flushCards = () => {
+    if (!cards.length) return;
+    out.push(cardKind === "seasons"
+      ? `<div class="seasons">${cards.map((c) => { const key = SEASON_KEY[c.title.toLowerCase()] ?? "primavera"; return `<div class="season ${SEASON_CLS[key]}">${crea(key)}<div class="in"><em>${inline(c.title)}</em>${c.body}</div></div>`; }).join("")}</div>`
+      : `<div class="probs">${cards.map((c) => `<div class="prob"><b>${inline(c.title)}</b>${c.body}</div>`).join("")}</div>`);
+    cards = [];
+  };
   const flushPara = (buf) => { if (buf.length) out.push(`<p>${inline(buf.join(" "))}</p>`); };
   let para = [];
   while (i < lines.length) {
@@ -67,7 +86,15 @@ function markdown(src, { cta }) {
     if (h) {
       flushPara(para); para = [];
       const level = h[1].length;
-      if (level === 2) { inFaq = /^preguntas frecuentes$/i.test(h[2].trim()); inSeasons = /por estación/i.test(h[2]); }
+      if (level === 2) { flushCards(); inFaq = /^preguntas frecuentes$/i.test(h[2].trim()); inSeasons = /por estación/i.test(h[2]); cardKind = inSeasons ? "seasons" : /^problemas/i.test(h[2].trim()) ? "probs" : null; }
+      if (cardKind && level === 3) {
+        const title = h[2].trim();
+        const text = [];
+        i++;
+        while (i < lines.length && !/^#{2,3}\s/.test(lines[i])) { text.push(lines[i]); i++; }
+        cards.push({ title, body: markdown(text.join("\n"), { cta }) });
+        continue;
+      }
       if (inFaq && level === 3) {
         const q = h[2].trim();
         const ans = [];
@@ -88,6 +115,7 @@ function markdown(src, { cta }) {
       const rows = [];
       while (i < lines.length && /^\|/.test(lines[i])) { rows.push(cells(lines[i])); i++; }
       const careTable = /^necesidad$/i.test(head[0]);
+      if (careTable) { out.push(`<div class="tiles">${rows.map(([k, v]) => `<div class="tile">${rowIcon(k)}<small>${inline(k)}</small><b>${inline(v)}</b></div>`).join("")}</div>`); continue; }
       out.push(`<div class="tbl"><table><thead><tr>${head.map((c, ci) => `<th>${!careTable && ci > 0 ? rowIcon(c) : ""}${inline(c)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, ci) => `<${careTable && ci === 0 ? 'th scope="row"' : "td"}>${careTable && ci === 0 ? rowIcon(c) : ""}${inline(c)}</${careTable && ci === 0 ? "th" : "td"}>`).join("")}</tr>`).join("")}</tbody></table></div>`);
       continue;
     }
@@ -110,6 +138,7 @@ function markdown(src, { cta }) {
     i++;
   }
   flushPara(para);
+  flushCards();
   const faqHtml = faq.length ? `<div class="faq">${faq.map((f) => `<details><summary>${inline(f.q)}</summary><p>${inline(f.a)}</p></details>`).join("")}</div>` : "";
   return out.join("\n").replace("%%FAQ%%", faqHtml);
 }
@@ -133,15 +162,52 @@ ul,ol{padding-left:24px}li{margin:6px 0}blockquote{margin:18px 0;padding:14px 18
 details{border-bottom:1px solid #dfe5da;padding:2px 0}summary{cursor:pointer;font-weight:700;padding:14px 0;list-style:none;display:flex;justify-content:space-between;gap:12px}summary::-webkit-details-marker{display:none}summary:after{content:"+";color:var(--leaf);font-size:24px;line-height:1}details[open] summary:after{content:"–"}details p{margin:0 0 14px;color:var(--mut)}
 .plantcard{display:block;margin:22px 0;padding:18px 20px;border-radius:20px;background:var(--mist);border:1px solid #d8e4d4;color:var(--ink);text-decoration:none}.plantcard .pc-k{display:block;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--leaf-d)}.plantcard b{display:block;font-family:var(--serif);font-size:22px;margin:4px 0 2px}.plantcard span.pc-d{display:block;color:var(--mut);font-size:16px}.plantcard em{display:block;margin-top:8px;font-style:normal;font-weight:700;color:var(--leaf-d)}.note{font-size:15px;color:var(--mut);margin-top:30px}.related{display:grid;gap:8px;padding:0;list-style:none}.related a{display:block;padding:12px 16px;background:#fff;border:1px solid #e2e8de;border-radius:14px;text-decoration:none;font-weight:600}
 .hub{display:grid;gap:12px;padding:0;list-style:none;margin:20px 0 40px}.hub a{display:block;padding:18px 20px;background:#fff;border:1px solid #e2e8de;border-radius:16px;text-decoration:none;color:var(--ink)}.hub b{display:block;font-size:19px}.hub span{color:var(--mut);font-size:15.5px}
-footer{background:var(--deep2);color:#b9d1b6;margin-top:60px;padding:30px 0;font-size:15px}footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}footer a{color:#d6e6d3}`;
+footer{background:var(--deep2);color:#b9d1b6;margin-top:60px;padding:30px 0;font-size:15px}footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}footer a{color:#d6e6d3}
+.phero{position:relative;color:var(--cream);background:#0b3320 url(/explorar/img/luz-entre-hojas.webp) center/cover;overflow:hidden;padding:0 0 56px;min-height:300px}
+.phero[data-planta]{background-size:170% auto;background-repeat:no-repeat}
+.phero:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,33,15,.55),rgba(6,33,15,.25) 45%,rgba(6,33,15,.72))}
+.phero .wrap{position:relative;z-index:1}.phero .art{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
+.art .st{fill:none;stroke:rgba(255,255,255,.75);stroke-width:2.2;stroke-linecap:round}.art .lf{fill:rgba(255,255,255,.22);stroke:rgba(255,255,255,.85);stroke-width:1.4}.art .nv{stroke:rgba(255,255,255,.55);stroke-width:.9}
+.art .fr{fill:rgba(255,255,255,.35);stroke:#fff;stroke-width:1.2}.art .lemon{fill:rgba(243,227,166,.85)}.art .berry{fill:rgba(231,120,100,.75)}.art .fl{fill:rgba(255,255,255,.55);stroke:rgba(255,255,255,.9);stroke-width:.8}.art .br{fill:rgba(255,220,230,.35);stroke:rgba(255,255,255,.9);stroke-width:1.2}
+.phero .crumbs{color:#cfe0cc;padding:4px 0 0}.phero .crumbs a{color:#cfe0cc}
+.phero h1{color:#fff;font-size:clamp(34px,5.6vw,54px);max-width:14em;margin:20px 0 12px;text-shadow:0 2px 18px rgba(6,33,15,.5)}
+.phero .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:#e6efe3;margin:0}.pillg{display:inline-block;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);font-style:italic;font-weight:600}
+.phero .lead{color:#e6efe3;max-width:34em;margin:0}
+.nav nav a.on{color:#fff;border-bottom:2px solid #f3e3a6}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:18px 0}.tile{background:#fff;border:1px solid #e2e8de;border-radius:18px;padding:14px 16px;box-shadow:0 10px 26px rgba(15,70,40,.06)}
+.tile .ic{display:block;width:22px;height:22px;margin:0 0 6px}.tile small{display:block;color:var(--mut);font-size:13px}.tile b{display:block;font-size:16px;line-height:1.35;font-weight:600}
+.seasons{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin:18px 0}.season{border-radius:20px;overflow:hidden}.season .in{padding:14px 16px 18px}
+.season em{display:block;font-style:normal;font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px}.season p{margin:0;font-size:15.5px;line-height:1.5}
+.crea{position:relative;height:110px;background-size:cover;background-position:center}.crea img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.s1{background:#e3f0dd;color:#23502f}.s2{background:#fbf0cf;color:#5e4a0c}.s3{background:#f6e2d4;color:#6b3618}.s4{background:#e6ecf1;color:#2c4052}
+.probs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin:18px 0}.prob{background:#fff;border:1px solid #e2e8de;border-radius:18px;padding:16px 18px}.prob b{display:block;margin-bottom:4px}.prob p{margin:0;font-size:16px;color:#2b3b30}
+.cta{background:#0b3320 url(/explorar/img/savia-clara.webp) center/cover;position:relative;overflow:hidden}.cta:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,51,32,.96) 40%,rgba(11,51,32,.6))}.cta>*{position:relative}
+.cta.final{display:grid;grid-template-columns:1.3fr .7fr;align-items:end;padding:0;min-height:280px}.cta.final .txt{padding:28px}.cta.final .ph{justify-self:center;width:180px;margin-top:24px;border-radius:28px 28px 0 0;border:7px solid #10251a;border-bottom:0;overflow:hidden;max-height:300px;box-shadow:0 -10px 40px rgba(0,0,0,.35)}.cta.final .ph img{display:block;width:100%;height:auto}
+.rel{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin:14px 0 24px;padding:0;list-style:none}.rel a{display:block;height:100%;padding:16px 18px;border-radius:18px;background:var(--mist);text-decoration:none;color:var(--ink)}.rel span{display:block;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--leaf-d)}.rel b{display:block;font-size:17px;margin-top:4px;line-height:1.35}
+.another{display:block;margin:34px 0 10px;border-radius:24px;color:var(--cream);background:#0b3320 url(/explorar/img/luz-entre-hojas.webp) center/cover;padding:24px 26px;text-decoration:none}.another b{display:block;font-family:var(--serif);font-size:24px;margin-bottom:12px;color:#fff}
+.another span{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.95);color:var(--mut);border-radius:999px;padding:12px 18px;font-size:16px}.another .ic{stroke:var(--mut);margin:0}
+.minis{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin:24px 0 40px;padding:0;list-style:none}.minis a{display:block;border-radius:20px;overflow:hidden;background:#fff;border:1px solid #e2e8de;text-decoration:none;color:var(--ink)}
+.minis .ban{position:relative;height:120px;background-size:170% auto;background-repeat:no-repeat;display:flex;align-items:flex-end;padding:14px 16px;color:#fff}.minis .ban:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,33,15,0) 30%,rgba(6,33,15,.55))}
+.minis .ban .art{position:absolute;inset:0;width:100%;height:100%;opacity:.5}.minis .ban b{position:relative;font-family:var(--serif);font-size:26px;line-height:1;text-shadow:0 2px 14px rgba(6,33,15,.55)}.minis span{display:block;padding:12px 16px;font-size:15px;color:var(--mut)}
+.plantcard{background:#fff}
+@media(max-width:700px){.cta.final{grid-template-columns:1fr}.cta.final .ph{width:160px}.phero{padding-bottom:34px}}`;
 const head = ({ title, description, path, extra = "", type = "article" }) => `<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://api.florvia.app; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><meta name="description" content="${esc(description)}"><link rel="canonical" href="${SITE}${path}">
 <meta name="theme-color" content="#0f4628"><link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/app/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/app/favicon-48.png" type="image/png" sizes="48x48"><link rel="apple-touch-icon" href="/app/icon-180.png">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:type" content="${type}"><meta property="og:url" content="${SITE}${path}"><meta property="og:image" content="${SITE}/app/og.png">
-${extra}<style>${CSS}</style></head><body>
-<div class="top"><div class="wrap"><div class="nav"><a class="brand" href="/" aria-label="Florvia"><img src="/app/icon-rounded.png" width="34" height="34" alt="">Florvia</a><nav><a href="/explorar/">Explorar</a><a href="/es/plantas/">Plantas</a><a href="/es/guias/">Guías</a><a class="btn cream small" href="/app/">Abrir</a></nav></div></div></div>`;
-const foot = `<footer><div class="wrap"><span>© Florvia</span><span><a href="/">Inicio</a> · <a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer><script src="/track.js" defer></script></body></html>`;
+${extra}<style>${CSS}</style></head><body>`;
+// The header of every page: its picture (the plant's, or the light-through-leaves one), the nav, the breadcrumbs and the title.
+const NAV = (on) => `<div class="nav"><a class="brand" href="/" aria-label="Florvia"><img src="/app/icon-rounded.png" width="34" height="34" alt="">Florvia</a><nav><a href="/explorar/">Explorar</a><a href="/es/plantas/"${on === "plantas" ? ' class="on"' : ""}>Plantas</a><a href="/es/guias/"${on === "guias" ? ' class="on"' : ""}>Guías</a><a class="btn cream small" href="/app/">Abrir</a></nav></div>`;
+const hero = ({ on, crumbs, title, meta = "", plant = "", group = "" }) => {
+  const sp = plant ? speciesOf(plant) : "";
+  const pic = plant ? ` data-planta="${esc(plant)}" data-especie="${esc(sp)}" data-grupo="${esc(group)}"` : "";
+  return `<header class="phero"${pic}><div class="wrap">${NAV(on)}<div class="crumbs">${crumbs}</div><h1>${esc(title)}</h1>${meta}</div></header>`;
+};
+const ART_JS = `<script src="/img/estilo/plantas.js?v=20261010d" defer></script>`;
+const SEARCH_IC = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
+const another = `<a class="another" href="/explorar/"><b>¿Otra planta?</b><span>${SEARCH_IC}Búscala en el explorador: olivo, lavanda, monstera…</span></a>`;
+const foot = `<footer><div class="wrap"><span>© Florvia</span><span><a href="/">Inicio</a> · <a href="/explorar/">Explorar</a> · <a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer>${ART_JS}<script src="/track.js" defer></script></body></html>`;
 const ld = (obj) => `<script type="application/ld+json">${JSON.stringify(obj)}</script>\n`;
 
 // ---- build
@@ -163,21 +229,25 @@ for (const p of pages) {
   const ref = `${p.type === "plantas" ? "planta" : "guia"}-${p.slug}`;
   const appLink = (hash) => `/app/?ref=${encodeURIComponent(ref)}${hash ? `#${hash}` : ""}`;
   const ctaHash = m.ctaHash === "none" ? "" : m.ctaHash || (m.plant ? `anadir=${encodeURIComponent(m.plant)}` : "explorar");
-  const cta = (final = false) => `<div class="cta"><b>${esc(final && m.ctaFinalTitle ? m.ctaFinalTitle : m.ctaTitle)}</b><p>${esc(final && m.ctaFinalText ? m.ctaFinalText : m.ctaText)}</p><a class="btn cream" href="${appLink(ctaHash)}">${esc(m.ctaButton)}</a></div>`;
+  const cta = (final = false) => final
+    ? `<div class="cta final"><div class="txt"><b>${esc(m.ctaFinalTitle || m.ctaTitle)}</b><p>${esc(m.ctaFinalText || m.ctaText)}</p><a class="btn cream" href="${appLink(ctaHash)}">${esc(m.ctaButton)}</a></div><div class="ph"><img src="/img/ficha.jpg" width="540" height="1169" alt="La ficha de una planta en la app" loading="lazy"></div></div>`
+    : `<div class="cta"><b>${esc(m.ctaTitle)}</b><p>${esc(m.ctaText)}</p><a class="btn cream" href="${appLink(ctaHash)}">${esc(m.ctaButton)}</a></div>`;
   let html = markdown(p.body, { cta: () => cta(false) });
   // A guide about one plant carries that plant's card (its ficha) right after the intro.
   const ficha = p.type === "guias" && m.plant ? pages.find((q) => q.type === "plantas" && String(q.meta.plant).toLowerCase() === String(m.plant).toLowerCase()) : null;
   if (ficha) html = html.replace("</p>", `</p><a class="plantcard" href="${ficha.path}"><span class="pc-k">Ficha de la planta</span><b>${esc(ficha.meta.plant)}</b><span class="pc-d">${esc(ficha.meta.description)}</span><em>Ver la ficha completa →</em></a>`);
-  const related = (m.related ?? []).map((r) => { const [key, label] = r.split("|").map((x) => x.trim()); return byKey[key] ? `<li><a href="${byKey[key].path}">${esc(label || byKey[key].meta.h1)}</a></li>` : ""; }).join("");
+  const related = (m.related ?? []).map((r) => { const [key, label] = r.split("|").map((x) => x.trim()); return byKey[key] ? `<li><a href="${byKey[key].path}"><span>${byKey[key].type === "plantas" ? "Planta" : "Guía"}</span><b>${esc(label || byKey[key].meta.h1)}</b></a></li>` : ""; }).join("");
   const crumbs = [{ n: "Florvia", u: `${SITE}/` }, { n: TYPES[p.type].label, u: `${SITE}/es/${p.type}/` }, { n: m.h1, u: `${SITE}${p.path}` }];
   const jsonld = ld({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.n, item: c.u })) })
     + ld({ "@context": "https://schema.org", "@type": "Article", headline: m.h1, description: m.description, dateModified: isoStamp(m.updated), datePublished: isoStamp(m.published || m.updated), image: [`${SITE}/app/og.png`], inLanguage: "es", mainEntityOfPage: `${SITE}${p.path}`, author: { "@type": "Organization", name: "Florvia", url: `${SITE}/` }, publisher: { "@type": "Organization", name: "Florvia", url: `${SITE}/`, logo: { "@type": "ImageObject", url: `${SITE}/app/icon-512.png` } } });
   const page = `${head({ title: m.title, description: m.description, path: p.path, extra: jsonld })}
-<div class="wrap"><div class="crumbs"><a href="/">Florvia</a> › <a href="/es/${p.type}/">${TYPES[p.type].label}</a> › ${esc(m.h1)}</div>
-<article><h1>${esc(m.h1)}</h1><p class="meta">Actualizado: ${esc(fmtMonth(m.updated))}</p>
+${hero({ on: p.type, crumbs: `<a href="/">Florvia</a> › <a href="/es/${p.type}/">${TYPES[p.type].label}</a> › ${esc(m.plant || m.h1)}`, title: m.h1, plant: m.plant || "", group: m.grupo || "",
+  meta: `<p class="meta">${m.plant && speciesOf(m.plant) ? `<span class="pillg">${esc(capital(speciesOf(m.plant)))}</span>` : ""}<span>Actualizado: ${esc(fmtMonth(m.updated))}</span></p>` })}
+<div class="wrap"><article>
 ${html}
 ${cta(true)}
-${related ? `<h2>Te puede interesar</h2><ul class="related">${related}</ul>` : ""}
+${related ? `<h2>Te puede interesar</h2><ul class="rel">${related}</ul>` : ""}
+${another}
 <p class="note">${esc(m.disclaimer || "Las recomendaciones son orientativas y pueden variar según el clima, la ubicación, la variedad y las condiciones de cultivo.")}</p></article></div>
 ${foot}`;
   const out = join(ROOT, "es", p.type, p.slug);
@@ -187,8 +257,11 @@ ${foot}`;
 for (const type of Object.keys(TYPES)) {
   const list = pages.filter((p) => p.type === type);
   const html = `${head({ title: `${TYPES[type].hub} | Florvia`, description: TYPES[type].hubIntro, path: `/es/${type}/`, type: "website" })}
-<div class="wrap"><div class="crumbs"><a href="/">Florvia</a> › ${TYPES[type].label}</div><article><h1>${TYPES[type].hub}</h1><p class="lead">${esc(TYPES[type].hubIntro)}</p>
-<ul class="hub">${list.map((p) => `<li><a href="${p.path}"><b>${esc(p.meta.h1)}</b><span>${esc(p.meta.description)}</span></a></li>`).join("")}</ul></article></div>
+${hero({ on: type, crumbs: `<a href="/">Florvia</a> › ${TYPES[type].label}`, title: TYPES[type].hub, meta: `<p class="lead">${esc(TYPES[type].hubIntro)}</p>` })}
+<div class="wrap">${type === "plantas"
+  ? `<ul class="minis">${list.map((p) => `<li><a href="${p.path}"><div class="ban" data-planta="${esc(p.meta.plant)}" data-especie="${esc(speciesOf(p.meta.plant))}" data-grupo="${esc(p.meta.grupo || "")}"><b>${esc(p.meta.plant)}</b></div><span>${esc(p.meta.description)}</span></a></li>`).join("")}</ul>`
+  : `<ul class="rel" style="margin-top:28px">${list.map((p) => `<li><a href="${p.path}"><span>Guía</span><b>${esc(p.meta.h1)}</b></a></li>`).join("")}</ul>`}
+${another}</div>
 ${foot}`;
   mkdirSync(join(ROOT, "es", type), { recursive: true });
   writeFileSync(join(ROOT, "es", type, "index.html"), html);
@@ -199,7 +272,7 @@ const cards = featured.map((p) => `<a href="${p.path}"><b>${esc(p.meta.h1)}</b><
 // «Plantas populares» de la landing: las fichas con «popular: N» (de menor a mayor) entre las marcas populares:start/end. Es una selección editorial
 // de plantas muy comunes, NO un ranking de uso de Florvia: cuando haya datos suficientes se podrá cambiar por «las más analizadas» con datos reales.
 const popular = pages.filter((p) => p.meta.popular).sort((a, b) => Number(a.meta.popular) - Number(b.meta.popular));
-const popCards = popular.map((p) => `<div class="pcard"><b>${esc(p.meta.plant)}</b><span>${esc(p.meta.description)}</span><div class="pl"><a href="/app/#ejemplo=${p.slug}">Verla en la app →</a><a class="alt" href="${p.path}">Leer la ficha</a></div></div>`).join("\n");
+const popCards = popular.map((p) => `<div class="pcard"><div class="ban" data-planta="${esc(p.meta.plant)}" data-especie="${esc(speciesOf(p.meta.plant))}" data-grupo="${esc(p.meta.grupo || "")}"><b>${esc(p.meta.plant)}</b></div><span>${esc(p.meta.description)}</span><div class="pl"><a href="/app/#ejemplo=${p.slug}">Verla en la app →</a><a class="alt" href="${p.path}">Leer la ficha</a></div></div>`).join("\n");
 let landing = readFileSync(join(ROOT, "index.html"), "utf8");
 const popMarks = /(<!-- populares:start[^>]*-->\n)[\s\S]*?(\n<!-- populares:end -->)/;
 if (!popMarks.test(landing)) { console.log("index.html no tiene las marcas <!-- populares:start --> / <!-- populares:end -->"); process.exit(1); }
