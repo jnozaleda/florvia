@@ -311,5 +311,46 @@ await test("content/fichas: las fichas escritas a mano pasan la comprobación", 
   execFileSync(process.execPath, [new URL("./fichas-curadas.mjs", import.meta.url).pathname], { stdio: "pipe" });
 });
 
+// ---------- 7. Explorador web (solo lectura, sin IA) ----------
+const getExplore = async (path, ip = "9.9.9.9") => {
+  const res = await worker.fetch(new Request(`https://api.florvia.app${path}`, { headers: { Origin: "https://florvia.app", "CF-Connecting-IP": ip } }), env, ctx);
+  await Promise.all(pending.splice(0));
+  return { status: res.status, body: await res.json() };
+};
+await test("el explorador sirve una ficha guardada con su zona, sin llamar a la IA ni guardar casos", async () => {
+  await ask("Lavanda", "Lavandula angustifolia", "persona-40");
+  const casesBefore = sqlite.prepare("SELECT COUNT(*) AS n FROM ai_cases").get().n;
+  const aiBefore = sqlite.prepare("SELECT COUNT(*) AS n FROM events WHERE kind = 'ai'").get().n;
+  prompts = [];
+  const r = await getExplore("/explore?name=lavanda");
+  assert.equal(r.status, 200);
+  assert.equal(r.body.found, true);
+  assert.equal(r.body.general.species, "Lavandula angustifolia");
+  assert.equal(r.body.zone?.place, "Madrid");
+  assert.ok(r.body.zone.seasons.summer.water > 0);
+  assert.equal(r.body.general.provider, undefined, "no se expone el modelo");
+  assert.equal(prompts.length, 0, "sin IA");
+  assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM ai_cases").get().n, casesBefore, "no guarda casos");
+  assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM events WHERE kind = 'ai'").get().n, aiBefore, "no cuenta como consulta de IA");
+});
+await test("una planta sin ficha responde «no encontrada» sin pedirla a la IA, y queda anotada como búsqueda sin ficha", async () => {
+  prompts = [];
+  const r = await getExplore("/explore?name=camelia%20de%20oto%C3%B1o");
+  assert.equal(r.body.found, false);
+  assert.equal(prompts.length, 0);
+  assert.ok(sqlite.prepare("SELECT 1 FROM topics WHERE kind = 'web_miss' AND key = 'camelia de otono'").get());
+});
+await test("el explorador lista las plantas con ficha y su nivel", async () => {
+  const r = await getExplore("/explore/plants");
+  assert.ok(r.body.plants.length >= 1);
+  assert.ok(r.body.plants.every((p) => p.key && p.name && ["revisada", "fuentes", "ia"].includes(p.level)));
+});
+await test("cada conexión tiene un tope diario de búsquedas", async () => {
+  for (let i = 0; i < 300; i++) kv.set(`explore:${new Date().toISOString().slice(0, 10)}:x${i}`, "0");
+  let last;
+  for (let i = 0; i < 305; i++) last = await getExplore("/explore?name=lavanda", "7.7.7.7");
+  assert.equal(last.status, 429);
+});
+
 if (failed) { console.log(`\n${failed} prueba(s) fallan`); process.exit(1); }
 console.log("\nTodas las pruebas de conocimiento y retirada pasan");

@@ -1267,7 +1267,7 @@ const KIND_LABEL = { care: "Ficha (alta)", care_explore: "Explorar", care_edit: 
 // Real tokens per kind of AI call (from the provider's own count), to know what costs what.
 // «Qué se pide»: the plants, symptoms and preferences people asked for in the last 30 days (anonymous counts from /stats2).
 let topicsMine = false;
-const TOPIC_LABEL = { care: "Fichas pedidas al añadir", explore: "Explorar", identify: "Identificadas por foto", added: "Añadidas al jardín", diagnose: "Diagnósticos: planta", symptom: "Diagnósticos: síntomas", place: "«¿Dónde está mejor?»", suggest_pref: "«Qué planto aquí»: preferencias", suggest_pick: "«Qué planto aquí»: sugeridas" };
+const TOPIC_LABEL = { web_search: "Explorador web: buscadas", web_miss: "Explorador web: sin ficha", care: "Fichas pedidas al añadir", explore: "Explorar", identify: "Identificadas por foto", added: "Añadidas al jardín", diagnose: "Diagnósticos: planta", symptom: "Diagnósticos: síntomas", place: "«¿Dónde está mejor?»", suggest_pref: "«Qué planto aquí»: preferencias", suggest_pick: "«Qué planto aquí»: sugeridas" };
 function topicName(kind, key) {
   if (kind === "symptom") return DIAG_SYMPTOMS.find(([k]) => k === key)?.[1] ?? key;
   if (kind === "suggest_pref") return SG_PREFS.find(([k]) => k === key)?.[1] ?? key;

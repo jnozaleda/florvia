@@ -508,6 +508,64 @@ async function maybeRetire(env, id, by = "auto") {
     "", "El caso que lo ha provocado:", `${APP_URL}#caso=${c.id}`, "", "Para verla o recuperarla: node tools/ficha-admin.mjs retiradas · recuperar <especie>"].join("\n")).catch(() => {});
   return { done: true, why, species: sk };
 }
+// ---------- Web explorer (GET /explore, GET /explore/plants) ----------
+// Read-only: the sheets we already have (curated by hand, written from the reference data, or written by the AI), for one reference zone.
+// It never calls the AI and does not touch anyone's AI allowance. Anonymous: no cookies; the only limit is a daily cap per connection
+// (the IP is hashed and the count expires) so a robot can't copy the whole catalogue quickly.
+const EXPLORE_CELL = "40:-4"; // Madrid, the zone we have written by hand
+const EXPLORE_PLACE = "Madrid";
+const EXPLORE_DAILY_PER_IP = 300;
+const EXPLORE_GENERAL = ["commonName", "species", "difficulty", "sunNeed", "sunSensitive", "frostSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "buyTips", "toxic", "toxicNote", "invasive", "notes"];
+const EXPLORE_ZONE = ["seasons", "feedTypes", "tips", "climateFit", "climateNote", "plantMonths", "plantWhen", "bloomMonths", "bloomWhat"];
+const exploreLevel = (parent) => (parent.curated ? "revisada" : parent.grounded ? "fuentes" : "ia");
+async function exploreLimited(request, env) {
+  const today = new Date().toISOString().slice(0, 10);
+  const ip = request.headers.get("CF-Connecting-IP") ?? "local";
+  const key = `explore:${today}:${(await sha(`${today}:${ip}`)).slice(0, 16)}`;
+  const n = Number(await env.CACHE.get(key)) || 0;
+  if (n >= EXPLORE_DAILY_PER_IP) return true;
+  await env.CACHE.put(key, String(n + 1), { expirationTtl: 2 * 86400 });
+  return false;
+}
+async function handleExplore(request, env, headers, ctx) {
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  const name = String(new URL(request.url).searchParams.get("name") ?? "").trim().slice(0, 80);
+  if (!name) return json({ error: "input" }, 400, headers);
+  if (await exploreLimited(request, env)) return json({ error: "limit" }, 429, headers);
+  await ensureSpecies(env);
+  const db = sheetStore(env, EXPLORE_CELL);
+  const typed = normName(name);
+  const alias = await db.alias(typed);
+  const sk = canonicalKey(alias ?? (seedAlias(name) || speciesKey(name)));
+  let found = null;
+  for (const at of sk ? [sk, ...synonymSources(sk)] : []) {
+    const parent = await db.parent(at);
+    if (parent && parent.data.isPlant !== false) { found = { at, parent, child: await db.child(at) }; break; }
+  }
+  const out = { headers: { "Cache-Control": "no-store", ...headers } };
+  if (!found) { recordTopics(env, ctx, request, "web_miss", name); return json({ found: false, name }, 200, out.headers); }
+  recordTopics(env, ctx, request, "web_search", found.at);
+  const row = await env.DB.prepare("SELECT created_at FROM species_parent WHERE species = ?").bind(found.at).first();
+  const d = found.parent.data;
+  return json({
+    found: true, key: found.at, level: exploreLevel(d), updated: new Date(row?.created_at ?? Date.now()).toISOString().slice(0, 10),
+    general: pick(d, EXPLORE_GENERAL),
+    zone: found.child ? { place: EXPLORE_PLACE, curated: Boolean(found.child.curatedZone), ...pick(found.child, EXPLORE_ZONE) } : null,
+  }, 200, out.headers);
+}
+async function handleExplorePlants(request, env, headers) {
+  if (!env.DB) return json({ error: "db" }, 500, headers);
+  if (await exploreLimited(request, env)) return json({ error: "limit" }, 429, headers);
+  await ensureSpecies(env);
+  const rows = (await env.DB.prepare("SELECT species, data, grounded, locked, created_at FROM species_parent WHERE created_at > ? OR locked = 1 ORDER BY locked DESC, grounded DESC, species").bind(Date.now() - PARENT_TTL * 1000).all()).results ?? [];
+  const plants = [];
+  for (const r of rows) {
+    let d; try { d = JSON.parse(r.data); } catch { continue; }
+    if (d.isPlant === false || !d.commonName) continue;
+    plants.push({ key: r.species, name: d.commonName, species: d.species, level: exploreLevel(d) });
+  }
+  return json({ plants, place: EXPLORE_PLACE }, 200, { "Cache-Control": "public, max-age=300", ...headers });
+}
 async function handleCare(request, env, headers, ctx) {
   if (!authorized(request, env)) {
     return json({ error: "code" }, 401, headers);
@@ -753,7 +811,7 @@ function noteQuota(env, ctx, quotaHit = []) {
   for (const model of quotaHit) ctx.waitUntil(alertOnce(env, null, `quota-model:${model}`, "Florvia · Un modelo de IA ha agotado su cuota", `El modelo ${model} ha dado error de cuota. La app sigue funcionando con el siguiente de la lista, que puede dar peores resultados o no admitir fotos.\n${QUOTA_HELP}\nAviso único por modelo y día.`));
 }
 // «What is asked for»: anonymous counts of plants, symptoms and preferences (table topics). Called with ctx so it never slows an answer.
-const TOPIC_KINDS = ["care", "explore", "identify", "added", "diagnose", "symptom", "place", "suggest_pref", "suggest_pick"];
+const TOPIC_KINDS = ["web_search", "web_miss", "care", "explore", "identify", "added", "diagnose", "symptom", "place", "suggest_pref", "suggest_pick"];
 function recordTopics(env, ctx, request, kind, keys) {
   if (!env.DB || !request || !TOPIC_KINDS.includes(kind)) return;
   const list = [...new Set((Array.isArray(keys) ? keys : [keys]).map((k) => normName(String(k ?? "")).slice(0, 60)).filter(Boolean))].slice(0, 12);
@@ -1037,7 +1095,7 @@ async function sendRatingSummary(env, force = false) {
 // Anonymous: no cookies, no ids. A visitor is counted once per day and page; for that, a one-way hash of connection + browser
 // (salted with the day and a secret) is kept for 2 days and then deleted. Only counts per day / page / source / kind are kept.
 // Robots are not dropped: each visit is classified by its User-Agent (person, search engine, AI, link preview, other) and shown apart.
-const HIT_PATH = /^\/(?:es\/(?:plantas|guias)\/(?:[a-z0-9-]+\/)?)?$/;
+const HIT_PATH = /^\/(?:es\/(?:plantas|guias)\/(?:[a-z0-9-]+\/)?|explorar\/)?$/;
 const HIT_KINDS = ["person", "search", "ai", "preview", "bot"];
 function hitKind(ua) {
   if (!ua) return "bot";
@@ -2609,6 +2667,8 @@ export default {
     if (pathname === "/health") return json({ ok: true, provider: env.PROVIDER, code: codeRequired(env) }, 200, headers);
     if (pathname === "/check") return json({ ok: authorized(request, env) }, authorized(request, env) ? 200 : 401, headers);
     if (pathname === "/care" && request.method === "POST") return handleCare(request, env, headers, ctx);
+    if (pathname === "/explore" && request.method === "GET") return handleExplore(request, env, headers, ctx);
+    if (pathname === "/explore/plants" && request.method === "GET") return handleExplorePlants(request, env, headers);
     if (pathname === "/calendar" && request.method === "POST") return handleCalendar(request, env, headers, ctx);
     if (pathname === "/event" && request.method === "POST") return handleEvent(request, env, headers, ctx);
     if (pathname === "/stats") return handleStats(request, env, headers);

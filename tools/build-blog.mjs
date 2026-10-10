@@ -119,6 +119,7 @@ const CSS = `:root{--deep:#0f4628;--deep2:#0b3320;--leaf:#2f8f4e;--leaf-d:#23773
 *{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:18px/1.65 var(--sans);-webkit-text-size-adjust:100%}a{color:var(--leaf-d)}img{max-width:100%;height:auto}
 .wrap{max-width:980px;margin:0 auto;padding:0 22px}.top{background:var(--deep);color:var(--cream);position:sticky;top:0;z-index:50}.nav{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 0}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;text-decoration:none;color:var(--cream)}.brand img{width:34px;height:34px;border-radius:9px}
 .nav nav{display:flex;align-items:center;gap:20px;font-size:15px}.nav nav a{color:#d6e6d3;text-decoration:none}.nav nav a.btn{color:var(--deep)}
+@media(max-width:430px){.nav nav{gap:12px;font-size:14px}.brand{font-size:0}.brand img{width:38px;height:38px}}
 .btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 22px;border-radius:999px;background:var(--leaf);color:#fff;font:inherit;font-weight:700;font-size:16px;text-decoration:none;line-height:1.2}.btn.cream{background:var(--cream);color:var(--deep)}.btn.small{padding:9px 18px;font-size:15px}
 .crumbs{font-size:14px;color:var(--mut);padding:22px 0 0}.crumbs a{color:var(--mut)}
 article{max-width:720px;padding-bottom:20px}h1{font-family:var(--serif);font-weight:600;letter-spacing:-.015em;font-size:clamp(32px,5.2vw,46px);line-height:1.1;margin:14px 0 16px}
@@ -139,7 +140,7 @@ const head = ({ title, description, path, extra = "", type = "article" }) => `<!
 <meta name="theme-color" content="#0f4628"><link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/app/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/app/favicon-48.png" type="image/png" sizes="48x48"><link rel="apple-touch-icon" href="/app/icon-180.png">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:type" content="${type}"><meta property="og:url" content="${SITE}${path}"><meta property="og:image" content="${SITE}/app/og.png">
 ${extra}<style>${CSS}</style></head><body>
-<div class="top"><div class="wrap"><div class="nav"><a class="brand" href="/"><img src="/app/icon-rounded.png" width="34" height="34" alt="">Florvia</a><nav><a href="/es/plantas/">Plantas</a><a href="/es/guias/">Guías</a><a class="btn cream small" href="/app/">Abrir</a></nav></div></div></div>`;
+<div class="top"><div class="wrap"><div class="nav"><a class="brand" href="/" aria-label="Florvia"><img src="/app/icon-rounded.png" width="34" height="34" alt="">Florvia</a><nav><a href="/explorar/">Explorar</a><a href="/es/plantas/">Plantas</a><a href="/es/guias/">Guías</a><a class="btn cream small" href="/app/">Abrir</a></nav></div></div></div>`;
 const foot = `<footer><div class="wrap"><span>© Florvia</span><span><a href="/">Inicio</a> · <a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer><script src="/track.js" defer></script></body></html>`;
 const ld = (obj) => `<script type="application/ld+json">${JSON.stringify(obj)}</script>\n`;
 
@@ -212,6 +213,7 @@ if (nextLanding !== readFileSync(join(ROOT, "index.html"), "utf8")) writeFileSyn
 const lastOf = (list) => list.map((p) => p.meta.updated).filter(Boolean).sort().pop();
 const entries = [
   { u: "/" },
+  { u: "/explorar/" },
   ...Object.keys(TYPES).map((type) => ({ u: `/es/${type}/`, d: lastOf(pages.filter((p) => p.type === type)) })),
   ...pages.map((p) => ({ u: p.path, d: p.meta.updated })),
 ];
