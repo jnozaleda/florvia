@@ -50,6 +50,42 @@
     } else if (kind === "buganvilla") {
       for (let b = 0; b < 2; b++) out.push(stem(curve(80 + b * 300, h + 10, 280 + b * 300, -10, 60)));
       for (let b = 0; b < 14; b++) { const cx = uni(r, 30, w - 30), cy = uni(r, 30, h - 30); for (let k = 0; k < 3; k++) out.push(leaf(cx, cy, k * 2.094 + uni(r, -0.2, 0.2), uni(r, 22, 30), uni(r, 11, 14), "br")); }
+    } else if (kind === "hortensia") {
+      // Big round heads made of small four-petal florets, broad leaves underneath.
+      for (let b = 0; b < 3; b++) out.push(leaf(80 + b * 200 + uni(r, -20, 20), h + 5, -Math.PI / 2 + uni(r, -0.8, 0.8), uni(r, 80, 100), uni(r, 24, 30)));
+      for (let b = 0; b < 4; b++) {
+        const cx = 90 + b * 140 + uni(r, -25, 25), cy = uni(r, 70, 130), rad = uni(r, 42, 56);
+        for (let k = 0; k < 26; k++) {
+          const a = r() * Math.PI * 2, d = Math.sqrt(r()) * rad, x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d, s2 = uni(r, 4.5, 6.5), rot = uni(r, 0, 90);
+          for (let q = 0; q < 4; q++) out.push(`<ellipse class="fl" cx="${f1(x)}" cy="${f1(y - s2)}" rx="${f1(s2 * 0.55)}" ry="${f1(s2)}" transform="rotate(${f1(rot + q * 90)} ${f1(x)} ${f1(y)})"/>`);
+        }
+      }
+    } else if (kind === "jazmin") {
+      // A climbing stem with pairs of small leaves and white five-petal stars.
+      for (let b = 0; b < 2; b++) {
+        const pts = curve(-10 + b * 330, h + 10, 300 + b * 300, -10, uni(r, -70, 70), 30);
+        out.push(stem(pts));
+        for (let i = 2; i < pts.length - 1; i += 3) {
+          const [x, y] = pts[i], a = Math.atan2(pts[i + 1][1] - y, pts[i + 1][0] - x);
+          for (const sg of [-1, 1]) out.push(leaf(x, y, a + sg * 0.9, uni(r, 22, 30), 7));
+          if (r() < 0.6) {
+            const fx = x + uni(r, -26, 26), fy = y + uni(r, -26, 26);
+            for (let q = 0; q < 5; q++) out.push(`<ellipse class="fl star" cx="${f1(fx)}" cy="${f1(fy - 7)}" rx="3.6" ry="7.5" transform="rotate(${q * 72} ${f1(fx)} ${f1(fy)})"/>`);
+          }
+        }
+      }
+    } else if (kind === "geranio") {
+      // Rounded scalloped leaves low down and stems ending in round clusters of flowers.
+      for (let b = 0; b < 5; b++) { const cx = 60 + b * 120 + uni(r, -20, 20), cy = h - uni(r, 10, 40); out.push(`<circle class="lf" cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(uni(r, 26, 34))}"/><circle class="nv" fill="none" cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(uni(r, 12, 16))}"/>`); }
+      for (let b = 0; b < 4; b++) {
+        const x0 = 90 + b * 140 + uni(r, -25, 25), pts = curve(x0, h - 20, x0 + uni(r, -30, 30), uni(r, 50, 100), uni(r, -15, 15), 12);
+        out.push(stem(pts));
+        const [cx, cy] = pts[pts.length - 1];
+        for (let k = 0; k < 7; k++) {
+          const a = (k / 7) * Math.PI * 2, x = cx + Math.cos(a) * 16, y = cy + Math.sin(a) * 14;
+          for (let q = 0; q < 5; q++) out.push(`<ellipse class="fl" cx="${f1(x)}" cy="${f1(y - 5)}" rx="4" ry="5.5" transform="rotate(${q * 72} ${f1(x)} ${f1(y)})"/>`);
+        }
+      }
     } else if (kind === "roseta") {
       for (let b = 0; b < 3; b++) {
         const cx = 110 + b * 190 + uni(r, -30, 30), cy = uni(r, 120, 200), n = 9 + Math.floor(r() * 4);
@@ -66,10 +102,20 @@
     return `<svg class="art" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${out.join("")}</svg>`;
   }
   const KIND = { mediterraneas: "olivo", citricos: "limonero", "arbustos-de-flor": "buganvilla", suculentas: "roseta", interior: "grande", huerto: "huerto" };
+  // Plants with a picture of their own, by species (genus) or common name; the rest take their group's.
+  const OWN = [
+    [/^lavandula/, /lavanda|espliego|cantueso/, "lavanda", "lavanda"],
+    [/^hydrangea/, /hortensia/, "hortensia", "hortensia"],
+    [/^(jasminum|trachelospermum)/, /jazmin/, "jazmin", "jazmin"],
+    [/^pelargonium/, /geranio|gitanilla|pelargonio/, "geranio", "geranio"],
+    [/^bougainvillea/, /buganvilla/, "buganvilla", "buganvilla"],
+  ];
   function look(name, species, group) {
-    const lav = /^lavandula/i.test(species ?? "") || /lavanda|espliego/.test(norm(name));
-    const texture = lav ? "lavanda" : KIND[group] ? group : "otras";
-    return { kind: lav ? "lavanda" : KIND[group] ?? "rama", texture, seed: hash(norm(species || name)) };
+    const sp = norm(species), nm = norm(name);
+    const own = OWN.find(([re, words]) => re.test(sp) || words.test(nm));
+    const seed = hash(norm(species || name));
+    if (own) return { kind: own[2], texture: own[3], seed };
+    return { kind: KIND[group] ?? "rama", texture: KIND[group] ? group : "otras", seed };
   }
   function banner({ name, species, group }, extra = null) {
     const lk = look(name, species, group);

@@ -22,7 +22,7 @@ def hexrgb(h):
 C = {k: hexrgb(v) for k, v in dict(
     deep='#0f4628', deep2='#0b3320', night='#06210f', leaf='#2f8f4e', leafd='#23773f', sage='#a9cba7', mist='#e6efe3',
     cream='#fbf9f4', sun='#f3e3a6', gold='#e9c46a', olive='#9aa77a', silver='#c9d3c0', lav='#9b8ac4', lavd='#5d4f8a',
-    lemon='#f2d64b', terra='#c8754b', rose='#e7a3b0').items()}
+    lemon='#f2d64b', terra='#c8754b', rose='#e7a3b0', hblue='#7f9fd6', hlilac='#b7a6dd', magenta='#c4457f', coral='#e0604e', red='#b8323a', ivory='#f6f1e4').items()}
 
 # ── Ruido ──────────────────────────────────────────────────────────────────────
 class Noise:
@@ -150,6 +150,11 @@ GROUPS = {
     'interior': [(0, C['night']), (0.3, C['deep']), (0.6, C['leaf']), (0.85, C['sage']), (1, C['mist'])],
     'huerto': [(0, C['deep']), (0.35, C['leaf']), (0.6, C['gold']), (0.85, C['terra']), (1, C['cream'])],
     'otras': [(0, C['deep']), (0.35, C['leafd']), (0.65, C['sage']), (1, C['cream'])],
+    # Arbustos de flor con color propio (el resto del grupo usa 'arbustos-de-flor')
+    'hortensia': [(0, C['deep']), (0.3, C['hblue']), (0.6, C['hlilac']), (0.85, C['rose']), (1, C['cream'])],
+    'jazmin': [(0, C['deep']), (0.35, C['leafd']), (0.65, C['sage']), (0.85, C['ivory']), (1, C['cream'])],
+    'geranio': [(0, C['deep']), (0.35, C['leafd']), (0.6, C['coral']), (0.8, C['red']), (1, C['cream'])],
+    'buganvilla': [(0, C['deep']), (0.35, C['leafd']), (0.62, C['magenta']), (0.85, C['rose']), (1, C['cream'])],
 }
 
 if __name__ == '__main__':

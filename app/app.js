@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261010b";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261010c";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261010b";
-import { buildICS } from "./calendar.js?v=20261010b";
-import { scrubPlant } from "./clean.js?v=20261010b";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261010b";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261010c";
+import { buildICS } from "./calendar.js?v=20261010c";
+import { scrubPlant } from "./clean.js?v=20261010c";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261010c";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -189,16 +189,11 @@ function trialNudge() {
     <p class="muted small">Después pasas al plan gratuito: ${F.plants ?? 8} plantas y ${F.suggest ?? 5} consultas al mes de cada función de IA. Si quieres seguir con todo, elige un plan o pide un código de uso gratuito.</p>
     <button type="button" class="btn small" data-action="open-premium">Ver opciones</button></section>`;
 }
-// «Hoy» opens with the picture of the season, where the person is and the date.
-function seasonHero(today) {
-  const season = seasonOf(today, here().lat);
-  return `<section class="season-hero">${seasonArt(season)}<div class="sh-t"><b>${SEASON_LABEL[season]}</b><span>Hasta el ${esc(fmtDate(new Date(Date.parse(`${nextSeasonStart(today, here().lat)}T12:00:00Z`) - 86400000).toISOString().slice(0, 10), { day: "numeric", month: "long" }))}</span></div></section>`;
-}
 function todayView() {
   const today = localToday();
   const { plants, log } = state.data;
   const alerts = state.weather ? weatherAlerts(plants, state.weather, today).map((a) => ({ ...a, kind: ALERT_ICON[a.icon] })) : [];
-  let html = seasonHero(today) + trialNudge() + upgradeBanner() + forecastCard(alerts) + irrigationRainCard(today) + irrigationCard();
+  let html = trialNudge() + upgradeBanner() + forecastCard(alerts) + irrigationRainCard(today) + irrigationCard();
   if (!plants.length) return html + (welcomeCard() || emptyGarden());
 
   // Para hoy: overdue and due today (tomorrow onwards lives in «Próximos días»).
@@ -707,7 +702,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261010b";
+      sc.src = "vendor/qrcode.min.js?v=20261010c";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1742,8 +1737,11 @@ function render() {
   // Header: the tab's name, with today's date under «Hoy» and the count under «Plantas».
   const n = state.data.plants.length;
   $("title").textContent = { today: "Hoy", plants: "Plantas", more: "Ajustes" }[state.tab] ?? "Florvia";
+  // «Hoy» sits on the picture of the season (img/estilo), fading into the page; the subtitle says which season it is.
+  const season = seasonOf(localToday(), here().lat);
+  document.body.dataset.season = state.tab === "today" ? SEASON_ART[season] : "";
   $("subtitle").textContent = state.tab === "today"
-    ? fmtDate(localToday(), { weekday: "long", day: "numeric", month: "long" }).replace(/^./, (c) => c.toUpperCase())
+    ? `${fmtDate(localToday(), { weekday: "long", day: "numeric", month: "long" }).replace(/^./, (c) => c.toUpperCase())} · ${SEASON_LABEL[season]}`
     : state.tab === "plants" ? (n === 1 ? "1 planta" : `${n} plantas`) : "Florvia";
   // Plan mark next to the title: Premium (paid, invited or Noza's), or the days left of the free month; nothing for the free plan.
   const pill = $("planPill");

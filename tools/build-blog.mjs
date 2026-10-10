@@ -204,7 +204,7 @@ const hero = ({ on, crumbs, title, meta = "", plant = "", group = "" }) => {
   const pic = plant ? ` data-planta="${esc(plant)}" data-especie="${esc(sp)}" data-grupo="${esc(group)}"` : "";
   return `<header class="phero"${pic}><div class="wrap">${NAV(on)}<div class="crumbs">${crumbs}</div><h1>${esc(title)}</h1>${meta}</div></header>`;
 };
-const ART_JS = `<script src="/img/estilo/plantas.js?v=20261010d" defer></script>`;
+const ART_JS = `<script src="/img/estilo/plantas.js?v=20261010e" defer></script>`;
 const SEARCH_IC = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
 const another = `<a class="another" href="/explorar/"><b>¿Otra planta?</b><span>${SEARCH_IC}Búscala en el explorador: olivo, lavanda, monstera…</span></a>`;
 const foot = `<footer><div class="wrap"><span>© Florvia</span><span><a href="/">Inicio</a> · <a href="/explorar/">Explorar</a> · <a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer>${ART_JS}<script src="/track.js" defer></script></body></html>`;
