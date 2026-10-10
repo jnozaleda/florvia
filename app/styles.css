@@ -910,9 +910,10 @@ label.link-btn { cursor: pointer; }
 .nc-art { position: relative; display: block; height: 74px; margin: -16px -16px 12px; background-size: cover; background-position: center; }
 .tile-add { z-index: 2; background: rgba(0, 0, 0, 0.55); color: #fff; }
 /* «Hoy»: la creatividad de la estación de fondo, detrás del título, que se difumina hacia la página */
-body[data-season]:not([data-season=""])::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 340px; z-index: -1; pointer-events: none; background-size: cover; background-position: center top; -webkit-mask-image: linear-gradient(#000 30%, transparent); mask-image: linear-gradient(#000 30%, transparent); opacity: .85; }
+body[data-season]:not([data-season=""])::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 300px; z-index: -1; pointer-events: none; background-size: cover; background-position: center top; -webkit-mask-image: linear-gradient(#000 45%, transparent); mask-image: linear-gradient(#000 45%, transparent); opacity: .9; }
+body[data-season]:not([data-season=""]) .top { padding-bottom: 56px; }
 body[data-season="primavera"]::before { background-image: url(/img/estilo/primavera.webp); }
 body[data-season="verano"]::before { background-image: url(/img/estilo/verano.webp); }
 body[data-season="otono"]::before { background-image: url(/img/estilo/otono.webp); }
 body[data-season="invierno"]::before { background-image: url(/img/estilo/invierno.webp); }
-@media (prefers-color-scheme: dark) { body[data-season]:not([data-season=""])::before { opacity: .38; } }
+@media (prefers-color-scheme: dark) { body[data-season]:not([data-season=""])::before { opacity: 1; filter: brightness(.62) saturate(1.2); } body[data-season]:not([data-season=""]) .subtitle { color: rgba(255, 255, 255, .78); } }
