@@ -2,7 +2,7 @@
 title: Limonero: cuidados, riego, poda y abonado | Florvia
 h1: Limonero: cuidados, riego, poda y abonado
 description: Cómo cuidar un limonero en maceta o en suelo: sol, riego, abono, poda, frío y qué hacer si se le caen las hojas.
-updated: 2026-10-05
+updated: 2026-10-13
 published: 2026-10-05
 plant: Limonero
 grupo: citricos
@@ -77,6 +77,10 @@ Puede ser por poca luz, por ser aún joven, por falta de abono o por podas fuert
 
 Son habituales la cochinilla, los pulgones y el minador de los cítricos (galerías en las hojas jóvenes). Revisa los brotes tiernos y trata a tiempo.
 
+## Qué hacer ahora, en otoño
+
+Reduce el riego poco a poco, termina el abonado y prepara la protección. Si abonas todavía, elige uno bajo en nitrógeno y rico en fósforo y potasio, que fortalece raíces; el nitrógeno provoca brotes tiernos que el frío quema. No lo podes con fuerza: en esta época suele tener flores y frutos en formación y le quitarías la cosecha del año que viene. Quita el plato de la maceta.
+
 ## Cuidados por estación
 
 ### Primavera
@@ -89,7 +93,7 @@ Sol, riegos frecuentes en maceta y abono. Vigila el calor extremo.
 
 ### Otoño
 
-Reduce el riego poco a poco, termina el abonado y prepara la protección. Si abonas todavía, elige uno bajo en nitrógeno y rico en fósforo y potasio, que fortalece raíces; el nitrógeno provoca brotes tiernos que el frío quema. No lo podes con fuerza: en esta época suele tener flores y frutos en formación y le quitarías la cosecha del año que viene. Quita el plato de la maceta.
+Reduce el riego poco a poco, termina el abonado y prepara la protección.
 
 ### Invierno
 

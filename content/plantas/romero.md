@@ -2,7 +2,7 @@
 title: Romero: cuidados, riego, poda y maceta | Florvia
 h1: Romero: cuidados, riego, poda y maceta
 description: Cómo cuidar el romero: sol, poco riego, poda, frío y qué hacer si se seca o se pone amarillo.
-updated: 2026-10-05
+updated: 2026-10-13
 published: 2026-10-05
 plant: Romero
 grupo: mediterraneas
@@ -70,6 +70,10 @@ Mejora la ventilación y reduce el riego.
 
 Cochinilla o mosca blanca ocasionales.
 
+## Qué hacer ahora, en otoño
+
+Riego mínimo: con la humedad del otoño, en maceta quita el plato para que las raíces no se pudran. No lo abones y no lo podes a fondo; si acaso, un recorte ligero de puntas. Es buen momento para plantarlo en suelo en climas suaves.
+
 ## Cuidados por estación
 
 ### Primavera
@@ -82,7 +86,7 @@ Sol y riego escaso.
 
 ### Otoño
 
-Riego mínimo: con la humedad del otoño, en maceta quita el plato para que las raíces no se pudran. No lo abones y no lo podes a fondo; si acaso, un recorte ligero de puntas. Es buen momento para plantarlo en suelo en climas suaves.
+Riego mínimo; en maceta, quita el plato.
 
 ### Invierno
 

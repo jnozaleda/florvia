@@ -2,7 +2,7 @@
 title: Monstera: cuidados, riego, luz y agujeros | Florvia
 h1: Monstera: cuidados, riego, luz y hojas con agujeros
 description: Cómo cuidar una monstera: luz, riego, humedad, abono, soporte y por qué no le salen agujeros en las hojas.
-updated: 2026-10-05
+updated: 2026-10-13
 published: 2026-10-05
 plant: Monstera
 grupo: interior
@@ -70,6 +70,10 @@ Aire muy seco o riego irregular.
 
 Son normales; puedes guiarlas hacia el soporte o dejarlas.
 
+## Qué hacer ahora, en otoño
+
+Reduce el riego y el abono. Riega como mucho una vez por semana y con poca cantidad, lo justo para humedecer el sustrato sin empaparlo; no dejes agua en el plato. Si la tenías fuera, entra la monstera antes de que las noches bajen de unos 15 °C. Si va a trasplantarse, hazlo a principios de otoño y no con la planta débil.
+
 ## Cuidados por estación
 
 ### Primavera
@@ -82,7 +86,7 @@ Luz difusa, riego regular y abono.
 
 ### Otoño
 
-Reduce el riego y el abono. Riega como mucho una vez por semana y con poca cantidad, lo justo para humedecer el sustrato sin empaparlo; no dejes agua en el plato. Si la tenías fuera, entra la monstera antes de que las noches bajen de unos 15 °C. Si va a trasplantarse, hazlo a principios de otoño y no con la planta débil.
+Reduce el riego y el abono.
 
 ### Invierno
 

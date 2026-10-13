@@ -202,3 +202,8 @@ Las páginas del blog y la landing cargan `track.js` (el generador lo añade al 
 - Los datos se ven en la app: Ajustes → Uso de la app → «Visitas a la web». Los títulos de las páginas salen de `app/pages.json` (se regenera con el script).
 - `privacidad/` **no se mide a propósito**: saber cuánta gente lee la política de privacidad aporta poco y obligaría a abrir su política de seguridad de contenido a la API.
 - Lo que se mide está descrito en `privacidad/index.html` («Visitas a la web»). Si cambia lo que se guarda, actualiza también ese texto.
+
+## Cuidados por estación
+- En «Cuidados por estación», cada estación lleva **una o dos frases cortas** y de longitud parecida: se muestran como cuatro tarjetas iguales.
+- El detalle de la estación en curso va en una sección propia justo antes, **«## Qué hacer ahora, en <estación>»** (se muestra como una tarjeta con la imagen de esa estación). Al cambiar de estación, se reescribe esa sección para la nueva; las cuatro tarjetas no se tocan.
+

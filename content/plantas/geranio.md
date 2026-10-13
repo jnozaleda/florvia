@@ -2,7 +2,7 @@
 title: Geranio: cuidados, riego, poda y floración | Florvia
 h1: Geranio: cuidados, riego, poda y floración
 description: Cómo cuidar un geranio (pelargonio): sol, riego, abono, poda, frío y qué hacer si no florece o tiene la oruga.
-updated: 2026-10-05
+updated: 2026-10-13
 published: 2026-10-05
 plant: Geranio
 grupo: arbustos-de-flor
@@ -73,6 +73,10 @@ En España es frecuente la oruga del geranio, cuyas larvas taladran tallos y bot
 
 La humedad en hojas favorece los hongos. Riega por la base y mejora la ventilación.
 
+## Qué hacer ahora, en otoño
+
+Reduce el riego y el abono; prepara la entrada en un sitio protegido. Con la humedad del otoño, retira a menudo flores marchitas y hojas secas, porque si se quedan pegadas a la planta favorecen hongos como el moho gris. Quita el plato de la maceta si se acumula agua y, si abonas, usa uno bajo en nitrógeno y rico en potasio.
+
 ## Cuidados por estación
 
 ### Primavera
@@ -85,7 +89,7 @@ Sol, riego regular y retirada de flores secas.
 
 ### Otoño
 
-Reduce el riego y el abono; prepara la entrada en un sitio protegido. Con la humedad del otoño, retira a menudo flores marchitas y hojas secas, porque si se quedan pegadas a la planta favorecen hongos como el moho gris. Quita el plato de la maceta si se acumula agua y, si abonas, usa uno bajo en nitrógeno y rico en potasio.
+Reduce el riego y el abono; prepara la entrada en un sitio protegido.
 
 ### Invierno
 

@@ -2,7 +2,7 @@
 title: Buganvilla: cuidados, riego, poda y ubicación | Florvia
 h1: Buganvilla: cuidados, riego, poda y ubicación
 description: Aprende cuándo regar, abonar y podar una buganvilla, dónde colocarla y cómo protegerla del frío.
-updated: 2026-10-05
+updated: 2026-10-13
 published: 2026-10-05
 plant: Buganvilla
 grupo: arbustos-de-flor
@@ -87,6 +87,10 @@ Con frío o cambios bruscos de ubicación es normal. Si pasa en verano, revisa e
 
 Pueden aparecer pulgones o cochinilla. Revisa los brotes tiernos y trata a tiempo con jabón potásico u otro tratamiento adecuado.
 
+## Qué hacer ahora, en otoño
+
+Espacia el riego, deja de abonar y evita podas fuertes: el abono con mucho nitrógeno y la poda drástica provocan brotes tiernos que el frío estropea. Quita el plato de la maceta y retira hojas y flores secas.
+
 ## Cuidados por estación
 
 ### Primavera
@@ -99,7 +103,7 @@ Sol, riegos regulares y abono rico en potasio. Poda ligera tras cada floración.
 
 ### Otoño
 
-Espacia el riego, deja de abonar y evita podas fuertes: el abono con mucho nitrógeno y la poda drástica provocan brotes tiernos que el frío estropea. Quita el plato de la maceta y retira hojas y flores secas.
+Espacia el riego, deja de abonar y evita podas fuertes.
 
 ### Invierno
 

@@ -2,7 +2,7 @@
 title: Jazmín: cuidados, riego, poda y floración | Florvia
 h1: Jazmín: cuidados, riego, poda y floración
 description: Cómo cuidar un jazmín: sol, riego, abono, poda tras la floración, frío según la especie y por qué no florece.
-updated: 2026-10-05
+updated: 2026-10-13
 published: 2026-10-05
 plant: Jazmín
 grupo: arbustos-de-flor
@@ -74,6 +74,10 @@ Suele ser por exceso de riego o drenaje malo. En especies perennes, algo de hoja
 
 Pulgones, cochinilla y mosca blanca en brotes tiernos. Revísalos y trata a tiempo.
 
+## Qué hacer ahora, en otoño
+
+Reduce el riego y deja de abonar. No lo podes con fuerza ahora: el frío estropearía los brotes tiernos y podrías quitar yemas de flor. Limpia solo lo seco y retira hojas caídas del pie para evitar hongos.
+
 ## Cuidados por estación
 
 ### Primavera
@@ -86,7 +90,7 @@ Sol, riego regular y abono. Floración del jazmín común.
 
 ### Otoño
 
-Reduce el riego y deja de abonar. No lo podes con fuerza ahora: el frío estropearía los brotes tiernos y podrías quitar yemas de flor. Limpia solo lo seco y retira hojas caídas del pie para evitar hongos.
+Reduce el riego y deja de abonar.
 
 ### Invierno
 

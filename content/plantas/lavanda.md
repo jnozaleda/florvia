@@ -2,7 +2,7 @@
 title: Lavanda: cuidados, riego, poda y maceta | Florvia
 h1: Lavanda: cuidados, riego, poda y maceta
 description: Cómo cuidar la lavanda: sol, poco riego, poda tras la floración, frío y por qué se pone leñosa o se muere.
-updated: 2026-10-05
+updated: 2026-10-13
 published: 2026-10-05
 plant: Lavanda
 grupo: mediterraneas
@@ -74,6 +74,10 @@ Poco sol, exceso de abono o poda demasiado tarde.
 
 Puede indicar humedad excesiva. Mejora la ventilación y reduce el riego.
 
+## Qué hacer ahora, en otoño
+
+Riego mínimo: la humedad del otoño le sobra, sobre todo en maceta, donde conviene quitar el plato para que las raíces no se pudran. No abones y no la podes a fondo ahora; la poda ligera ya se hizo tras la floración. Es buen momento para plantarla en suelo en climas suaves.
+
 ## Cuidados por estación
 
 ### Primavera
@@ -86,7 +90,7 @@ Floración y riego escaso. Poda tras las flores.
 
 ### Otoño
 
-Riego mínimo: la humedad del otoño le sobra, sobre todo en maceta, donde conviene quitar el plato para que las raíces no se pudran. No abones y no la podes a fondo ahora; la poda ligera ya se hizo tras la floración. Es buen momento para plantarla en suelo en climas suaves.
+Riego mínimo: la humedad del otoño le sobra.
 
 ### Invierno
 

@@ -2,7 +2,7 @@
 title: Hortensia: cuidados, riego, poda y color | Florvia
 h1: Hortensia: cuidados, riego, poda y color
 description: Cómo cuidar una hortensia: semisombra, riego, abono, cuándo podar según el tipo y cómo cambiar el color de las flores.
-updated: 2026-10-05
+updated: 2026-10-13
 published: 2026-10-05
 plant: Hortensia
 grupo: arbustos-de-flor
@@ -79,6 +79,10 @@ Poda a destiempo, heladas tardías o poca luz.
 
 Puede ser oídio. Mejora la ventilación y retira hojas afectadas.
 
+## Qué hacer ahora, en otoño
+
+Reduce el riego y deja de abonar. No la podes ahora: ya lleva las yemas de la flor del año que viene, así que solo quita lo seco o roto. Retira las hojas caídas del pie para evitar hongos y, si está en maceta, quita el plato.
+
 ## Cuidados por estación
 
 ### Primavera
@@ -91,7 +95,7 @@ Semisombra, riegos frecuentes y abono.
 
 ### Otoño
 
-Reduce el riego y deja de abonar. No la podes ahora: ya lleva las yemas de la flor del año que viene, así que solo quita lo seco o roto. Retira las hojas caídas del pie para evitar hongos y, si está en maceta, quita el plato.
+Reduce el riego y deja de abonar.
 
 ### Invierno
 

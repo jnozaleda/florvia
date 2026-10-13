@@ -2,7 +2,7 @@
 title: Olivo: cuidados, riego, poda y maceta | Florvia
 h1: Olivo: cuidados, riego, poda y maceta
 description: Cómo cuidar un olivo en maceta o en suelo: sol, riego, abono, poda, frío y por qué no da aceitunas.
-updated: 2026-10-05
+updated: 2026-10-13
 published: 2026-10-05
 plant: Olivo
 grupo: mediterraneas
@@ -78,6 +78,10 @@ Suele ser por ser joven, por poca luz o por podas excesivas. La floración depen
 
 Revisa si hay cochinilla (placas pegajosas) en ramas y hojas.
 
+## Qué hacer ahora, en otoño
+
+Riego mínimo; es buena época para plantarlo o trasplantarlo en suelo en climas suaves. En maceta, quita el plato para que no se pudran las raíces. Si ha echado brotes largos tras el verano, puedes despuntarlos suavemente; deja la poda de formación para el final del invierno.
+
 ## Cuidados por estación
 
 ### Primavera
@@ -90,7 +94,7 @@ Sol y riego espaciado. En maceta, vigila el calor.
 
 ### Otoño
 
-Riego mínimo; es buena época para plantarlo o trasplantarlo en suelo en climas suaves. En maceta, quita el plato para que no se pudran las raíces. Si ha echado brotes largos tras el verano, puedes despuntarlos suavemente; deja la poda de formación para el final del invierno.
+Riego mínimo; es buena época para plantarlo o trasplantarlo en suelo en climas suaves.
 
 ### Invierno
 

@@ -176,8 +176,9 @@ footer{background:var(--deep2);color:#b9d1b6;margin-top:60px;padding:30px 0;font
 .nav nav a.on{color:#fff;border-bottom:2px solid #f3e3a6}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:18px 0}.tile{background:#fff;border:1px solid #e2e8de;border-radius:18px;padding:14px 16px;box-shadow:0 10px 26px rgba(15,70,40,.06)}
 .tile .ic{display:block;width:22px;height:22px;margin:0 0 6px}.tile small{display:block;color:var(--mut);font-size:13px}.tile b{display:block;font-size:16px;line-height:1.35;font-weight:600}
-.seasons{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin:18px 0}.season{border-radius:20px;overflow:hidden}.season .in{padding:14px 16px 18px}
+.seasons{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin:18px 0}.season{border-radius:20px;overflow:hidden}.season .in{padding:14px 16px 18px}
 .season em{display:block;font-style:normal;font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px}.season p{margin:0;font-size:15.5px;line-height:1.5}
+.now{margin:42px 0 0;border-radius:24px;overflow:hidden}.now .crea{height:130px}.now .in{padding:6px 24px 22px}.now h2{margin:16px 0 8px;color:inherit}.now p{margin:0 0 10px;color:inherit}
 .crea{position:relative;height:110px;background-size:cover;background-position:center}.crea img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .s1{background:#e3f0dd;color:#23502f}.s2{background:#fbf0cf;color:#5e4a0c}.s3{background:#f6e2d4;color:#6b3618}.s4{background:#e6ecf1;color:#2c4052}
 .probs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin:18px 0}.prob{background:#fff;border:1px solid #e2e8de;border-radius:18px;padding:16px 18px}.prob b{display:block;margin-bottom:4px}.prob p{margin:0;font-size:16px;color:#2b3b30}
@@ -233,6 +234,11 @@ for (const p of pages) {
     ? `<div class="cta final"><div class="txt"><b>${esc(m.ctaFinalTitle || m.ctaTitle)}</b><p>${esc(m.ctaFinalText || m.ctaText)}</p><a class="btn cream" href="${appLink(ctaHash)}">${esc(m.ctaButton)}</a></div><div class="ph"><img src="/img/ficha.jpg" width="540" height="1169" alt="La ficha de una planta en la app" loading="lazy"></div></div>`
     : `<div class="cta"><b>${esc(m.ctaTitle)}</b><p>${esc(m.ctaText)}</p><a class="btn cream" href="${appLink(ctaHash)}">${esc(m.ctaButton)}</a></div>`;
   let html = markdown(p.body, { cta: () => cta(false) });
+  // «Qué hacer ahora, en otoño»: the season of the moment, as a card with that season's picture.
+  html = html.replace(/<h2 id="que-hacer-ahora-en-([a-z]+)">([^<]+)<\/h2>\n((?:<(?:p|ul)>[\s\S]*?<\/(?:p|ul)>\n?)+)/, (_, key, title, body) => {
+    const k = SEASON_KEY[key] ?? key;
+    return `<section class="now ${SEASON_CLS[k] ?? "s1"}">${crea(k)}<div class="in"><h2 id="que-hacer-ahora-en-${key}">${title}</h2>${body}</div></section>\n`;
+  });
   // A guide about one plant carries that plant's card (its ficha) right after the intro.
   const ficha = p.type === "guias" && m.plant ? pages.find((q) => q.type === "plantas" && String(q.meta.plant).toLowerCase() === String(m.plant).toLowerCase()) : null;
   if (ficha) html = html.replace("</p>", `</p><a class="plantcard" href="${ficha.path}"><span class="pc-k">Ficha de la planta</span><b>${esc(ficha.meta.plant)}</b><span class="pc-d">${esc(ficha.meta.description)}</span><em>Ver la ficha completa →</em></a>`);
