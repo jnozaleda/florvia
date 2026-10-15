@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261015a";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261015b";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261015a";
-import { buildICS } from "./calendar.js?v=20261015a";
-import { scrubPlant } from "./clean.js?v=20261015a";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261015a";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261015b";
+import { buildICS } from "./calendar.js?v=20261015b";
+import { scrubPlant } from "./clean.js?v=20261015b";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261015b";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -149,37 +149,127 @@ function emptyGarden() {
   return `<section class="card empty"><div class="big">${ICONS.sprout}</div><p class="muted">Aún no tienes plantas. Añade la primera y te diremos cuándo regarla, abonarla y cuándo el tiempo cambia el plan.</p><button class="btn" data-action="new-plant">Añadir planta</button></section>`;
 }
 
-// «Primeros pasos»: a checklist for people who open Florvia with an empty garden. It's shown from the first
-// empty visit until everything is done or the person hides it; existing gardens never see it.
-function welcomeCard() {
-  const flag = store.get("mj_welcome", null);
-  if (flag === "off" || (flag === null && state.data.plants.length)) return "";
-  if (flag === null) store.set("mj_welcome", "on");
-  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
-  const steps = [
-    ["pin", "#3b82f6", "Elige dónde está tu jardín", "Para avisarte con el tiempo de tu zona", Boolean(store.get("mj_loc", null)), "open-place"],
-    ["share", "#6e6e73", "Instala Florvia en tu móvil", "Se abre como una app y permite los avisos", Boolean(standalone), "welcome-install"],
-    ["refresh", "#1f8f86", "Guarda tu jardín", "Copia de seguridad y en varios móviles, con tu cuenta de Google o una clave", Boolean(syncKey()), "open-sync"],
-    ["bell", "#c93b30", "Activa el aviso diario", "A las 8:00, solo si hay algo que hacer", Boolean(store.get("mj_push", false)), "open-push"],
-    ["sprout", "#2f8f4e", "Añade tu primera planta", "La IA propone sus cuidados por estación", state.data.plants.length > 0, "new-plant"],
-  ];
-  const done = steps.filter((x) => x[4]).length;
-  if (done === steps.length) { store.set("mj_welcome", "off"); return ""; }
-  const row = ([icon, color, title, sub, ok, action]) =>
-    `<button type="button" class="l-row" data-action="${action}"><span class="l-ico" style="background:${ok ? "#2f8f4e" : color}">${ICONS[ok ? "check" : icon]}</span><span class="l-label">${title}<span class="muted small" style="display:block;font-weight:400">${sub}</span></span><span class="l-value">${ok ? `<span class="ok">${ICONS.circleCheck}</span>` : `<span class="chev">${ICONS.chevron}</span>`}</span></button>`;
-  return `<section class="card list-card settings welcome"><div class="sec">Te damos la bienvenida a Florvia <span class="meta">${done} de ${steps.length}</span></div>
-    <p class="muted small" style="padding:0 16px 8px">${steps.length} pasos para empezar. Puedes hacerlos en el orden que quieras; todos son opcionales.</p>
-    ${steps.map(row).join("")}
-    <div class="two-btns" style="padding:8px 16px 12px">${state.data.plants.length ? "" : `<button class="btn secondary" data-action="open-sync">Ya tengo un jardín</button>`}${me?.premium && me.plan !== "trial" ? "" : `<button class="btn secondary" data-action="invite-open">Tengo un código</button>`}<button class="btn secondary" data-action="welcome-hide">Ocultar</button></div></section>`;
+// How Florvia is being used: from the installed app or a browser tab, and on which system (counted on each opening, #68).
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const osName = () => (isIOS() ? "ios" : /Android/.test(navigator.userAgent) ? "android" : "other");
+let installEvt = null; // Chrome/Android: its own «Instalar» prompt, kept to offer it from our button
+addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; });
+addEventListener("appinstalled", () => { installEvt = null; });
+
+// «Hoy» with an empty garden: one thing to do, a photo of the first plant (the weather comes once there is something to look after).
+// In the app just installed on an iPhone, it first offers to bring the garden from Safari (see handoffCard).
+function firstPlantCard() {
+  const ai = aiGo();
+  return `${handoffCard()}<section class="card first-plant">
+    <span class="crea" style="background-image:url(/img/estilo/paso1.webp)"><img src="/img/estilo/paso1.svg" alt="" /></span>
+    <h2>Empieza por tu primera planta</h2>
+    <p class="muted">${ai ? `Hazle una foto: la reconozco y preparo su riego y abono para ${esc(here().name)}.` : "Dime cuál es y te diré cuándo regarla y abonarla."}</p>
+    ${ai ? `<label class="btn block">${ICONS.camera}Hacer una foto<input type="file" id="firstPhotoInput" accept="image/*" hidden /></label>` : ""}
+    <div class="two-btns"><button type="button" class="btn ${ai ? "secondary" : ""}" data-action="new-plant">Escribir su nombre</button><button type="button" class="btn secondary" data-action="explore-open">Ver ideas</button></div>
+    <div class="fp-links"><button type="button" class="link-btn" data-action="open-sync">Ya tengo un jardín</button>${me?.premium && me.plan !== "trial" ? "" : `<button type="button" class="link-btn" data-action="invite-open">Tengo un código</button>`}</div>
+  </section>`;
 }
-function installSheet() {
-  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+
+// A plant whose sheet was ready but the alta was closed: it waits here (with its sheet, so no new AI call) for 14 days.
+const DRAFT = "mj_add_draft";
+function saveDraft(w) {
+  const keep = { ...w, nick: $("wizNick")?.value ?? w.nick, zone: $("wizZone")?.value ?? w.zone, identify: null, altPhotos: undefined, autoAdd: false };
+  if (!store.set(DRAFT, { wiz: keep, photo: draftPhoto, at: Date.now() })) store.set(DRAFT, { wiz: keep, photo: null, at: Date.now() });
+  track("add_draft");
+}
+function draftCard() {
+  const d = store.get(DRAFT, null);
+  if (!d?.wiz) return "";
+  if (Date.now() - d.at > 14 * 86400000) { localStorage.removeItem(DRAFT); return ""; }
+  const name = d.wiz.care?.commonName || d.wiz.name;
+  const img = d.photo || d.wiz.refPhoto?.url;
+  return `<section class="card draft-card">${img ? `<img class="thumb" src="${esc(img)}" alt="" />` : `<span class="thumb placeholder">${ICONS.sprout}</span>`}
+    <div class="body"><b>${esc(name)}: a medio añadir</b><span class="muted small">Su ficha ya está hecha: añadirla no gasta otra consulta.</span>
+    <div class="row"><button type="button" class="btn small" data-action="draft-resume">Añadir</button><button type="button" class="btn small secondary" data-action="draft-discard">Descartar</button></div></div></section>`;
+}
+
+// «Guarda tu jardín»: for whoever has plants in a browser tab, not installed and not synced. Safari can wipe the data of a
+// site not opened in 7 days. Closing it hides it for a week.
+function keepCard() {
+  if (isStandalone() || syncKey() || !state.data.plants.length || osName() === "other") return "";
+  if (Date.now() - store.get("mj_keep_off", 0) < 7 * 86400000) return "";
+  if (!keepCard.seen) { keepCard.seen = true; track("keep_view"); }
+  const n = state.data.plants.length;
+  const yours = n === 1 ? "tu planta" : `tus ${n} plantas`;
+  return `<section class="card keep-card"><button type="button" class="kc-x" data-action="keep-dismiss" aria-label="Ocultar una semana">${ICONS.x ?? "×"}</button>
+    <span class="kc-ico">${ICONS.refresh}</span><div class="body"><b>Guarda tu jardín</b>
+    <span class="muted small">${isIOS() ? `Lo estás usando desde Safari. Si pasas una semana sin entrar, Safari puede borrar ${yours}.` : `Lo estás usando desde el navegador: si borras sus datos o cambias de móvil, perderías ${yours}.`}</span>
+    <div class="row"><button type="button" class="btn small" data-action="welcome-install">Instalar la app</button><button type="button" class="btn small secondary" data-action="open-sync">Guardar con Google</button></div></div></section>`;
+}
+
+// «Instalar Florvia». After the first plant it says why (tomorrow's reminder). On iPhone the installed app starts empty, so the
+// garden is saved first (sync) and the installed app gets it back with a 4-digit code (Worker /handoff, same connection, 1 hour).
+let handoff = null; // { state: "loading" | "ready" | "error", code }
+function installSheet(plantName = "", plantId = "") {
+  const ios = isIOS();
+  const standalone = isStandalone();
+  if (!standalone) track("install_view");
+  const name = plantName ? plantName.toLowerCase() : "";
+  const steps = ios
+    ? `<ol class="i-steps"><li><span class="i-ico">${ICONS.share}</span><span>Pulsa <b>Compartir</b>${/CriOS|FxiOS/.test(navigator.userAgent) ? " (en Safari: si no lo ves, abre florvia.app/app en Safari)" : ", abajo en Safari"}</span></li>
+        <li><span class="i-ico">${ICONS.plus}</span><span>Elige <b>Añadir a pantalla de inicio</b></span></li>
+        <li><span class="i-ico app"><img src="icon-180.png" alt="" /></span><span>Ábrela desde el <b>icono nuevo</b></span></li></ol>`
+    : installEvt ? "" : `<ol class="i-steps"><li><span class="i-ico">⋮</span><span>Abre el menú del navegador</span></li><li><span class="i-ico">${ICONS.plus}</span><span>Elige <b>Instalar app</b> o <b>Añadir a pantalla de inicio</b></span></li><li><span class="i-ico app"><img src="icon-180.png" alt="" /></span><span>Ábrela desde el <b>icono nuevo</b></span></li></ol>`;
+  const carry = ios && state.data.plants.length
+    ? handoff?.state === "ready" ? `<p class="i-carry">${ICONS.circleCheck}<span>Tu jardín viene contigo. Al abrir la app instalada, escribe este código: <b class="i-code">${esc(handoff.code)}</b></span></p>`
+      : handoff?.state === "error" ? `<p class="ai-status warn">No he podido guardar tu jardín para la app. Antes de instalarla, actívalo en Ajustes → Sincronizar.</p>`
+      : `<p class="i-carry"><span class="spinner" aria-hidden="true"></span><span>Guardando tu jardín para que venga contigo…</span></p>` : "";
   openSheet(`<div class="sheet-head"><h2>Instalar Florvia</h2><button class="btn small secondary" data-action="close">Cerrar</button></div>
-    ${standalone ? `<p class="ai-status ok">Ya estás usando Florvia instalada.</p>`
-      : ios ? `<ol class="steps"><li>Abre <b>florvia.app/app</b> en <b>Safari</b>.</li><li>Pulsa el botón <b>Compartir</b> (el cuadrado con la flecha).</li><li>Elige <b>Añadir a pantalla de inicio</b>.</li><li>Ábrela desde el icono nuevo: así podrás activar el aviso diario.</li></ol>`
-      : `<ol class="steps"><li>Abre el menú del navegador (⋮ o «Compartir»).</li><li>Elige <b>Instalar app</b> o <b>Añadir a pantalla de inicio</b>.</li><li>Ábrela desde el icono.</li></ol>`}
-    <p class="muted small">Si ya tienes plantas en el navegador, sincroniza antes (Ajustes → Sincronizar) para recuperarlas en la app instalada.</p>`);
+    ${standalone ? `<p class="ai-status ok">Ya estás usando Florvia instalada.</p>` : `
+    <span class="crea i-art" style="background-image:url(/explorar/img/luz-entre-hojas.webp)"><img src="/img/estilo/paso3.svg" alt="" /></span>
+    <h3 class="q">${name ? `¿Te aviso mañana de regar tu ${esc(name)}?` : "Tenla en tu pantalla de inicio"}</h3>
+    <p class="muted">${ios ? "En iPhone, los avisos solo llegan si pones Florvia en tu pantalla de inicio. Son 3 toques:" : "Se abre como una app, sin la barra del navegador, y te puede avisar cada mañana."}</p>
+    ${steps}${carry}
+    <div class="sheet-actions">${!ios && installEvt ? `<button class="btn block" data-action="install-prompt">${ICONS.plus}Instalar Florvia</button>` : ""}<button class="btn block secondary" data-action="install-later" data-id="${esc(plantId)}">${plantId ? `Ahora no · ver mi ${esc(name)}` : "Ahora no"}</button></div>`}`, "install");
+  if (ios && !standalone && state.data.plants.length && !handoff) prepareHandoff(plantName, plantId);
+}
+async function prepareHandoff(plantName, plantId) {
+  handoff = { state: "loading" };
+  try {
+    if (!syncKey()) { activateSync(newKey()); await refreshUsageId(); }
+    await pushNow();
+    if (syncStatus.error) throw new Error("sync");
+    const res = await fetch(`${API}/handoff`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: syncKey() }) });
+    if (!res.ok) throw new Error("handoff");
+    handoff = { state: "ready", code: (await res.json()).code };
+    track("install_handoff");
+  } catch { handoff = { state: "error" }; }
+  if (sheet.open && sheet.dataset.view === "install") installSheet(plantName, plantId);
+  setTimeout(() => { handoff = null; }, 50 * 60000); // the code lasts an hour on the server
+}
+// In the installed app with an empty garden: «¿Vienes de Safari?» + the code. Shown when the server has a garden waiting for this
+// connection, or when the person asks for it («Ya tengo un jardín» still offers Google and the key).
+let handoffUi = { checked: false, pending: false, open: false, error: "" };
+function handoffCard() {
+  if (!isStandalone() || state.data.plants.length) return "";
+  if (!handoffUi.checked) {
+    handoffUi.checked = true;
+    fetch(`${API}/handoff`).then((r) => r.json()).then((b) => { if (b.pending) { handoffUi.pending = true; render(); } }).catch(() => {});
+  }
+  if (!handoffUi.pending && !handoffUi.open) return isIOS() ? `<div class="fp-links"><button type="button" class="link-btn" data-action="handoff-open">¿Ya añadiste plantas en Safari?</button></div>` : "";
+  return `<section class="card handoff-card"><b>¿Vienes de Safari?</b><p class="muted small">Escribe el código de 4 cifras que te di antes de instalar y recupero tu jardín.</p>
+    <div class="row"><input id="handoffCode" class="big-input" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="0000" /><button type="button" class="btn" data-action="handoff-claim">Recuperar</button></div>
+    ${handoffUi.error ? `<p class="ai-status warn">${esc(handoffUi.error)}</p>` : ""}</section>`;
+}
+async function handoffClaim() {
+  const code = ($("handoffCode")?.value ?? "").replace(/\D/g, "");
+  if (code.length !== 4) { handoffUi.error = "Son 4 cifras."; return render(); }
+  try {
+    const res = await fetch(`${API}/handoff/claim`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+    if (res.status === 429) throw new Error("Demasiados intentos. Prueba dentro de un rato, o usa «Ya tengo un jardín».");
+    if (!res.ok) throw new Error("Ese código no vale o ha caducado (dura una hora). Puedes usar «Ya tengo un jardín» con Google o con la clave.");
+    const { key } = await res.json();
+    handoffUi = { checked: true, pending: false, open: false, error: "" };
+    track("install_claimed");
+    joinViaGoogle = false;
+    joinSheet(key);
+  } catch (err) { handoffUi.error = err.message.length > 20 ? err.message : "No se ha podido conectar. Prueba otra vez."; render(); }
 }
 
 // Last days of the free month of Premium: tell people before the limits start (nothing is shown the rest of the month).
@@ -195,8 +285,8 @@ function todayView() {
   const today = localToday();
   const { plants, log } = state.data;
   const alerts = state.weather ? weatherAlerts(plants, state.weather, today).map((a) => ({ ...a, kind: ALERT_ICON[a.icon] })) : [];
-  let html = trialNudge() + upgradeBanner() + forecastCard(alerts) + irrigationRainCard(today) + irrigationCard();
-  if (!plants.length) return html + (welcomeCard() || emptyGarden());
+  if (!plants.length) return trialNudge() + draftCard() + firstPlantCard();
+  let html = trialNudge() + draftCard() + keepCard() + upgradeBanner() + forecastCard(alerts) + irrigationRainCard(today) + irrigationCard();
 
   // Para hoy: overdue and due today (tomorrow onwards lives in «Próximos días»).
   const tasks = dueTasks(plants, log, state.weather, today, here().lat, 0);
@@ -704,7 +794,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261015a";
+      sc.src = "vendor/qrcode.min.js?v=20261015b";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -877,7 +967,7 @@ function moreView() {
   const loc = state.loc ?? DEFAULT_LOC;
   const aiOn = !aiOff() && (aiOpen === true || (aiCode() && codeStatus?.kind !== "warn"));
   const pending = pendingUpgrades().length;
-  const isStandalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const standalone = isStandalone();
   const row = (action, icon, color, label, value = "", chevron = true, disabled = false) =>
     `<button type="button" class="l-row" data-action="${action}" ${disabled ? "disabled" : ""}><span class="l-ico" style="background:${color}">${ICONS[icon]}</span><span class="l-label">${label}</span><span class="l-value">${value}${chevron ? `<span class="chev">${ICONS.chevron}</span>` : ""}</span></button>`;
   return `
@@ -898,7 +988,7 @@ function moreView() {
       ${row("open-push", "bell", "#c93b30", "Aviso diario", store.get("mj_push", false) ? `<span class="ok">${ICONS.circleCheck}8:00</span>` : "Desactivado")}
       ${row("export-ics", "calendar", "#2f8f4e", "Exportar al calendario", "", true, !state.data.plants.length)}
     </section>
-    <p class="group-foot">${isStandalone ? "" : "Para recibir avisos en el iPhone, instala la app: Compartir → «Añadir a pantalla de inicio». "}Los riegos y abonados se añaden a tu calendario como eventos que se repiten por estación; si cambias algo, vuelve a exportarlo.</p>
+    <p class="group-foot">${standalone ? "" : "Para recibir avisos en el iPhone, instala la app: Compartir → «Añadir a pantalla de inicio». "}Los riegos y abonados se añaden a tu calendario como eventos que se repiten por estación; si cambias algo, vuelve a exportarlo.</p>
     <div class="group-title">Ayuda</div>
     <section class="card list-card settings">${row("open-feedback", "notes", "#3b82f6", "Enviar un comentario")}</section>
     ${aiCode() ? `<div class="group-title">Solo para ti</div>
@@ -1320,6 +1410,32 @@ function retentionCard() {
       ${r.cohorts.map((c) => `<div class="u-row"><span>Semana del ${fmtDate(c.week, { day: "numeric", month: "short" })}<small>${c.people} ${c.people === 1 ? "persona" : "personas"}</small></span><b>D1 ${pct(c.d1)} · sem. ${pct(c.w1)} · mes ${pct(c.m1)}</b></div>`).join("")}</details>
     <p class="muted small">Solo cuenta a quien ya ha tenido tiempo de volver. Con pocas personas los porcentajes bailan mucho: mira también «de cuántas».</p></section>`;
 }
+// «Del alta al jardín» (#68): how many real people reached each step of adding a plant in the period, and how Florvia is used
+// (installed app or browser tab). Only counts since these signals exist (15 Oct 2026).
+function funnelCard() {
+  const f = usage?.funnel;
+  if (!f) return "";
+  const top = Math.max(1, f.steps[0]?.people ?? 0);
+  const steps = f.steps.map((x, i) => `<div class="fn-row"><span>${x.label}</span><i style="--w:${Math.max(2, Math.round((x.people / top) * 100))}%" class="${i === f.steps.length - 1 ? "ok" : ""}"></i><b>${x.people}</b></div>`).join("");
+  const m = f.modes;
+  const known = m.installed + m.browser;
+  const pct = (n) => (known ? Math.round((n / known) * 100) : 0);
+  const row = (label, n, small = "") => `<div class="u-row"><span>${label}</span><b>${n}${small ? `<small>${small}</small>` : ""}</b></div>`;
+  return `<section class="card"><div class="sec">Del alta al jardín <span class="meta">personas · 30 días</span></div>${steps}
+    ${row("Fotos para reconocer una planta", f.scans.n, `${f.scans.people} ${f.scans.people === 1 ? "persona" : "personas"}`)}
+    ${row("Añadidas solas tras «Sí, es esta»", f.auto.added, f.auto.undone ? `${f.auto.undone} deshechas` : "")}
+    ${row("Dejadas a medio añadir", f.drafts.saved, `${f.drafts.resumed} retomadas · ${f.drafts.discarded} descartadas`)}
+    ${row("Llegadas desde el explorador o el blog", f.fromLink)}
+    <p class="muted small">«Empezaron» cuenta abrir «Nueva planta» (también desde el explorador); «Vieron su ficha», que la IA la preparó.</p></section>
+    <section class="card"><div class="sec">Cómo usan la app <span class="meta">${known} ${known === 1 ? "persona" : "personas"}</span></div>
+    ${known ? `<div class="mode-split"><span class="a" style="flex:${Math.max(1, m.installed)}">Instalada<b>${pct(m.installed)} %</b></span><span class="b" style="flex:${Math.max(1, m.browser)}">Navegador<b>${pct(m.browser)} %</b></span></div>` : `<p class="muted small">Aún sin datos: se mide desde el 15 de octubre.</p>`}
+    ${row("Con la app instalada", m.installed, `${m.plantedInstalled} con alguna planta`)}
+    ${row("Solo en el navegador", m.browser, `${m.plantedBrowser} con alguna planta`)}
+    ${row("iPhone · Android · otros", `${m.ios} · ${m.android} · ${m.other}`)}
+    ${row("Invitación a instalar vista", f.install.views, `${f.install.later} «Ahora no» · ${f.install.handoff} códigos · ${f.install.claimed} jardines recuperados`)}
+    ${row("Tarjeta «Guarda tu jardín» vista", f.install.keepViews, f.install.keepDismiss ? `${f.install.keepDismiss} ocultadas` : "")}
+    <p class="muted small">Cuenta como instalada quien la abrió al menos una vez desde el icono.</p></section>`;
+}
 // «Análisis de la IA»: every answer the AI gave to someone (care sheet, photo identification, diagnosis, «¿Dónde está mejor?», «Qué planto aquí»),
 // newest first, with who got it. Opens the same read-only view as the email link. Unrated ones are kept 60 days, rated ones 180.
 let analyses = { list: [], more: false, loading: false, kind: "", bad: false, mine: false, loaded: false };
@@ -1516,6 +1632,7 @@ function usageSheet() {
       <div class="u-axis"><span>${fmtDate(days[0].date)}</span><span>hoy</span></div>
       <div class="u-tip" id="usageTip" aria-live="polite"></div>`}</section>
     ${retentionCard()}
+    ${funnelCard()}
     <section class="card"><div class="sec">Qué se hace <span class="meta">30 días</span></div>
       ${row("sprout", "Plantas añadidas", sum("plant_add_ai") + sum("plant_add_manual"), `${sum("plant_add_ai")} con IA · ${sum("plant_add_manual")} a mano`)}
       ${row("droplet", "Riegos marcados", sum("water_done") + sum("water_skip_rain"), sum("water_skip_rain") ? `${sum("water_skip_rain")} saltados por lluvia` : "")}
@@ -1773,6 +1890,13 @@ function closeSheet() { sheet.close(); }
 let formDirty = false;
 const hasUnsaved = () => formDirty || Boolean(wiz && ($("wizStep2") || $("wizName")?.elements.name.value.trim()));
 function confirmDiscard() {
+  // A new plant whose sheet is already made isn't lost: it waits in «Hoy» as «a medio añadir».
+  if (wiz && !formDirty && wiz.step === 2 && wiz.ai === "done" && wiz.care) {
+    saveDraft(wiz);
+    wiz = null;
+    setTimeout(() => { render(); if (state.tab === "today") toast("La dejo a medio añadir en Hoy"); }, 0);
+    return true;
+  }
   if (hasUnsaved() && !confirm("Tienes cambios sin guardar. ¿Descartarlos?")) return false;
   formDirty = false;
   wiz = null;
@@ -1780,6 +1904,13 @@ function confirmDiscard() {
 }
 const leaveSheet = () => { if (confirmDiscard()) closeSheet(); };
 sheet.addEventListener("click", (e) => { if (e.target === sheet) leaveSheet(); });
+sheet.addEventListener("close", () => {
+  if (!installAskFor || !plantById(installAskFor.id)) return;
+  const ask = installAskFor;
+  installAskFor = null;
+  justAdded = null;
+  setTimeout(() => { if (!sheet.open) installSheet(ask.name, ""); }, 350);
+});
 
 // Swipe down to close, as in iOS sheets: drag from the top of the sheet (or anywhere while it's
 // scrolled to the top). Past 90 px it leaves (asking first if there are unsaved changes).
@@ -1805,7 +1936,7 @@ sheet.addEventListener("cancel", (e) => { if (!confirmDiscard()) e.preventDefaul
 
 // «Sobre la planta»: size, flowering, difficulty, where it does best and safety (plants added since Explorar).
 let plantUi = { id: null, open: new Set(["month"]), monthAll: false, big: false, flash: null }; // what is unfolded in the plant sheet (kept across redraws)
-document.addEventListener("toggle", (e) => { const d = e.target; if (d?.classList?.contains("pf") && d.dataset.k) d.open ? plantUi.open.add(d.dataset.k) : plantUi.open.delete(d.dataset.k); }, true);
+document.addEventListener("toggle", (e) => { const d = e.target; if (d?.id === "wizOpt" && wiz) wiz.optOpen = d.open; if (d?.classList?.contains("pf") && d.dataset.k) d.open ? plantUi.open.add(d.dataset.k) : plantUi.open.delete(d.dataset.k); }, true);
 // «hoy», «ayer», «hace 3 días»
 const relPast = (iso, today) => { const n = daysBetween(iso, today); return n <= 0 ? "hoy" : n === 1 ? "ayer" : `hace ${n} días`; };
 function aboutCard(p, bare = false) {
@@ -1894,6 +2025,7 @@ function plantSheet(id) {
       <div class="p-meta">${p.species || p.zone || p.nick ? `<p class="muted">${p.nick ? `${esc(p.name)} · ` : ""}${p.species ? `<em>${esc(p.species)}</em>${aiMark(isAiValue(p, "species"))}` : ""}${p.species && p.zone ? " · " : ""}${esc(p.zone)}</p>` : `<p class="muted">&nbsp;</p>`}
         <div class="traits">${traits.map(([icon, label]) => `<span class="trait">${ICONS[icon]}${label}</span>`).join("")}</div></div>
     </div>
+    ${justAdded?.id === p.id && Date.now() - justAdded.at < 10 * 60000 ? `<section class="card added-banner">${ICONS.circleCheck}<div class="body"><b>Añadida a tu jardín</b><span class="muted small">${esc([p.zone || "Sin zona", p.inPot ? "en maceta" : "en el suelo", p.rainReaches ? "le llega la lluvia" : "a cubierto"].join(" · "))}. Cámbialo en Editar si no es así.</span></div><button type="button" class="btn small secondary" data-action="added-undo" data-id="${p.id}">Deshacer</button></section>` : ""}
     ${plantUi.big && photoSrc ? (p.photo ? `<img class="hero-photo" src="${esc(p.photo)}" alt="" />` : `<figure class="ref-photo"><img class="hero-photo" src="${esc(p.refPhoto.url)}" alt="" /><figcaption>Foto de referencia · ${esc(p.refPhoto.credit)}</figcaption></figure>`) : ""}
     ${sunWarn ? `<p class="sun-warn ${sunWarn.level}">${ICONS.sun}${esc(sunWarn.text)}</p>` : ""}
     ${aiStrip(p)}
@@ -2840,6 +2972,7 @@ function newPlantWizard() {
     species: "", seasons: structuredClone(DEFAULT_SEASONS), frostSensitive: false, notes: "", newZone: false, sun: "", size: "medium", sunNeed: "", sunSensitive: false,
   };
   wiz.autoWater = false;
+  track("add_start");
   renderWizard();
 }
 
@@ -3194,9 +3327,22 @@ function renderWizard() {
       <div class="body"><div class="name">${esc(wiz.name)}</div>${aiLine}</div>
     </section>
     ${wiz.ai === "done" ? speciesCheck() : ""}
+    ${wiz.care?.confidence === "baja" ? `<p class="ai-status warn">⚠️ La IA no está segura de qué planta es. Revisa los días o vuelve atrás y prueba con otro nombre.</p>` : ""}
+    <section class="card care-block">
+      <h3>Cuidados${wiz.ai === "done" ? ` propuestos <span class="ai-mark">✦</span>` : ""}</h3>
+      ${seasonTable(wiz.seasons, { busy, aiCells: wiz.ai === "done" ? new Set(ALL_CELLS.filter((c) => !wiz.touched[c])) : undefined })}
+      ${wiz.ai === "done" ? tipsList(wiz.tips) : ""}
+      ${wiz.ai === "done" && wiz.notes ? `
+      <div class="ai-notes ${wiz.notesOpen ? "open" : ""}">
+        <p>${esc(wiz.notes)}</p>
+        <button type="button" class="more" data-action="wiz-notes" aria-expanded="${Boolean(wiz.notesOpen)}">${wiz.notesOpen ? "Ver menos" : "Ver más"}</button>
+      </div>` : ""}
+    </section>
+    <details class="card wiz-opt" id="wizOpt" ${wiz.optOpen ? "open" : ""}><summary><span class="pf-t"><span>Dónde está y más <span class="muted small">· opcional</span></span><span class="chev">${ICONS.chevron}</span></span>
+      <span class="pf-prev">${esc([wiz.zone || "Sin zona", wiz.inPot ? "en maceta" : "en el suelo", wiz.rainReaches ? "le llega la lluvia" : "a cubierto"].join(" · "))}${store.get("mj_last_place", null) ? " (como la última)" : ""}. Lo puedes cambiar después.</span></summary>
+    <div class="wiz-opt-in">
     <h3 class="q">Nombre propio <span class="muted small">(opcional)</span></h3>
     <input id="wizNick" class="big-input" data-1p-ignore data-lpignore="true" data-form-type="other" placeholder="Para distinguirla: «${esc(wiz.name)} del patio»…" autocomplete="off" value="${esc(wiz.nick ?? "")}" />
-    ${wiz.care?.confidence === "baja" ? `<p class="ai-status warn">⚠️ La IA no está segura de qué planta es. Revisa los días o vuelve atrás y prueba con otro nombre.</p>` : ""}
     <h3 class="q">¿Dónde está?</h3>
     <div class="chips">
       ${zones.map((z) => `<button type="button" class="chip ${!wiz.newZone && wiz.zone === z ? "on" : ""}" data-action="wiz-zone" data-zone="${esc(z)}">${esc(z)}</button>`).join("")}
@@ -3230,27 +3376,17 @@ function renderWizard() {
     <button type="button" class="switch-row" role="switch" aria-checked="${wiz.autoWater}" data-action="wiz-set" data-key="autoWater">
       <span>${ICONS.drip}Riego automático</span><span class="switch" aria-hidden="true"></span>
     </button>
-    <section class="card care-block">
-      <h3>Cuidados${wiz.ai === "done" ? ` propuestos <span class="ai-mark">✦</span>` : ""}</h3>
-      ${seasonTable(wiz.seasons, { busy, aiCells: wiz.ai === "done" ? new Set(ALL_CELLS.filter((c) => !wiz.touched[c])) : undefined })}
-      ${wiz.ai === "done" ? tipsList(wiz.tips) : ""}
-      ${wiz.ai === "done" && wiz.notes ? `
-      <div class="ai-notes ${wiz.notesOpen ? "open" : ""}">
-        <p>${esc(wiz.notes)}</p>
-        <button type="button" class="more" data-action="wiz-notes" aria-expanded="${Boolean(wiz.notesOpen)}">${wiz.notesOpen ? "Ver menos" : "Ver más"}</button>
-      </div>` : ""}
-    </section>
-    ${store.get("mj_last_place", null) ? `<p class="muted small">Zona y opciones como en la última planta que añadiste.</p>` : ""}
-    ${wiz.ai === "done" && wiz.care ? ratingCard({ kind: "care", name: wiz.name, input: { name: wiz.name, place: here().name }, output: wiz.care, caseId: wiz.care.caseId, rerender: renderWizard }) : ""}
     <h3 class="q">Foto de tu planta <span class="muted small">(opcional)</span></h3>
     <div class="photo-pick"><span id="photoPreview">${draftPhoto ? `<img class="thumb" src="${draftPhoto}" alt="" />` : `<span class="thumb placeholder">${ICONS.camera}</span>`}</span>
       <div style="display:grid;gap:8px;min-width:0">
         <span class="muted small">${draftPhoto && wiz.photoFromId ? "Es la foto con la que la reconociste." : "Para encontrarla de un vistazo en tu lista."}</span>
         <div class="row" style="gap:8px"><label class="btn small secondary">${draftPhoto ? "Cambiar foto" : "Añadir foto"}<input type="file" id="photoInput" accept="image/*" hidden /></label>${draftPhoto ? `<button type="button" class="btn small secondary" data-action="wiz-photo-remove">Quitar</button>` : ""}</div>
       </div></div>
+    </div></details>
+    ${wiz.ai === "done" && wiz.care ? ratingCard({ kind: "care", name: wiz.name, input: { name: wiz.name, place: here().name }, output: wiz.care, caseId: wiz.care.caseId, rerender: renderWizard }) : ""}
     <div class="sheet-actions">${busy
-      ? `<button class="btn block" data-action="wiz-save" disabled aria-busy="true"><span class="spinner" aria-hidden="true"></span> Esperando a la IA…</button>`
-      : `<button class="btn block" data-action="wiz-save">Guardar planta</button>`}</div>`);
+      ? `<button class="btn block" data-action="wiz-save" disabled aria-busy="true"><span class="spinner" aria-hidden="true"></span> ${wiz.autoAdd ? "Preparando su ficha para añadirla…" : "Esperando a la IA…"}</button>`
+      : `<button class="btn block" data-action="wiz-save">${ICONS.plus}Añadir a mi jardín</button>`}</div>`);
   if (wiz.newZone) setTimeout(() => $("wizZone")?.focus(), 50);
 }
 
@@ -3286,6 +3422,7 @@ async function wizLookup() {
   try {
     const care = await requestCare(current.query ?? current.name);
     applyCareToWizard(current, care);
+    if (!current.sheetSeen) { current.sheetSeen = true; track("add_sheet"); }
     current.refPhoto = null;
     current.checked = false;
     refPhoto(care.species).then((ph) => { current.refPhoto = ph; if (wiz === current && $("wizStep2")) renderWizard(); });
@@ -3295,11 +3432,20 @@ async function wizLookup() {
     current.aiError = aiErrorText(err.message);
   }
   clearInterval(ticker);
+  // From a photo the person already said «Sí, es esta»: save it now (not when the AI is unsure or failed).
+  if (wiz === current && current.autoAdd && current.ai === "done" && current.care?.confidence !== "baja" && $("wizStep2")) {
+    current.checked = true;
+    current.refPhoto = await Promise.race([refPhoto(current.species), new Promise((r) => setTimeout(() => r(null), 2500))]);
+    if (wiz === current) return wizSave(true);
+  }
   // Redraw only if this draft's step 2 is still what the sheet shows.
   if (wiz === current && $("wizStep2")) renderWizard();
 }
 
-function wizSave() {
+// Plant just added straight from the photo (banner with «Deshacer» in its sheet), and the plant to mention when asking to install.
+let justAdded = null;
+let installAskFor = null;
+function wizSave(auto = false) {
   if (wiz.ai === "loading") return;
   track(`${wiz.ai === "done" ? "plant_add_ai" : "plant_add_manual"}|${String(wiz.name ?? "").slice(0, 60).replace(/\|/g, " ")}`);
   const zone = wiz.zone.trim();
@@ -3324,6 +3470,13 @@ function wizSave() {
   render();
   const askCalendar = wiz.ai === "done" && !sharedCal;
   wiz = null;
+  justAdded = auto ? { id: plant.id, at: Date.now() } : null;
+  if (auto) track("add_auto");
+  // First plant on this phone, in a browser tab: when its sheet closes, ask to install (once).
+  if (state.data.plants.length === 1 && !isStandalone() && osName() !== "other" && !store.get("mj_install_asked", false)) {
+    store.set("mj_install_asked", true);
+    installAskFor = { name: plant.name, id: plant.id };
+  }
   plantSheet(plant.id);
   if (askCalendar) fetchCalendarFor(plant.id);
 }
@@ -3363,7 +3516,8 @@ const actions = {
     const c = id?.candidates?.[+d.i];
     if (!c) return;
     draftPhoto = id.photo;
-    Object.assign(wiz, { photoFromId: true, name: c.commonName, query: altQuery(c), identify: null, care: null, step: 2 });
+    // «Sí, es esta» is already the yes: once its sheet arrives the plant is saved with the usual place, and can be undone (#68).
+    Object.assign(wiz, { photoFromId: true, name: c.commonName, query: altQuery(c), identify: null, care: null, step: 2, autoAdd: true });
     if (aiGo()) wizLookup(); else renderWizard();
   },
   "wiz-species-ok": () => { wiz.nick = $("wizNick")?.value ?? wiz.nick; wiz.checked = true; wiz.showAlts = false; renderWizard(); },
@@ -3396,7 +3550,7 @@ const actions = {
     renderWizard();
   },
   "wiz-sp-toggle": () => { wiz.spOpen = !wiz.spOpen; renderWizard(); },
-  "wiz-save": wizSave,
+  "wiz-save": () => wizSave(),
   "wiz-notes": () => { wiz.notesOpen = !wiz.notesOpen; renderWizard(); },
   "edit-plant": (d) => plantForm(d.id),
   "plant-refresh": (d) => refreshPlantAi(d.id),
@@ -3489,8 +3643,34 @@ const actions = {
     setLoc({ name: $("placeCoordName").value.trim().slice(0, 40) || `${c.lat.toFixed(3)}, ${c.lon.toFixed(3)}`, ...c });
   },
   "zone-open": (d) => zoneSheet(d.zone ?? ""),
-  "welcome-install": installSheet,
-  "welcome-hide": () => { store.set("mj_welcome", "off"); render(); },
+  "welcome-install": () => installSheet(),
+  "keep-dismiss": () => { store.set("mj_keep_off", Date.now()); track("keep_dismiss"); render(); },
+  "install-prompt": async () => { const e = installEvt; if (!e) return; installEvt = null; e.prompt(); await e.userChoice.catch(() => null); closeSheet(); },
+  "install-later": (d) => { track("install_later"); if (d.id && plantById(d.id)) plantSheet(d.id); else closeSheet(); },
+  "handoff-open": () => { handoffUi.open = true; render(); setTimeout(() => $("handoffCode")?.focus(), 50); },
+  "handoff-claim": handoffClaim,
+  "draft-resume": () => {
+    const d = store.get(DRAFT, null);
+    if (!d?.wiz) return render();
+    if (plantLimitHit()) return premiumSheet("plants");
+    localStorage.removeItem(DRAFT);
+    track("add_draft_resume");
+    wiz = d.wiz;
+    draftPhoto = d.photo ?? null;
+    renderWizard();
+  },
+  "draft-discard": () => { localStorage.removeItem(DRAFT); track("add_draft_discard"); render(); },
+  "added-undo": (d) => {
+    const p = plantById(d.id);
+    if (!p) return closeSheet();
+    state.data.plants = state.data.plants.filter((x) => x.id !== d.id);
+    state.data.log = state.data.log.filter((e) => e.plantId !== d.id);
+    justAdded = null;
+    installAskFor = null;
+    track("add_undo");
+    save(); closeSheet(); render();
+    toast(`${plantLabel(p)} quitada`);
+  },
   "open-ai": () => aiSheet(),
   "ai-toggle": () => { store.set("mj_ai_off", !aiOff()); render(); },
   "open-upgrades": () => upgradesSheet(),
@@ -3874,6 +4054,13 @@ document.addEventListener("change", async (e) => {
     diag.photo = await shrinkPhoto(file, 900).catch(() => null) ?? diag.photo;
     return diagSheet();
   }
+  if (e.target.id === "firstPhotoInput" && e.target.files[0]) {
+    const file = e.target.files[0];
+    e.target.value = "";
+    track("first_photo");
+    newPlantWizard();
+    return wiz && identifyFromFile(file);
+  }
   if (e.target.id === "idPhotoInput" && e.target.files[0] && wiz) {
     const file = e.target.files[0];
     e.target.value = "";
@@ -4039,6 +4226,7 @@ loadFeedback();
     setTimeout(() => {
       newPlantWizard();
       if (!wiz) return;
+      track("add_from_link");
       Object.assign(wiz, { name: addName.trim(), query: null, step: 2 });
       if (aiGo()) wizLookup(); else renderWizard();
     }, 600);
@@ -4067,5 +4255,5 @@ if (new URLSearchParams(location.search).get("premium") === "ok") {
 }
 loadWeather();
 // One «open» per half hour at most, so switching apps back and forth doesn't inflate it.
-if (Date.now() - store.get("mj_last_open", 0) > 30 * 60000) { store.set("mj_last_open", Date.now()); track("app_open"); }
+if (Date.now() - store.get("mj_last_open", 0) > 30 * 60000) { store.set("mj_last_open", Date.now()); track("app_open"); track(`open_${isStandalone() ? "installed" : "browser"}_${osName()}`); }
 setTimeout(flushEvents, 1500);

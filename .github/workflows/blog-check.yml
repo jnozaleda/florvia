@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           fail=0
-          for t in test-rain test-sun test-coords test-retention test-notify test-ratings test-care-alias test-knowledge-retire; do node tools/$t.mjs 2>&1 | tee -a blog-check.log; [ "${PIPESTATUS[0]}" = 0 ] || fail=1; done
+          for t in test-rain test-sun test-coords test-retention test-notify test-ratings test-care-alias test-knowledge-retire test-funnel; do node tools/$t.mjs 2>&1 | tee -a blog-check.log; [ "${PIPESTATUS[0]}" = 0 ] || fail=1; done
           exit $fail
       - name: Comprobar las fichas de referencia (fuentes y procedencia)
         if: always()

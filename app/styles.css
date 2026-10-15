@@ -921,3 +921,57 @@ body[data-season]:not([data-season=""]) .place { background: rgba(255, 255, 255,
 body[data-season]:not([data-season=""]) .plan-pill { background: rgba(255, 255, 255, .16); color: #f3e3a6; }
 /* La app no se amplía con dos dedos ni con doble toque (como una app nativa); el tamaño de letra del sistema sigue funcionando */
 html, body { touch-action: pan-x pan-y; }
+
+/* ---------- #68: first plant, drafts, install, keep the garden ---------- */
+.first-plant { display: grid; gap: 10px; }
+.first-plant .crea { display: block; position: relative; height: 120px; border-radius: 14px; background-size: cover; background-position: center; overflow: hidden; }
+.first-plant .crea img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.first-plant h2 { font-size: 20px; }
+.first-plant p { margin: 0; }
+.first-plant .btn svg { width: 18px; height: 18px; vertical-align: -3px; margin-right: 6px; }
+.first-plant .two-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fp-links { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; padding: 2px 0; }
+.fp-links .link-btn { font-size: 14px; }
+.draft-card, .keep-card, .added-banner { display: flex; gap: 12px; align-items: flex-start; }
+.draft-card { border: 1.5px solid var(--accent); }
+.draft-card .body, .keep-card .body, .added-banner .body { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.draft-card .row, .keep-card .row { gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.draft-card .thumb { width: 54px; height: 54px; border-radius: 12px; object-fit: cover; flex: none; }
+.keep-card { position: relative; border: 1.5px solid var(--warn); }
+.keep-card .kc-ico { width: 36px; height: 36px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); display: grid; place-items: center; flex: none; }
+.keep-card .kc-ico svg, .added-banner > svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; }
+.keep-card .kc-x { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; display: grid; place-items: center; color: var(--text-3); }
+.keep-card .kc-x svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
+.keep-card .body { padding-right: 22px; }
+.added-banner { align-items: center; background: var(--accent-soft) !important; border-color: transparent; margin: 0 0 12px; }
+.added-banner > svg { color: var(--accent); flex: none; }
+.wiz-opt { padding: 12px 16px; margin: 12px 0; }
+.wiz-opt > summary { list-style: none; cursor: pointer; }
+.wiz-opt > summary::-webkit-details-marker { display: none; }
+.wiz-opt[open] .chev { transform: rotate(90deg); }
+.wiz-opt .pf-prev { display: block; color: var(--text-2); font-size: 13px; margin-top: 4px; }
+.wiz-opt-in { padding-top: 6px; }
+.sheet-actions .btn svg { width: 18px; height: 18px; vertical-align: -3px; margin-right: 6px; fill: none; stroke: currentColor; stroke-width: 2; }
+.i-art { display: block; position: relative; height: 96px; border-radius: 14px; background-size: cover; background-position: center; overflow: hidden; margin-bottom: 4px; }
+.i-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .9; }
+.i-steps { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 0; }
+.i-steps li { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 0.5px solid var(--hairline); }
+.i-steps li:last-child { border: 0; }
+.i-ico { width: 34px; height: 34px; border-radius: 10px; background: var(--info-soft); color: var(--info); display: grid; place-items: center; flex: none; font-weight: 700; overflow: hidden; }
+.i-ico svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; }
+.i-ico.app img { width: 100%; height: 100%; object-fit: cover; }
+.i-carry { display: flex; gap: 8px; align-items: flex-start; color: var(--accent); font-weight: 600; font-size: 14px; }
+.i-carry svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; margin-top: 1px; }
+.i-code { display: inline-block; font-size: 22px; letter-spacing: .18em; color: var(--text); margin-top: 4px; }
+.sheet-actions .btn + .btn { margin-top: 8px; }
+.handoff-card .row { gap: 8px; margin-top: 8px; }
+.handoff-card .big-input { flex: 1; letter-spacing: .3em; text-align: center; margin: 0; }
+.fn-row { display: grid; grid-template-columns: minmax(0, 1.3fr) 1fr 34px; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
+.fn-row i { display: block; height: 10px; width: var(--w); border-radius: 5px; background: var(--accent-soft); }
+.fn-row i.ok { background: var(--accent); }
+.fn-row b { text-align: right; }
+.mode-split { display: flex; border-radius: 12px; overflow: hidden; margin: 6px 0 10px; font-size: 12.5px; color: #fff; }
+.mode-split span { padding: 8px 10px; min-width: 0; }
+.mode-split b { display: block; font-size: 18px; }
+.mode-split .a { background: var(--accent); }
+.mode-split .b { background: var(--warn); }

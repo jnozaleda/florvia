@@ -70,6 +70,9 @@ dl.more-info{margin:24px 0 0;display:grid;gap:0;border-top:1px solid #e8ece4}dl.
 .h3row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 @media(max-width:700px){dl.more-info div{grid-template-columns:1fr;gap:2px}}
 @media(prefers-reduced-motion:reduce){.spin{animation:none}}
+.addbar{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:10px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(251,248,240,.96);border-top:1px solid rgba(11,51,32,.12);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);text-align:center;transition:transform .25s ease}
+.addbar .pill{display:block;max-width:420px;margin:0 auto;background:var(--deep);color:var(--cream);text-align:center}.addbar small{display:block;margin-top:5px;font-size:12px;color:#5c6b5f}
+.addbar.away{transform:translateY(110%)}body:has(.addbar:not([hidden])){padding-bottom:96px}
 .cta .ph{max-height:330px}.cta .ph img{height:auto}.banner h2,.banner p{text-shadow:0 2px 14px rgba(6,33,15,.55)}.mini .art{opacity:.5}.mini span{color:var(--leaf-d);font-weight:700}
 .season{padding:0;overflow:hidden}.season .in{padding:14px 16px 18px}.season .crea{position:relative;height:96px;background-size:cover;background-position:center}.season .crea img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 </style></head><body>
@@ -90,4 +93,4 @@ dl.more-info{margin:24px 0 0;display:grid;gap:0;border-top:1px solid #e8ece4}dl.
  <button class="pill line" id="all" type="button" hidden>Ver todas</button>
 </main>
 <footer><div class="wrap"><span>© Florvia</span><span><a href="/">Inicio</a> · <a href="/es/plantas/">Plantas</a> · <a href="/es/guias/">Guías</a> · <a href="/privacidad/">Privacidad</a> · <a href="mailto:hello@florvia.app">hello@florvia.app</a></span></div></footer>
-<script src="/img/estilo/plantas.js?v=20261010e" defer></script><script src="/explorar/explorar.js?v=20261010e" defer></script><script src="/track.js" defer></script></body></html>
+<script src="/img/estilo/plantas.js?v=20261010e" defer></script><script src="/explorar/explorar.js?v=20261015a" defer></script><script src="/track.js" defer></script></body></html>

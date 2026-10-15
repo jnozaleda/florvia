@@ -736,7 +736,40 @@ async function handleCare(request, env, headers, ctx) {
 // One KV document per day: { e: { event: count }, d: [device hashes], ai: { calls, cached, errors, notPlant, ms } }.
 // Anonymous counts only: the app sends event names and a random per-install id (hashed here).
 // Read-modify-write, so two writes at the same instant may lose one count: fine for a family app.
-const EVENTS = ["app_open", "plant_add_ai", "plant_add_manual", "water_done", "water_skip_rain", "feed_done", "task_done", "upgrade_done", "ai_fill_edit", "plant_identify", "plant_diagnose", "plant_explore", "plant_duplicate", "paywall_view", "premium_intent"];
+const EVENTS = ["app_open", "plant_add_ai", "plant_add_manual", "water_done", "water_skip_rain", "feed_done", "task_done", "upgrade_done", "ai_fill_edit", "plant_identify", "plant_diagnose", "plant_explore", "plant_duplicate", "paywall_view", "premium_intent",
+  // How each opening happens (installed app or browser tab, and the system), and the alta funnel (#68).
+  "open_installed_ios", "open_installed_android", "open_installed_other", "open_browser_ios", "open_browser_android", "open_browser_other",
+  "add_start", "add_sheet", "add_draft", "add_draft_resume", "add_draft_discard", "add_auto", "add_undo", "add_from_link", "first_photo",
+  "install_view", "install_later", "install_handoff", "install_claimed", "keep_view", "keep_dismiss"];
+// The alta funnel and the install split in «Uso de la app»: distinct real people who did each step in the period.
+const FUNNEL = [["app_open", "Abrieron la app"], ["add_start", "Empezaron a añadir una planta"], ["add_sheet", "Vieron su ficha"], ["plant_add", "Añadieron una planta"]];
+function funnelReport(people) {
+  const did = (p, name) => (name === "plant_add" ? (p.ev.plant_add_ai || p.ev.plant_add_manual) : p.ev[name]) > 0;
+  const list = Object.values(people).filter((p) => p.ev);
+  const count = (name) => list.filter((p) => did(p, name)).length;
+  const sum = (name) => list.reduce((n, p) => n + (p.ev[name] ?? 0), 0);
+  // A person is «instalada» if any of their openings was from the installed app.
+  const modes = { installed: 0, browser: 0, unknown: 0, ios: 0, android: 0, other: 0, opens: { installed: 0, browser: 0 }, plantedInstalled: 0, plantedBrowser: 0 };
+  for (const p of list) {
+    if (!p.ev.app_open) continue;
+    const inst = ["ios", "android", "other"].some((os) => p.ev[`open_installed_${os}`]);
+    const brow = ["ios", "android", "other"].some((os) => p.ev[`open_browser_${os}`]);
+    const mode = inst ? "installed" : brow ? "browser" : "unknown";
+    modes[mode] += 1;
+    if (mode !== "unknown" && did(p, "plant_add")) modes[mode === "installed" ? "plantedInstalled" : "plantedBrowser"] += 1;
+    const os = ["ios", "android", "other"].find((o) => p.ev[`open_installed_${o}`] || p.ev[`open_browser_${o}`]);
+    if (os) modes[os] += 1;
+  }
+  for (const os of ["ios", "android", "other"]) { modes.opens.installed += sum(`open_installed_${os}`); modes.opens.browser += sum(`open_browser_${os}`); }
+  return {
+    steps: FUNNEL.map(([name, label]) => ({ name, label, people: count(name) })),
+    scans: { people: count("plant_identify"), n: sum("plant_identify") },
+    drafts: { saved: sum("add_draft"), resumed: sum("add_draft_resume"), discarded: sum("add_draft_discard") },
+    auto: { added: sum("add_auto"), undone: sum("add_undo") }, fromLink: sum("add_from_link"), firstPhoto: sum("first_photo"),
+    install: { views: sum("install_view"), later: sum("install_later"), handoff: sum("install_handoff"), claimed: sum("install_claimed"), keepViews: sum("keep_view"), keepDismiss: sum("keep_dismiss") },
+    modes,
+  };
+}
 const statsKey = (day = new Date().toISOString().slice(0, 10)) => `stats:${day}`;
 async function hashId(id) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`mj:${id}`));
@@ -1229,6 +1262,7 @@ async function handleStats2(request, env, headers) {
     if (isCall(r)) p.aiCalls += r.n;
     const d = days[r.day];
     if (!d) continue;
+    if (r.kind === "event") (p.ev ??= {})[r.name] = (p.ev[r.name] ?? 0) + r.n;
     d.people.add(r.person);
     if (r.kind === "event") { d.events[r.name] = (d.events[r.name] ?? 0) + r.n; if (r.name === "app_open") d.opens += r.n; }
     else if (isCall(r)) { d.ai.calls += r.n; d.ai.ms += r.ms ?? 0; const k = (aiKinds[r.name] ??= { n: 0, tin: 0, tout: 0 }); k.n += r.n; k.tin += r.tin ?? 0; k.tout += r.tout ?? 0; }
@@ -1283,7 +1317,7 @@ async function handleStats2(request, env, headers) {
   }
   const refRows = (await env.DB.prepare("SELECT r.ref AS ref, COUNT(*) AS people, SUM(EXISTS (SELECT 1 FROM events e WHERE e.device = r.device AND e.kind = 'event' AND e.name IN ('plant_add_ai', 'plant_add_manual'))) AS planted FROM referrals r WHERE r.src IN ('prod', 'old') AND r.device NOT IN (SELECT id FROM internal) GROUP BY r.ref ORDER BY people DESC LIMIT 30").all()).results ?? [];
   return json({
-    cleanStart, today, aiKinds, intent, refs: refRows, retention, hours, notify: await notifySettings(env), quality: await qualityReport(env),
+    cleanStart, today, aiKinds, intent, funnel: funnelReport(people), refs: refRows, retention, hours, notify: await notifySettings(env), quality: await qualityReport(env),
     cap: { used: env.CACHE ? Number(await env.CACHE.get(`count:${today}`)) || 0 : 0, limit: Number(env.DAILY_LIMIT) || 0 },
     me: { internal: (mine.results ?? []).length > 0, code: (who.garden || who.device || "").slice(0, 4).toUpperCase() },
     days: dayList.map((d) => ({ ...days[d], people: days[d].people.size })),
@@ -1291,6 +1325,35 @@ async function handleStats2(request, env, headers) {
     tests: { events: tests.events, ai: tests.ai, byBucket: tests.byBucket, people: tests.people.size },
     topics,
   }, 200, headers);
+}
+// ---------- Safari → installed app on iPhone (#68) ----------
+// On iPhone the app added to the home screen does not see what the person had in Safari. Before installing, Safari saves the
+// garden (sync) and leaves its key here for an hour under a 4-digit code, scoped to the connection (hashed IP). The installed
+// app, opened from the same connection, asks whether there is one waiting and, with the code, gets the key and joins the garden.
+const handoffIp = async (request) => (await hashId(`handoff:${request.headers.get("CF-Connecting-IP") ?? "unknown"}`));
+async function handleHandoff(request, env, headers) {
+  if (!env.CACHE) return json({ error: "kv" }, 500, headers);
+  const ip = await handoffIp(request);
+  if (request.method === "GET") return json({ pending: Boolean(await env.CACHE.get(`handoff:${ip}`)) }, 200, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  if (!KEY_RE.test(body.key ?? "")) return json({ error: "key" }, 400, headers);
+  const code = String(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9000));
+  await Promise.all([env.CACHE.put(`handoff:${ip}:${code}`, body.key, { expirationTtl: 3600 }), env.CACHE.put(`handoff:${ip}`, "1", { expirationTtl: 3600 })]);
+  return json({ code }, 200, headers);
+}
+async function handleHandoffClaim(request, env, headers) {
+  if (!env.CACHE) return json({ error: "kv" }, 500, headers);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "input" }, 400, headers); }
+  const ip = await handoffIp(request);
+  const tries = `handofftry:${ip}`;
+  const n = Number(await env.CACHE.get(tries)) || 0;
+  if (n >= 10) return json({ error: "limit" }, 429, headers);
+  await env.CACHE.put(tries, String(n + 1), { expirationTtl: 3600 });
+  const code = String(body.code ?? "").replace(/\D/g, "");
+  const key = /^\d{4}$/.test(code) ? await env.CACHE.get(`handoff:${ip}:${code}`) : null;
+  return key ? json({ key }, 200, headers) : json({ error: "code" }, 404, headers);
 }
 async function handleInternal(request, env, headers) {
   if (!needCode(request, env)) return json({ error: "code" }, 401, headers);
@@ -2673,6 +2736,8 @@ export default {
     if (pathname === "/explore/plants" && request.method === "GET") return handleExplorePlants(request, env, headers);
     if (pathname === "/calendar" && request.method === "POST") return handleCalendar(request, env, headers, ctx);
     if (pathname === "/event" && request.method === "POST") return handleEvent(request, env, headers, ctx);
+    if (pathname === "/handoff" && (request.method === "GET" || request.method === "POST")) return handleHandoff(request, env, headers);
+    if (pathname === "/handoff/claim" && request.method === "POST") return handleHandoffClaim(request, env, headers);
     if (pathname === "/stats") return handleStats(request, env, headers);
     if (pathname === "/stats2") return handleStats2(request, env, headers);
     if (pathname === "/stats/web") return handleWebStats(request, env, headers);

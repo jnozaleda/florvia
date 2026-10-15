@@ -82,11 +82,32 @@
     return renderFound({ group, general: Object.fromEntries(GENERAL.map((k) => [k, c[k]])), zone: c.seasons ? { place: ZONE.place, seasons: c.seasons, feedTypes: c.feedTypes, tips: c.tips, climateNote: c.climateNote } : null });
   }
 
+  // «Añadir a mi jardín» always at hand while a plant's sheet is on screen (hidden when its own call to action is visible).
+  let barWatch = null;
+  function addBar(name, card) {
+    let bar = $("addbar");
+    barWatch?.disconnect();
+    if (!name) { if (bar) bar.hidden = true; return; }
+    if (!bar) {
+      bar = el("div", { id: "addbar", class: "addbar" }, el("a", { class: "pill cream", href: "#" }, ""), el("small", {}, "Se abre la app con la planta ya preparada"));
+      document.body.append(bar);
+    }
+    const a = bar.querySelector("a");
+    a.href = appLink(name);
+    a.textContent = `Añadir ${name.toLowerCase()} a mi jardín`;
+    bar.hidden = false;
+    const cta = card.querySelector(".cta");
+    if (cta && "IntersectionObserver" in window) {
+      barWatch = new IntersectionObserver(([e]) => bar.classList.toggle("away", e.isIntersecting), { threshold: 0.2 });
+      barWatch.observe(cta);
+    }
+  }
+
   async function search(name, push = true) {
     const out = $("out");
     name = name.trim().slice(0, 80);
     $("q").value = name;
-    if (!name) { out.replaceChildren(); document.title = "Explorar plantas: cuidados por zona | Florvia"; return; }
+    if (!name) { out.replaceChildren(); addBar(null); document.title = "Explorar plantas: cuidados por zona | Florvia"; return; }
     if (push) history.pushState({}, "", `?q=${encodeURIComponent(name)}`);
     const show = (node) => { out.replaceChildren(node); if (push) node.scrollIntoView({ behavior: "smooth", block: "start" }); };
     try {
@@ -98,8 +119,9 @@
       const view = data.found ? renderFound(data) : await generate(name);
       show(view);
       const title = view.querySelector("h2")?.textContent;
+      addBar(view.id === "ficha" ? title : null, view);
       if (title) document.title = `${title}: cuidados por zona | Florvia`;
-    } catch { show(problem(name, "No hemos podido buscar ahora", "Inténtalo de nuevo en un momento.")); }
+    } catch { addBar(null); show(problem(name, "No hemos podido buscar ahora", "Inténtalo de nuevo en un momento.")); }
   }
 
   // ---------- Plantas para explorar ----------
