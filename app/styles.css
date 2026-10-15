@@ -919,3 +919,5 @@ body[data-season]:not([data-season=""]) h1#title { color: #fff; }
 body[data-season]:not([data-season=""]) .subtitle { color: rgba(251, 249, 244, .8); }
 body[data-season]:not([data-season=""]) .place { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .3); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 body[data-season]:not([data-season=""]) .plan-pill { background: rgba(255, 255, 255, .16); color: #f3e3a6; }
+/* La app no se amplía con dos dedos ni con doble toque (como una app nativa); el tamaño de letra del sistema sigue funcionando */
+html, body { touch-action: pan-x pan-y; }
