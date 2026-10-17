@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261017a";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261017b";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks , isIndoor, indoorGuess } from "./rules.js?v=20261017a";
-import { buildICS } from "./calendar.js?v=20261017a";
-import { scrubPlant } from "./clean.js?v=20261017a";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261017a";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks , isIndoor, indoorGuess } from "./rules.js?v=20261017b";
+import { buildICS } from "./calendar.js?v=20261017b";
+import { scrubPlant } from "./clean.js?v=20261017b";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261017b";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -794,7 +794,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261017a";
+      sc.src = "vendor/qrcode.min.js?v=20261017b";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -3346,22 +3346,23 @@ function renderWizard() {
         <button type="button" class="more" data-action="wiz-notes" aria-expanded="${Boolean(wiz.notesOpen)}">${wiz.notesOpen ? "Ver menos" : "Ver más"}</button>
       </div>` : ""}
     </section>
-    <details class="card wiz-opt" id="wizOpt" ${wiz.optOpen ? "open" : ""}><summary><span class="pf-t"><span>Dónde está y más <span class="muted small">· opcional</span></span><span class="chev">${ICONS.chevron}</span></span>
-      <span class="pf-prev">${esc([wiz.zone || "Sin zona", wiz.indoor ? "dentro de casa" : "fuera", wiz.inPot ? "en maceta" : "en el suelo", wiz.indoor ? "" : wiz.rainReaches ? "le llega la lluvia" : "a cubierto"].filter(Boolean).join(" · "))}${store.get("mj_last_place", null) ? " (como la última)" : ""}. Lo puedes cambiar después.</span></summary>
-    <div class="wiz-opt-in">
-    <h3 class="q">Nombre propio <span class="muted small">(opcional)</span></h3>
-    <input id="wizNick" class="big-input" data-1p-ignore data-lpignore="true" data-form-type="other" placeholder="Para distinguirla: «${esc(wiz.name)} del patio»…" autocomplete="off" value="${esc(wiz.nick ?? "")}" />
+    <section class="card wiz-place"><div class="sec">Su sitio <span class="meta">${store.get("mj_last_place", null) ? "como la última que añadiste" : "lo puedes cambiar después"}</span></div>
     <h3 class="q">¿Dónde está?</h3>
     <div class="chips">
       ${zones.map((z) => `<button type="button" class="chip ${!wiz.newZone && wiz.zone === z ? "on" : ""}" data-action="wiz-zone" data-zone="${esc(z)}">${esc(z)}</button>`).join("")}
       <button type="button" class="chip ${wiz.newZone ? "on" : ""}" data-action="wiz-new-zone">+ Nueva zona</button>
     </div>
     ${wiz.newZone ? `<input id="wizZone" class="big-input" placeholder="Terraza sur, jardín delantero…" autocomplete="off" value="${esc(wiz.zone)}" />` : ""}
-    <h3 class="q">Tu sitio <span class="muted small">(lo ves tú)</span></h3>
     ${segmented("indoor", "¿Dónde vive?", [[false, "sun", "Fuera"], [true, "home", "Dentro de casa"]], wiz.indoor ? "Dentro de casa no le avisamos de heladas, calor, viento ni lluvia." : "")}
     ${segmented("inPot", "Plantada en", [[true, "pot", "Maceta"], [false, "ground", "Suelo"]])}
     ${wiz.indoor ? "" : segmented("rainReaches", "La lluvia", [[true, "rain", "Le llega"], [false, "umbrella", "A cubierto"]])}
     ${segmented("sun", "Sol que recibe", SUN_CHOICES, "El sol que le da el sitio donde está.")}
+    </section>
+    <details class="card wiz-opt" id="wizOpt" ${wiz.optOpen ? "open" : ""}><summary><span class="pf-t"><span>Más detalles <span class="muted small">· opcional</span></span><span class="chev">${ICONS.chevron}</span></span>
+      <span class="pf-prev">Nombre propio, tamaño, luz y frío que aguanta, riego automático y foto.</span></summary>
+    <div class="wiz-opt-in">
+    <h3 class="q">Nombre propio <span class="muted small">(opcional)</span></h3>
+    <input id="wizNick" class="big-input" data-1p-ignore data-lpignore="true" data-form-type="other" placeholder="Para distinguirla: «${esc(wiz.name)} del patio»…" autocomplete="off" value="${esc(wiz.nick ?? "")}" />
     ${segmented("size", "Tamaño que tiene ahora", SIZE_CHOICES, SIZE_HINT)}
     <h3 class="q">Sobre esta planta ${wiz.ai === "done" ? `<span class="ai-pill sp-pill">✦ propuesto por la IA</span>` : ""}</h3>
     <section class="card sp-card">
