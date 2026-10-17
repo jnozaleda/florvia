@@ -977,3 +977,7 @@ html, body { touch-action: pan-x pan-y; }
 .mode-split b { display: block; font-size: 18px; }
 .mode-split .a { background: var(--accent); }
 .mode-split .b { background: var(--warn); }
+.indoor-ask { display: flex; gap: 12px; align-items: flex-start; margin: 0 0 12px; border: 1.5px solid var(--info); }
+.indoor-ask > svg { width: 22px; height: 22px; color: var(--info); flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; }
+.indoor-ask .body { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.indoor-ask .row { gap: 8px; margin-top: 6px; flex-wrap: wrap; }

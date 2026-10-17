@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261015b";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261017a";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks } from "./rules.js?v=20261015b";
-import { buildICS } from "./calendar.js?v=20261015b";
-import { scrubPlant } from "./clean.js?v=20261015b";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261015b";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks , isIndoor, indoorGuess } from "./rules.js?v=20261017a";
+import { buildICS } from "./calendar.js?v=20261017a";
+import { scrubPlant } from "./clean.js?v=20261017a";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261017a";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -794,7 +794,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261015b";
+      sc.src = "vendor/qrcode.min.js?v=20261017a";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -855,7 +855,7 @@ function pushSheet(message = null) {
 // ---------- Sharing (read-only copies; see the Worker's /share) ----------
 // A fixed copy of a garden or of an explored plant, with a link that expires in 90 days. Nothing can be
 // edited from it and nothing asks the AI. Notes, history and exact location never leave the phone.
-const SHARE_PLANT_KEYS = ["name", "nick", "species", "zone", "photo", "refPhoto", "seasons", "tips", "feedTypes", "frostSensitive", "minTemp", "sunNeed", "sunSensitive", "sun", "rainReaches", "inPot", "autoWater", "size", "info"];
+const SHARE_PLANT_KEYS = ["name", "nick", "species", "zone", "photo", "refPhoto", "seasons", "tips", "feedTypes", "frostSensitive", "minTemp", "sunNeed", "sunSensitive", "sun", "rainReaches", "inPot", "indoor", "autoWater", "size", "info"];
 const shareLink = (kind, id) => `${location.origin}${location.pathname}#${kind === "garden" ? "ver" : "planta"}=${id}`;
 async function createShare(body) {
   let res;
@@ -898,8 +898,9 @@ let viewing = null; // { plants, zoneSun, at, expires }
 const plantPills = (p) => [
   p.frostSensitive ? ["snow", "Sensible a heladas"] : null,
   p.sunNeed ? [LIGHT_ICON[p.sunSensitive ? "shade" : p.sunNeed], p.sunSensitive ? "Sensible al sol directo" : `Pide ${SUN_NEED_LABEL[p.sunNeed]}`] : null,
+  isIndoor(p) ? ["home", "Dentro de casa"] : null,
   [p.inPot ? "pot" : "ground", p.inPot ? "Maceta" : "Suelo"],
-  [p.rainReaches ? "rain" : "umbrella", p.rainReaches ? "Le llega la lluvia" : "A cubierto"],
+  isIndoor(p) ? null : [p.rainReaches ? "rain" : "umbrella", p.rainReaches ? "Le llega la lluvia" : "A cubierto"],
   p.autoWater ? ["drip", "Riego automático"] : null,
   p.size ? ["sprout", `Tamaño ${(SIZE_LABEL[p.size] ?? "").toLowerCase()}`] : null,
 ].filter(Boolean);
@@ -1996,8 +1997,9 @@ function plantSheet(id) {
   }
   if (missingUpgrades(p).length) provenance += `<p class="provenance">Ficha por actualizar: Ajustes → Fichas por actualizar</p>`;
   const traits = [
+    isIndoor(p) ? ["home", "Dentro de casa"] : null,
     p.inPot ? ["pot", "Maceta"] : ["ground", "Suelo"],
-    p.rainReaches ? ["rain", "Le llega la lluvia"] : ["umbrella", "A cubierto"],
+    isIndoor(p) ? null : p.rainReaches ? ["rain", "Le llega la lluvia"] : ["umbrella", "A cubierto"],
     p.frostSensitive ? ["snow", "Sensible a heladas"] : null,
     p.autoWater ? ["drip", p.irrigationOff ? "Riego automático (pausado)" : "Riego automático"] : null,
     p.sunNeed ? [LIGHT_ICON[p.sunNeed], `Pide ${SUN_NEED_LABEL[p.sunNeed]}`] : null,
@@ -2025,7 +2027,9 @@ function plantSheet(id) {
       <div class="p-meta">${p.species || p.zone || p.nick ? `<p class="muted">${p.nick ? `${esc(p.name)} · ` : ""}${p.species ? `<em>${esc(p.species)}</em>${aiMark(isAiValue(p, "species"))}` : ""}${p.species && p.zone ? " · " : ""}${esc(p.zone)}</p>` : `<p class="muted">&nbsp;</p>`}
         <div class="traits">${traits.map(([icon, label]) => `<span class="trait">${ICONS[icon]}${label}</span>`).join("")}</div></div>
     </div>
-    ${justAdded?.id === p.id && Date.now() - justAdded.at < 10 * 60000 ? `<section class="card added-banner">${ICONS.circleCheck}<div class="body"><b>Añadida a tu jardín</b><span class="muted small">${esc([p.zone || "Sin zona", p.inPot ? "en maceta" : "en el suelo", p.rainReaches ? "le llega la lluvia" : "a cubierto"].join(" · "))}. Cámbialo en Editar si no es así.</span></div><button type="button" class="btn small secondary" data-action="added-undo" data-id="${p.id}">Deshacer</button></section>` : ""}
+    ${justAdded?.id === p.id && Date.now() - justAdded.at < 10 * 60000 ? `<section class="card added-banner">${ICONS.circleCheck}<div class="body"><b>Añadida a tu jardín</b><span class="muted small">${esc([p.zone || "Sin zona", isIndoor(p) ? "dentro de casa" : "fuera", p.inPot ? "en maceta" : "en el suelo", isIndoor(p) ? "" : p.rainReaches ? "le llega la lluvia" : "a cubierto"].filter(Boolean).join(" · "))}. Cámbialo en Editar si no es así.</span></div><button type="button" class="btn small secondary" data-action="added-undo" data-id="${p.id}">Deshacer</button></section>` : ""}
+    ${p.indoor === undefined && indoorGuess(p) ? `<section class="card indoor-ask">${ICONS.home}<div class="body"><b>La tratamos como planta de interior</b><span class="muted small">Así no le llegan avisos de heladas, calor, viento ni lluvia. ¿Vive dentro de casa?</span>
+      <div class="row"><button type="button" class="btn small" data-action="indoor-set" data-id="${p.id}" data-v="1">Sí, dentro</button><button type="button" class="btn small secondary" data-action="indoor-set" data-id="${p.id}" data-v="0">No, está fuera</button></div></div></section>` : ""}
     ${plantUi.big && photoSrc ? (p.photo ? `<img class="hero-photo" src="${esc(p.photo)}" alt="" />` : `<figure class="ref-photo"><img class="hero-photo" src="${esc(p.refPhoto.url)}" alt="" /><figcaption>Foto de referencia · ${esc(p.refPhoto.credit)}</figcaption></figure>`) : ""}
     ${sunWarn ? `<p class="sun-warn ${sunWarn.level}">${ICONS.sun}${esc(sunWarn.text)}</p>` : ""}
     ${aiStrip(p)}
@@ -2519,6 +2523,7 @@ function plantForm(id) {
       </div>
       <input name="zone" id="editZone" class="big-input" placeholder="Terraza sur, jardín delantero…" autocomplete="off" value="${esc(p.zone)}" hidden />
       <h3 class="q">Tu sitio <span class="muted small">(lo ves tú)</span></h3>
+      ${radioSeg("indoor", "¿Dónde vive?", isIndoor(p), [[false, "sun", "Fuera"], [true, "home", "Dentro de casa"]], "Dentro de casa no le avisamos de heladas, calor, viento ni lluvia.")}
       ${radioSeg("inPot", "Plantada en", p.inPot, [[true, "pot", "Maceta"], [false, "ground", "Suelo"]])}
       ${radioSeg("rainReaches", "La lluvia", p.rainReaches, [[true, "rain", "Le llega"], [false, "umbrella", "A cubierto"]])}
       ${radioSeg("sun", "Sol que recibe", p.sun ?? "", SUN_CHOICES, "El sol que le da el sitio donde está.")}
@@ -2948,6 +2953,7 @@ const ICONS = {
   pot: svg('<path d="M5 10h14l-1.6 9.1a1 1 0 0 1-1 .9H7.6a1 1 0 0 1-1-.9z"/><path d="M12 10V6"/><path d="M12 6c0-2 1.5-3 3.5-3 0 2-1.5 3-3.5 3zM12 7.5C12 6 10.8 5 9 5c0 1.5 1.2 2.5 3 2.5z"/>'),
   ground: svg('<path d="M3 19h18M7 22h10"/><path d="M12 19v-8"/><path d="M12 11c0-3 2-5 5.5-5 0 3-2 5-5.5 5zM12 14c0-2.5-1.8-4-4.5-4 0 2.5 1.8 4 4.5 4z"/>'),
   rain: svg('<path d="M7 14.5A4 4 0 0 1 7.6 6.6 5.5 5.5 0 0 1 18 8.5a3 3 0 0 1-.5 6z"/><path d="M8 18l-1 2.5M12 18l-1 2.5M16 18l-1 2.5"/>'),
+  home: svg('<path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/>'),
   umbrella: svg('<path d="M3 12a9 9 0 0 1 18 0z"/><path d="M12 12v6.5a2 2 0 0 0 4 0"/><path d="M12 3v.01"/>'),
   "snow": svg('<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.5 4.5 12 6l2.5-1.5M9.5 19.5 12 18l2.5 1.5"/>'),
   sun: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
@@ -2969,7 +2975,7 @@ function newPlantWizard() {
   wiz = {
     step: 1, name: "", ai: "idle", aiError: "", care: null, touched: {},
     ...PLACE_DEFAULTS, ...store.get("mj_last_place", {}),
-    species: "", seasons: structuredClone(DEFAULT_SEASONS), frostSensitive: false, notes: "", newZone: false, sun: "", size: "medium", sunNeed: "", sunSensitive: false,
+    species: "", seasons: structuredClone(DEFAULT_SEASONS), frostSensitive: false, notes: "", newZone: false, sun: "", size: "medium", sunNeed: "", sunSensitive: false, indoor: false,
   };
   wiz.autoWater = false;
   track("add_start");
@@ -3303,6 +3309,8 @@ function renderWizard() {
     return;
   }
   const zones = [...new Set([...state.data.plants.map((p) => p.zone), wiz.zone].filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+  // Indoors or out: until the AI's sheet says it (or the person chose), a guess from the name (ficus, monstera… → dentro de casa).
+  if (!wiz.touched.indoor && wiz.ai !== "done") wiz.indoor = indoorGuess({ name: wiz.name, species: wiz.species, group: wiz.group });
   // While the AI is answering, the fields it fills (and Guardar) wait; the place choices stay free.
   const busy = wiz.ai === "loading";
   const lock = busy ? "disabled" : "";
@@ -3339,7 +3347,7 @@ function renderWizard() {
       </div>` : ""}
     </section>
     <details class="card wiz-opt" id="wizOpt" ${wiz.optOpen ? "open" : ""}><summary><span class="pf-t"><span>Dónde está y más <span class="muted small">· opcional</span></span><span class="chev">${ICONS.chevron}</span></span>
-      <span class="pf-prev">${esc([wiz.zone || "Sin zona", wiz.inPot ? "en maceta" : "en el suelo", wiz.rainReaches ? "le llega la lluvia" : "a cubierto"].join(" · "))}${store.get("mj_last_place", null) ? " (como la última)" : ""}. Lo puedes cambiar después.</span></summary>
+      <span class="pf-prev">${esc([wiz.zone || "Sin zona", wiz.indoor ? "dentro de casa" : "fuera", wiz.inPot ? "en maceta" : "en el suelo", wiz.indoor ? "" : wiz.rainReaches ? "le llega la lluvia" : "a cubierto"].filter(Boolean).join(" · "))}${store.get("mj_last_place", null) ? " (como la última)" : ""}. Lo puedes cambiar después.</span></summary>
     <div class="wiz-opt-in">
     <h3 class="q">Nombre propio <span class="muted small">(opcional)</span></h3>
     <input id="wizNick" class="big-input" data-1p-ignore data-lpignore="true" data-form-type="other" placeholder="Para distinguirla: «${esc(wiz.name)} del patio»…" autocomplete="off" value="${esc(wiz.nick ?? "")}" />
@@ -3350,8 +3358,9 @@ function renderWizard() {
     </div>
     ${wiz.newZone ? `<input id="wizZone" class="big-input" placeholder="Terraza sur, jardín delantero…" autocomplete="off" value="${esc(wiz.zone)}" />` : ""}
     <h3 class="q">Tu sitio <span class="muted small">(lo ves tú)</span></h3>
+    ${segmented("indoor", "¿Dónde vive?", [[false, "sun", "Fuera"], [true, "home", "Dentro de casa"]], wiz.indoor ? "Dentro de casa no le avisamos de heladas, calor, viento ni lluvia." : "")}
     ${segmented("inPot", "Plantada en", [[true, "pot", "Maceta"], [false, "ground", "Suelo"]])}
-    ${segmented("rainReaches", "La lluvia", [[true, "rain", "Le llega"], [false, "umbrella", "A cubierto"]])}
+    ${wiz.indoor ? "" : segmented("rainReaches", "La lluvia", [[true, "rain", "Le llega"], [false, "umbrella", "A cubierto"]])}
     ${segmented("sun", "Sol que recibe", SUN_CHOICES, "El sol que le da el sitio donde está.")}
     ${segmented("size", "Tamaño que tiene ahora", SIZE_CHOICES, SIZE_HINT)}
     <h3 class="q">Sobre esta planta ${wiz.ai === "done" ? `<span class="ai-pill sp-pill">✦ propuesto por la IA</span>` : ""}</h3>
@@ -3404,6 +3413,8 @@ function applyCareToWizard(current, care) {
   if (!current.touched.frostSensitive) current.frostSensitive = care.frostSensitive;
   if (!current.touched.sunNeed) current.sunNeed = care.sunNeed ?? "";
   if (!current.touched.sunSensitive) current.sunSensitive = Boolean(care.sunSensitive);
+  current.group = care.knowledge ? String(care.knowledge).split("@")[0] : current.group;
+  if (!current.touched.indoor) current.indoor = care.indoor === true || indoorGuess({ name: current.name, species: care.species, group: current.group });
   current.notes = care.notes;
   current.tips = care.tips;
   current.feedTypes = care.feedTypes;
@@ -3451,7 +3462,8 @@ function wizSave(auto = false) {
   const zone = wiz.zone.trim();
   const plant = {
     id: uid(), created: localToday(), name: wiz.name, nick: ($("wizNick")?.value ?? wiz.nick ?? "").trim(), species: wiz.species, zone, refPhoto: wiz.refPhoto ?? undefined,
-    seasons: wiz.seasons, rainReaches: wiz.rainReaches, inPot: wiz.inPot,
+    seasons: wiz.seasons, rainReaches: wiz.rainReaches && !wiz.indoor, inPot: wiz.inPot,
+    indoor: Boolean(wiz.indoor), ...(wiz.group ? { group: wiz.group } : {}),
     frostSensitive: wiz.frostSensitive, autoWater: wiz.autoWater, notes: wiz.notes, tips: wiz.tips, feedTypes: wiz.feedTypes, photo: draftPhoto,
   };
   if (wiz.ai === "done" && wiz.care) { plant.ai = aiSnapshot(wiz.care); plant.minTemp = wiz.care.minTemp ?? null; plant.info = infoFields(wiz.care); }
@@ -3644,6 +3656,13 @@ const actions = {
   },
   "zone-open": (d) => zoneSheet(d.zone ?? ""),
   "welcome-install": () => installSheet(),
+  "indoor-set": (d) => {
+    const p = plantById(d.id);
+    if (!p) return;
+    p.indoor = d.v === "1";
+    if (p.indoor) p.rainReaches = false;
+    save(); render(); plantSheet(p.id);
+  },
   "keep-dismiss": () => { store.set("mj_keep_off", Date.now()); track("keep_dismiss"); render(); },
   "install-prompt": async () => { const e = installEvt; if (!e) return; installEvt = null; e.prompt(); await e.userChoice.catch(() => null); closeSheet(); },
   "install-later": (d) => { track("install_later"); if (d.id && plantById(d.id)) plantSheet(d.id); else closeSheet(); },
@@ -4140,8 +4159,9 @@ document.addEventListener("submit", (e) => {
     species: f.get("species").trim(),
     zone: f.get("zone").trim(),
     seasons: readSeasonTable(f),
-    rainReaches: f.get("rainReaches") === "true",
+    rainReaches: f.get("rainReaches") === "true" && f.get("indoor") !== "true",
     inPot: f.get("inPot") === "true",
+    indoor: f.get("indoor") === "true",
     frostSensitive: f.has("frostSensitive"),
     autoWater: f.has("autoWater"),
     sun: f.get("sun") ?? "",

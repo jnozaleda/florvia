@@ -7,6 +7,8 @@ import { normName, speciesKey } from "../worker/src/species.js";
 
 const DIR = new URL("../content/conocimiento/", import.meta.url);
 const OUT = new URL("../worker/src/knowledge.js", import.meta.url);
+// Las especies y nombres del grupo «interior», para que la app y el aviso diario sepan qué plantas viven dentro de casa (sin avisos del tiempo).
+const OUT_INDOOR = new URL("../app/indoor.js", import.meta.url);
 const MAX_TEXT = 1400; // caracteres por grupo en el prompt: lo que cuesta en tokens cada ficha generada
 const SECTIONS = ["Primavera", "Verano", "Otoño", "Invierno", "Errores comunes"];
 
@@ -60,13 +62,23 @@ export const GROUP_BY_SPECIES = ${JSON.stringify(sort(bySpecies), null, 2)};
 export const GROUP_BY_NAME = ${JSON.stringify(sort(byName), null, 2)};
 `;
 
+const pick = (map) => Object.keys(map).filter((k) => map[k] === "interior").sort();
+const outIndoor = `// Generado por tools/build-knowledge.mjs desde content/conocimiento/interior.md: no editar a mano.
+// Plantas que normalmente viven dentro de casa: especie o género (normalizado como en worker/src/species.js) y nombre común sin tildes.
+export const INDOOR_SPECIES = ${JSON.stringify(pick(bySpecies))};
+export const INDOOR_NAMES = ${JSON.stringify(pick(byName))};
+`;
+
 if (problems.length) { console.log(problems.map((p) => `✗ ${p}`).join("\n")); process.exit(1); }
 if (process.argv.includes("--check")) {
   let current = "";
   try { current = readFileSync(OUT, "utf8"); } catch {}
-  if (current !== out) { console.log("worker/src/knowledge.js no está al día: ejecuta «node tools/build-knowledge.mjs» y sube el cambio."); process.exit(1); }
+  let currentIndoor = "";
+  try { currentIndoor = readFileSync(OUT_INDOOR, "utf8"); } catch {}
+  if (current !== out || currentIndoor !== outIndoor) { console.log("worker/src/knowledge.js o app/indoor.js no están al día: ejecuta «node tools/build-knowledge.mjs» y sube el cambio."); process.exit(1); }
   console.log(`Fichas de conocimiento al día: ${Object.keys(groups).length} grupos · ${Object.keys(bySpecies).length} especies o géneros · ${Object.keys(byName).length} nombres`);
 } else {
   writeFileSync(OUT, out);
+  writeFileSync(OUT_INDOOR, outIndoor);
   console.log(`Escrito worker/src/knowledge.js: ${Object.keys(groups).length} grupos (${Object.values(groups).map((g) => g.text.length).join(", ")} caracteres)`);
 }

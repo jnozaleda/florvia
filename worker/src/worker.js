@@ -42,6 +42,7 @@ const CARE_SCHEMA = {
     potAdvice: { type: "string", description: "Una frase corta (menos de 120 caracteres) sobre la maceta y el sustrato (tamaño, drenaje) o sobre el suelo; vacío si nada especial" },
     waterHow: { type: "string", description: "Cómo regarla bien: método y cantidad aproximada, en una o dos frases cortas (menos de 160 caracteres). Por ejemplo «Riega por encima hasta que drene, unos 500 ml en maceta mediana; deja secar el primer dedo del sustrato» o «Mejor por el plato, 10 minutos, y retira el agua sobrante»; adapta método y cantidad a esta planta, a su tamaño y a si está en maceta o en suelo" },
     windSensitive: { type: "boolean", description: "true si el viento fuerte la daña y necesita abrigo" },
+    indoor: { type: "boolean", description: "true si en España se cultiva normalmente dentro de casa como planta de interior (monstera, potos, ficus elastica, orquídea phalaenopsis…); false si vive fuera (terraza, balcón, jardín) aunque en invierno se resguarde" },
     plantMonths: { type: "array", items: { type: "integer", minimum: 1, maximum: 12 }, description: "Meses (1-12) en que mejor comprarla y plantarla en ese clima" },
     plantWhen: { type: "string", description: "Frase corta (menos de 100 caracteres) sobre cuándo comprarla y plantarla en ese clima y por qué" },
     matureSize: { type: "string", enum: ["pequena", "mediana", "grande"], description: "Tamaño adulto: pequena (hasta 50 cm), mediana (hasta 2 m) o grande (más de 2 m)" },
@@ -65,7 +66,7 @@ const CARE_SCHEMA = {
       },
     },
   },
-  required: ["isPlant", "alternatives", "commonName", "species", ...SEASONS.flatMap((k) => [`water_${k}`, `feed_${k}`, `feedtype_${k}`, `tip_${k}`]), "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "climateFit", "climateNote", "plantIn", "potAdvice", "waterHow", "windSensitive", "plantMonths", "plantWhen", "matureSize", "matureNote", "bloomMonths", "bloomWhat", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "confidence"],
+  required: ["isPlant", "alternatives", "commonName", "species", ...SEASONS.flatMap((k) => [`water_${k}`, `feed_${k}`, `feedtype_${k}`, `tip_${k}`]), "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "climateFit", "climateNote", "plantIn", "potAdvice", "waterHow", "windSensitive", "indoor", "plantMonths", "plantWhen", "matureSize", "matureNote", "bloomMonths", "bloomWhat", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "confidence"],
   additionalProperties: false,
 };
 
@@ -337,6 +338,8 @@ function sanitize(c) {
     potAdvice: clipSentences(str(c.potAdvice, 300), 140),
     waterHow: clipSentences(str(c.waterHow, 300), 180),
     windSensitive: c.windSensitive === true || c.windSensitive === "true",
+    // Lives indoors: the app then gives it no weather alerts (the person can change it).
+    indoor: c.indoor === true || c.indoor === "true",
     plantMonths: monthList(c.plantMonths),
     plantWhen: clipSentences(str(c.plantWhen, 250), 120),
     matureSize: ["pequena", "mediana", "grande"].includes(c.matureSize) ? c.matureSize : "mediana",
@@ -413,7 +416,7 @@ async function takeQuota(request, env, ctx = null) {
 // A care sheet in two pieces: the PARENT is what is true of the species wherever it grows (name, light, hardiness, toxicity, size, how to water,
 // notes…) and the CHILD what depends on the climate of the cell (watering and feeding by season, seasonal tips, planting and flowering months, fit).
 // The Worker joins them when it serves a sheet, so the app still gets the same flat sheet. A species has one parent; each cell has its own child.
-const PARENT_FIELDS = ["commonName", "species", "confidence", "grounded", "knowledge", "fp", "curated", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "matureSize", "matureNote", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives", "isPlant"];
+const PARENT_FIELDS = ["commonName", "species", "confidence", "grounded", "knowledge", "fp", "curated", "frostSensitive", "sunNeed", "sunSensitive", "minTemp", "plantIn", "potAdvice", "waterHow", "windSensitive", "indoor", "matureSize", "matureNote", "difficulty", "buyTips", "toxic", "toxicNote", "invasive", "notes", "alternatives", "isPlant"];
 const CHILD_FIELDS = ["fpc", "curatedZone", "seasons", "feedTypes", "tips", "climateFit", "climateNote", "plantMonths", "plantWhen", "bloomMonths", "bloomWhat"];
 const PARENT_TTL = 365 * 86400;
 const pick = (o, keys) => Object.fromEntries(keys.filter((key) => o[key] !== undefined).map((key) => [key, o[key]]));
@@ -2648,13 +2651,13 @@ const vPlant = (p) => ({
   name: vStr(p?.name, 80), nick: vStr(p?.nick, 80), species: vStr(p?.species, 80), zone: vStr(p?.zone, 60),
   photo: vPhoto(p?.photo), refPhoto: vRef(p?.refPhoto), seasons: vSeasons(p?.seasons), tips: vBySeason(p?.tips, 200), feedTypes: vBySeason(p?.feedTypes, 100),
   frostSensitive: p?.frostSensitive === true, minTemp: vInt(p?.minTemp, -40, 25, null), sunNeed: vEnum(p?.sunNeed, SUN, undefined), sunSensitive: p?.sunSensitive === true,
-  sun: vEnum(p?.sun, ["", ...SUN], ""), rainReaches: p?.rainReaches === true, inPot: p?.inPot === true, autoWater: p?.autoWater === true,
+  sun: vEnum(p?.sun, ["", ...SUN], ""), rainReaches: p?.rainReaches === true, inPot: p?.inPot === true, ...(typeof p?.indoor === "boolean" ? { indoor: p.indoor } : {}), autoWater: p?.autoWater === true,
   size: vEnum(p?.size, ["", "small", "medium", "large"], ""), info: vInfo(p?.info),
 });
 const vCare = (c) => ({
   commonName: vStr(c?.commonName, 80), species: vStr(c?.species, 80), seasons: vSeasons(c?.seasons), feedTypes: vBySeason(c?.feedTypes, 100), tips: vBySeason(c?.tips, 200),
   frostSensitive: c?.frostSensitive === true, sunNeed: vEnum(c?.sunNeed, SUN, "sun"), sunSensitive: c?.sunSensitive === true, minTemp: vInt(c?.minTemp, -40, 25, null),
-  climateFit: vEnum(c?.climateFit, ["ok", "warn", "no"], "warn"), climateNote: vStr(c?.climateNote, 200), ...vInfo(c),
+  climateFit: vEnum(c?.climateFit, ["ok", "warn", "no"], "warn"), climateNote: vStr(c?.climateNote, 200), ...vInfo(c), indoor: c?.indoor === true,
   buyTips: (Array.isArray(c?.buyTips) ? c.buyTips : []).slice(0, 4).map((t) => vStr(t, 120)).filter(Boolean), notes: vStr(c?.notes, 800),
   alternatives: (Array.isArray(c?.alternatives) ? c.alternatives : []).slice(0, 3).map((a) => ({ commonName: vStr(a?.commonName, 60), species: vStr(a?.species, 80) })).filter((a) => a.commonName && a.species),
 });

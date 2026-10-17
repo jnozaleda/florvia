@@ -1,0 +1,4 @@
+// Generado por tools/build-knowledge.mjs desde content/conocimiento/interior.md: no editar a mano.
+// Plantas que normalmente viven dentro de casa: especie o género (normalizado como en worker/src/species.js) y nombre común sin tildes.
+export const INDOOR_SPECIES = ["aglaonema","anthurium","aspidistra","calathea","chlorophytum","dieffenbachia","dracaena fragrans","dracaena marginata","epipremnum","ficus benjamina","ficus elastica","ficus lyrata","goeppertia","maranta","monstera","peperomia","phalaenopsis","philodendron","pilea","spathiphyllum","strelitzia nicolai","zamioculcas"];
+export const INDOOR_NAMES = ["aglaonema","anturio","aspidistra","calathea","cinta","costilla de adan","difenbachia","espatifilo","ficus","maranta","monstera","orquidea","peperomia","pilea","pothos","potos","zamioculca"];

@@ -1,5 +1,21 @@
 // Care rules: what's due for each plant, and how the forecast changes it.
 // Pure functions over plain data, so the same file can run later in the daily push job.
+import { INDOOR_SPECIES, INDOOR_NAMES } from "./indoor.js";
+
+// Plants that live indoors get no weather: no frost, heat, wind or strong-sun alerts, and rain neither waters them nor delays their watering.
+// The plant's own choice («¿Dónde vive?») wins; without one, a guess from its group, species or common name (content/conocimiento/interior.md).
+const normName = (s) => String(s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+const SPECIES_NOISE = new Set(["x", "spp", "sp", "cv", "var", "subsp", "ssp", "f"]);
+export function indoorGuess(plant) {
+  if (plant.group) return plant.group === "interior";
+  const words = normName(plant.species).split(" ").filter((w) => w && !SPECIES_NOISE.has(w));
+  if (words.length && (INDOOR_SPECIES.includes(words.slice(0, 2).join(" ")) || INDOOR_SPECIES.includes(words[0]))) return true;
+  const name = normName(plant.name);
+  return INDOOR_NAMES.some((n) => name === n || name.startsWith(`${n} `));
+}
+export const isIndoor = (plant) => (typeof plant.indoor === "boolean" ? plant.indoor : indoorGuess(plant));
+const rainHits = (plant) => Boolean(plant.rainReaches) && !isIndoor(plant);
+const outdoors = (plants) => plants.filter((p) => !isIndoor(p));
 
 export const CARE = {
   water: { label: "Regar", done: "Regado", icon: "💧" },
@@ -116,7 +132,7 @@ export function sunAdvice(plant, zoneSun = {}, weather = null) {
   const move = plant.sunSensitive || plant.sunNeed === "shade" ? "sombra" : plant.sunNeed === "sun" ? "una zona más soleada" : "media sombra";
   let text = `${asks} y recibe ${SUN_LABEL[exposure].toLowerCase()}: mejor en ${move}.`;
   const tooMuchSun = exposure !== "shade" && (plant.sunSensitive || plant.sunNeed === "shade" || (plant.sunNeed === "partial" && exposure === "sun"));
-  const sun = tooMuchSun ? sunStrength(weather) : null;
+  const sun = tooMuchSun && !isIndoor(plant) ? sunStrength(weather) : null;
   if (sun) {
     const uv = sun.uv != null ? ` (UV ${sun.uv})` : "";
     if (sun.level === "extreme") {
@@ -209,8 +225,9 @@ export function compareWith(care, plants, season) {
 
 // Weather-driven checks for the week, beyond the alerts: rain spells (fungus, snails), cold
 // nights above frost, heat for sun-sensitive plants. Each: { kind, title, text, plantIds }
-export function weatherChecks(plants, weather, today, zoneSun = {}) {
+export function weatherChecks(allPlants, weather, today, zoneSun = {}) {
   if (!weather) return [];
+  const plants = outdoors(allPlants);
   const { days, today: t } = weather;
   const recent = days.slice(Math.max(0, t - 2), t + 1);
   const week = days.slice(t, t + 7);
@@ -218,8 +235,8 @@ export function weatherChecks(plants, weather, today, zoneSun = {}) {
   const names = (list) => list.map(plantLabel).join(", ").replace(/, ([^,]*)$/, " y $1");
   const wet = recent.reduce((sum, d) => sum + d.rain, 0) >= 15 || recent.filter((d) => d.rain >= 2).length >= 2;
   if (wet) {
-    const fungus = plants.filter((p) => p.rainReaches && p.risks?.includes("fungus"));
-    const snails = plants.filter((p) => p.rainReaches && p.risks?.includes("snails"));
+    const fungus = plants.filter((p) => rainHits(p) && p.risks?.includes("fungus"));
+    const snails = plants.filter((p) => rainHits(p) && p.risks?.includes("snails"));
     const hit = [...new Set([...fungus, ...snails])];
     if (hit.length) {
       const what = fungus.length && snails.length ? "hongos y caracoles" : fungus.length ? "hongos" : "caracoles y babosas";
@@ -250,7 +267,7 @@ export function weatherChecks(plants, weather, today, zoneSun = {}) {
   // Automatic irrigation: tell when the timer could pause (rain reached them) or needs checking (heat).
   const auto = plants.filter(irrigated);
   const rainNext = days.slice(t + 1, t + 3).reduce((sum, d) => sum + d.rain, 0);
-  const autoRain = auto.filter((p) => p.rainReaches);
+  const autoRain = auto.filter(rainHits);
   if (autoRain.length && (wet || rainNext >= LIMITS.rainSkipMm)) {
     const mm = Math.round(recent.reduce((sum, d) => sum + d.rain, 0) + rainNext);
     out.push({ kind: "rain", title: "Riego automático: puedes pausarlo", text: `Entre lo que ha llovido y lo que viene, unos ${mm} mm. ${names(autoRain).replace(/^./, (c) => c.toUpperCase())} ${autoRain.length === 1 ? "no necesita" : "no necesitan"} el riego estos días.`, plantIds: autoRain.map((p) => p.id) });
@@ -388,7 +405,7 @@ export function rainCredits(plants, log, weather, today, deleted = {}) {
   const known = new Set(log.map((e) => e.id));
   const out = [];
   for (const plant of plants) {
-    if (!plant.rainReaches || irrigated(plant)) continue;
+    if (!rainHits(plant) || irrigated(plant)) continue;
     const since = lastDone(log, plant.id, "water") ?? plant.created ?? "";
     const day = rainy.filter((d) => d.date > since).pop();
     if (!day) continue;
@@ -409,7 +426,7 @@ export function irrigationRain(plants, weather, today, paused = []) {
   const past = sum(days.slice(Math.max(0, t - 2), t));
   const soon = sum(days.slice(t, t + 3).filter((d) => d.rainProb >= LIMITS.rainProb));
   const zones = new Map();
-  for (const p of plants) if (p.autoWater && p.rainReaches) zones.set(p.zone || "", [...(zones.get(p.zone || "") ?? []), p]);
+  for (const p of plants) if (p.autoWater && rainHits(p)) zones.set(p.zone || "", [...(zones.get(p.zone || "") ?? []), p]);
   for (const [zone, list] of zones) {
     if (paused.includes(zone)) { if (soon < LIMITS.rainSkipMm) out.resume.push({ zone, plants: list, soon }); }
     else if (past + soon >= LIMITS.rainPauseMm) out.pause.push({ zone, plants: list, past, soon });
@@ -428,7 +445,7 @@ export function dueTasks(plants, log, weather, today, lat, horizon = 2) {
       if (!due) continue;
       let days = daysBetween(today, due);
       let advice = null;
-      if (type === "water" && o) {
+      if (type === "water" && o && !isIndoor(plant)) {
         if (plant.rainReaches && o.rainSoon) {
           advice = { kind: "skip", text: `Se esperan ${Math.round(o.rainSoon.rain)} mm ${whenLabel(today, o.rainSoon.date)}: espera a la lluvia` };
         } else if (o.heat && days <= 2) {
@@ -443,9 +460,10 @@ export function dueTasks(plants, log, weather, today, lat, horizon = 2) {
 }
 
 // Garden-wide alerts: frost, wind, heatwave. Each: { level: "warn"|"danger", icon, title, text }
-export function weatherAlerts(plants, weather, today) {
+export function weatherAlerts(allPlants, weather, today) {
   const o = outlook(weather);
-  if (!o) return [];
+  const plants = outdoors(allPlants);
+  if (!o || (allPlants.length && !plants.length)) return [];
   const alerts = [];
   const names = (list) => list.map(plantLabel).join(", ");
   // Per plant: the next 3 days against its own limit (frostLimit), not one fixed temperature.
