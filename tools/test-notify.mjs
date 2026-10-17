@@ -83,6 +83,16 @@ await test("a mano también avisa; los eventos que no son de alta no", async () 
   assert.deepEqual(subjects(), ["Florvia · Nueva planta: Geranio"]);
   assert.match(bodyOf(emails[0]), /a mano/);
 });
+await test("app instalada: un correo la primera vez que se abre desde el icono, no las siguientes ni desde el navegador", async () => {
+  await event(["app_open", "open_browser_ios"]);
+  assert.equal(emails.length, 0);
+  await event(["app_open", "open_installed_ios"]);
+  assert.deepEqual(subjects(), ["Florvia · App instalada: iPhone o iPad"]);
+  await event(["app_open", "open_installed_ios"]);
+  assert.equal(emails.length, 1);
+  await event(["app_open", "open_installed_android"], { device: "dev-B" });
+  assert.deepEqual(subjects().slice(1), ["Florvia · App instalada: Android"]);
+});
 await test("foto identificada: avisa con la especie más probable", async () => {
   const r = await identify();
   assert.equal(r.status, 200);
@@ -110,9 +120,9 @@ await test("pruebas desde localhost o sin origen no avisan", async () => {
   assert.equal(emails.length, 0);
 });
 await test("interruptores: se apagan por tipo, y el informe los devuelve", async () => {
-  assert.deepEqual((await admin("/stats2?days=1")).notify, { plant: true, identify: true, diagnose: true, rating_up: true, rating_down: true });
+  assert.deepEqual((await admin("/stats2?days=1")).notify, { install: true, plant: true, identify: true, diagnose: true, rating_up: true, rating_down: true });
   const r = await admin("/notify", { kind: "plant", on: false });
-  assert.deepEqual(r.notify, { plant: false, identify: true, diagnose: true, rating_up: true, rating_down: true });
+  assert.deepEqual(r.notify, { install: true, plant: false, identify: true, diagnose: true, rating_up: true, rating_down: true });
   await event(["plant_add_ai|Olivo"]);
   assert.equal(emails.length, 0);
   await identify();

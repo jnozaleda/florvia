@@ -1,12 +1,12 @@
 // Florvia — plant inventory, care log and weather-aware reminders. Plain template strings,
 // data in localStorage (phase 1: this device only). Actions are wired by data-action attributes.
 
-import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261017b";
+import { fetchWeather, searchCities, parseCoords, weatherKind } from "./weather.js?v=20261017c";
 import {
-  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks , isIndoor, indoorGuess } from "./rules.js?v=20261017b";
-import { buildICS } from "./calendar.js?v=20261017b";
-import { scrubPlant } from "./clean.js?v=20261017b";
-import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261017b";
+  CARE, SEASONS, SEASON_LABEL, dueTasks, rainCredits, irrigationRain, lastDone, upcomingTasks, monthTasks, weatherChecks, taskWindow, weatherAlerts, nextDue, daysBetween, intervalFor, seasonOf, nextSeasonStart, irrigated, plantLabel, groupGardenTasks, SUN_LABEL, SUN_NEED_LABEL, exposureOf, sunAdvice, fitReport, irrigationChecks , isIndoor, indoorGuess } from "./rules.js?v=20261017c";
+import { buildICS } from "./calendar.js?v=20261017c";
+import { scrubPlant } from "./clean.js?v=20261017c";
+import { mergeGardens, gardenDoc, hashesOf, stampChanges, docHash, newKey, formatKey, parseKey, fetchGarden, putGarden, needsPush } from "./sync.js?v=20261017c";
 
 const DEFAULT_LOC = { name: "Madrid", lat: 40.4168, lon: -3.7038 };
 // Backend (worker/): fills a plant's care sheet with AI. Needs the access code from Ajustes.
@@ -794,7 +794,7 @@ async function drawQr(text) {
   if (!window.qrcode) {
     await new Promise((resolve) => {
       const sc = document.createElement("script");
-      sc.src = "vendor/qrcode.min.js?v=20261017b";
+      sc.src = "vendor/qrcode.min.js?v=20261017c";
       sc.onload = resolve; sc.onerror = resolve;
       document.head.append(sc);
     });
@@ -1517,8 +1517,8 @@ function hourChart(hours, value, label, ariaLabel) {
   return `<div class="u-chart" role="img" aria-label="${esc(ariaLabel)}">${bars}</div><div class="u-axis"><span>hace 24 h</span><span>ahora</span></div><div class="u-tip" aria-live="polite"></div>`;
 }
 // Which emails Noza gets when someone adds a plant, identifies one from a photo or runs a diagnosis (Worker: meta «notify»).
-const NOTIFY_LABEL = { plant: ["Cuando alguien añade una planta", "El nombre y si se añadió con IA o a mano"], identify: ["Cuando alguien identifica una planta con una foto", "La especie más probable; nunca la foto"], diagnose: ["Cuando alguien hace un diagnóstico", "La planta y los síntomas marcados"], rating_up: ["Cada 👍 de «¿Te sirvió?»", "Con el enlace al caso tal como lo vio"], rating_down: ["Cada 👎 de «¿Te sirvió?»", "Motivos, nota y enlace al caso; también un aviso en el móvil"] };
-const NOTIFY_ICON = { plant: "sprout", identify: "camera", diagnose: "alert", rating_up: "check", rating_down: "alert" };
+const NOTIFY_LABEL = { install: ["Cuando alguien instala la app", "La primera vez que abre Florvia desde el icono, y si es iPhone o Android"], plant: ["Cuando alguien añade una planta", "El nombre y si se añadió con IA o a mano"], identify: ["Cuando alguien identifica una planta con una foto", "La especie más probable; nunca la foto"], diagnose: ["Cuando alguien hace un diagnóstico", "La planta y los síntomas marcados"], rating_up: ["Cada 👍 de «¿Te sirvió?»", "Con el enlace al caso tal como lo vio"], rating_down: ["Cada 👎 de «¿Te sirvió?»", "Motivos, nota y enlace al caso; también un aviso en el móvil"] };
+const NOTIFY_ICON = { install: "share", plant: "sprout", identify: "camera", diagnose: "alert", rating_up: "check", rating_down: "alert" };
 function notifyCard() {
   const n = usage?.notify;
   if (!n) return "";

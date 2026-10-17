@@ -881,6 +881,12 @@ async function handleEvent(request, env, headers, ctx) {
   const added = rawEvents.filter(([e, name]) => (e === "plant_add_ai" || e === "plant_add_manual") && name).map(([, name]) => name);
   if (added.length) recordTopics(env, ctx, request, "added", added);
   const garden = /^g:[a-f0-9]{16}$/.test(String(body.garden ?? "")) ? body.garden.slice(2) : "";
+  // First opening from the installed app on this phone = it was just installed (email «App instalada»). Checked before this batch is stored.
+  const installedOs = events.find((e) => e.startsWith("open_installed_"))?.slice(15);
+  if (installedOs && env.DB) {
+    const seen = await env.DB.prepare("SELECT 1 AS x FROM events WHERE device = ? AND name LIKE 'open_installed_%' LIMIT 1").bind(await hashId(device)).first().catch(() => ({ x: 1 }));
+    if (!seen) notifyActivity(env, ctx, request, "install", { what: { ios: "iPhone o iPad", android: "Android", other: "ordenador u otro" }[installedOs] ?? "otro", extra: "Primera vez que abre Florvia desde el icono de su pantalla de inicio." }, { device, garden });
+  }
   for (const [e, name] of rawEvents) if (e === "plant_add_ai" || e === "plant_add_manual") notifyActivity(env, ctx, request, "plant", { what: name || "(sin nombre)", extra: e === "plant_add_ai" ? "Añadida con los cuidados de la IA." : "Añadida a mano." }, { device, garden });
   const ref = /^[a-z0-9-]{1,60}$/.test(String(body.ref ?? "")) ? body.ref : "";
   if (ref && env.DB) ctx.waitUntil((async () => env.DB.prepare("INSERT OR IGNORE INTO referrals (device, ref, day, src) VALUES (?, ?, ?, ?)").bind(await hashId(device), ref, new Date().toISOString().slice(0, 10), originSrc(request)).run())().catch(() => {}));
@@ -893,7 +899,7 @@ async function handleEvent(request, env, headers, ctx) {
 // Only real use counts: from florvia.app (or the old address) and not from a device Noza marked as theirs. A day cap keeps the
 // inbox from flooding if the app takes off (one final email says the cap was reached). The email says what, who (the name Noza
 // gave that person, else a 4-letter code) and when; never photos, notes or contact data.
-const NOTIFY_KINDS = ["plant", "identify", "diagnose", "rating_up", "rating_down"];
+const NOTIFY_KINDS = ["install", "plant", "identify", "diagnose", "rating_up", "rating_down"];
 const NOTIFY_DAILY_CAP = 40;
 async function notifySettings(env) {
   let saved = {};
@@ -915,12 +921,12 @@ function notifyActivity(env, ctx, request, kind, detail, opts = {}) {
       const n = Number(await env.CACHE.get(key)) || 0;
       if (n > NOTIFY_DAILY_CAP) return;
       await env.CACHE.put(key, String(n + 1), { expirationTtl: 2 * 86400 });
-      if (n === NOTIFY_DAILY_CAP) return sendAdminEmail(env, "Florvia · Límite diario de avisos de actividad", `Hoy ya te he mandado ${NOTIFY_DAILY_CAP} avisos de actividad (plantas añadidas, fotos y diagnósticos). Paro hasta mañana para no llenarte la bandeja.\nLo ves todo en «Uso de la app».`);
+      if (n === NOTIFY_DAILY_CAP) return sendAdminEmail(env, "Florvia · Límite diario de avisos de actividad", `Hoy ya te he mandado ${NOTIFY_DAILY_CAP} avisos de actividad (instalaciones, plantas añadidas, fotos y diagnósticos). Paro hasta mañana para no llenarte la bandeja.\nLo ves todo en «Uso de la app».`);
     }
     const id = garden || who.device;
     const label = id ? (await env.DB.prepare("SELECT label FROM labels WHERE id = ?").bind(id).first())?.label : "";
     const person = id ? `${label ? `${label} · ` : ""}código ${id.slice(0, 4).toUpperCase()}` : "persona sin identificar";
-    const title = { plant: "Nueva planta", identify: "Planta identificada por foto", diagnose: "Diagnóstico" }[kind];
+    const title = { install: "App instalada", plant: "Nueva planta", identify: "Planta identificada por foto", diagnose: "Diagnóstico" }[kind];
     const when = new Date().toLocaleString("es-ES", { timeZone: "Europe/Madrid", dateStyle: "medium", timeStyle: "short" });
     await sendAdminEmail(env, `Florvia · ${title}: ${clean(detail.what, 60)}`, [`${title}: ${clean(detail.what, 100)}`, ...(detail.extra ? [clean(detail.extra, 200)] : []), "", `Quién: ${person}`, `Cuándo: ${when} (Madrid)`, "", "Puedes elegir qué avisos recibir en «Uso de la app»."].join("\n"));
   })().catch((err) => console.error("notify", err?.message)));
